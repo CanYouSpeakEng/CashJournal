@@ -1,33 +1,61 @@
 package app.cashjournal
 
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import app.cashjournal.ui.MainAppScaffold
+import app.cashjournal.ui.MainViewModel
+import app.cashjournal.ui.onboarding.AppLanguage
 import app.cashjournal.ui.onboarding.OnboardingScreen
-import app.cashjournal.ui.preview.Phase3ComponentsScreen
 import app.cashjournal.ui.theme.CashJournalTheme
 
 class MainActivity : ComponentActivity() {
+
+    private val viewModel: MainViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
         setContent {
             CashJournalTheme {
-                var onboardingDone by remember { mutableStateOf(false) }
+                val state by viewModel.uiState.collectAsState()
 
-                if (!onboardingDone) {
+                // Screen Privacy (FLAG_SECURE)
+                LaunchedEffect(state.userPreferences.screenPrivacyEnabled) {
+                    if (state.userPreferences.screenPrivacyEnabled) {
+                        window.setFlags(
+                            WindowManager.LayoutParams.FLAG_SECURE,
+                            WindowManager.LayoutParams.FLAG_SECURE
+                        )
+                    } else {
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                    }
+                }
+
+                if (!state.userPreferences.onboardingComplete) {
                     OnboardingScreen(
-                        onFinish = { _, _, _, _, _ ->
-                            onboardingDone = true
+                        onFinish = { language, currencyCode, name, railOnRight, loadExample ->
+                            viewModel.updatePreferences { prefs ->
+                                prefs.updateLanguage(if (language == AppLanguage.INDONESIAN) "in" else "en")
+                                prefs.updateCurrencyCode(currencyCode)
+                                prefs.updateUserName(name)
+                                prefs.updateRailOnRight(railOnRight)
+                                prefs.updateOnboardingComplete(true)
+                            }
+                            if (loadExample) {
+                                viewModel.seedExampleData()
+                            }
                         }
                     )
                 } else {
-                    Phase3ComponentsScreen()
+                    MainAppScaffold(viewModel = viewModel)
                 }
             }
         }

@@ -35,20 +35,27 @@ import java.time.LocalTime
 @Composable
 fun GreetingBar(
     userName: String? = null,
+    name: String? = userName,
+    greeting: String? = null,
     weatherIcon: ImageVector? = PhosphorIcons.Regular.Sun,
     temperatureText: String? = "24°C",
+    temperature: String? = temperatureText,
     weatherEnabled: Boolean = true,
     onWeatherClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val activeName = name ?: userName
+    val activeTemp = temperature ?: temperatureText
+
     val currentTime = LocalTime.now()
     val hour = currentTime.hour
-    val greetingText = when {
+    val defaultGreetingText = when {
         hour < 12 -> "Good morning"
         hour < 17 -> "Good afternoon"
         hour < 21 -> "Good evening"
         else -> "Good night"
     }
+    val greetingText = greeting ?: defaultGreetingText
 
     Row(
         modifier = modifier
@@ -78,7 +85,7 @@ fun GreetingBar(
                 )
 
                 Text(
-                    text = temperatureText ?: "--",
+                    text = activeTemp ?: "--",
                     fontFamily = SpaceGroteskFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
@@ -98,7 +105,7 @@ fun GreetingBar(
         }
 
         // Greeting and User Name (or centered greeting if name was skipped)
-        if (userName.isNullOrBlank()) {
+        if (activeName.isNullOrBlank()) {
             Text(
                 text = greetingText,
                 fontFamily = PlusJakartaSansFamily,
@@ -117,7 +124,7 @@ fun GreetingBar(
                     color = Slate500
                 )
                 Text(
-                    text = userName,
+                    text = activeName,
                     fontFamily = PlusJakartaSansFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,

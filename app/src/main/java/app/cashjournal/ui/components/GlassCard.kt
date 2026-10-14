@@ -24,7 +24,8 @@ import app.cashjournal.ui.theme.SubtleCardShape
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
-    shape: Shape = GlassCardShape,
+    cornerRadius: Dp? = null,
+    shape: Shape = cornerRadius?.let { RoundedCornerShape(it) } ?: GlassCardShape,
     backgroundColor: Color = GlassCardBackground,
     borderColor: Color = GlassBorder,
     borderWidth: Dp = 1.dp,
@@ -58,7 +59,8 @@ fun GlassCard(
 @Composable
 fun SubtleGlassCard(
     modifier: Modifier = Modifier,
-    shape: Shape = SubtleCardShape,
+    cornerRadius: Dp? = null,
+    shape: Shape = cornerRadius?.let { RoundedCornerShape(it) } ?: SubtleCardShape,
     backgroundColor: Color = SubtleCardBackground,
     borderColor: Color = GlassBorder.copy(alpha = 0.6f),
     borderWidth: Dp = 1.dp,
@@ -67,6 +69,7 @@ fun SubtleGlassCard(
 ) {
     GlassCard(
         modifier = modifier,
+        cornerRadius = cornerRadius,
         shape = shape,
         backgroundColor = backgroundColor,
         borderColor = borderColor,

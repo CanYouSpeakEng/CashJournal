@@ -31,9 +31,43 @@ import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Emerald
 import app.cashjournal.ui.theme.PlusJakartaSansFamily
 import app.cashjournal.ui.theme.Slate500
-import app.cashjournal.ui.theme.SpaceGroteskFamily
+import app.cashjournal.domain.model.Transaction
+import com.adamglin.PhosphorIcons
+import com.adamglin.phosphoricons.Regular
+import com.adamglin.phosphoricons.regular.ArrowDownLeft
 
 @Composable
+fun TransactionRow(
+    transaction: Transaction,
+    isMasked: Boolean,
+    currencyCode: String = "IDR",
+    dateText: String = "",
+    onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    val icon = when (transaction.type) {
+        TransactionType.TRANSFER -> Category.transferIcon
+        TransactionType.INCOME -> PhosphorIcons.Regular.ArrowDownLeft
+        TransactionType.EXPENSE -> transaction.category.icon
+    }
+
+    TransactionRow(
+        title = transaction.title,
+        categoryName = if (transaction.type == TransactionType.TRANSFER) "Transfer" else transaction.category.defaultName,
+        categoryIcon = icon,
+        accent = transaction.accentKey,
+        type = transaction.type,
+        amountMinor = transaction.amount,
+        currencyCode = currencyCode,
+        dateText = dateText,
+        balancesVisible = !isMasked,
+        onClick = onClick,
+        modifier = modifier
+    )
+}
+
+@Composable
+
 fun TransactionRow(
     title: String,
     categoryName: String,

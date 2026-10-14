@@ -10,6 +10,33 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.SpaceGroteskFamily
+import app.cashjournal.domain.model.Currency
+
+@Composable
+fun MaskedAmount(
+    amountMinor: Long,
+    currencyCode: String = "IDR",
+    isMasked: Boolean = false,
+    textStyle: TextStyle = TextStyle.Default,
+    modifier: Modifier = Modifier
+) {
+    val formatted = Currency.formatMinor(amountMinor, currencyCode, includeSymbol = false)
+    val maskedDots = "•••••••" // 7 dots per brief
+
+    if (!isMasked) {
+        Text(
+            text = formatted,
+            style = textStyle,
+            modifier = modifier
+        )
+    } else {
+        Text(
+            text = maskedDots,
+            style = textStyle.copy(letterSpacing = 0.12.sp),
+            modifier = modifier
+        )
+    }
+}
 
 @Composable
 fun MaskedAmountText(

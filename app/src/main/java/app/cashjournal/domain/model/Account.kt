@@ -1,0 +1,12 @@
+package app.cashjournal.domain.model
+
+import java.util.UUID
+
+data class Account(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String,
+    val accentKey: AccentKey = AccentKey.COBALT,
+    val balance: Long = 0L, // Minor units
+    val sortIndex: Int = 0,
+    val updatedAt: Long = System.currentTimeMillis()
+)

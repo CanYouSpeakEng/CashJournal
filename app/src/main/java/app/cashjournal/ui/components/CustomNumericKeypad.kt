@@ -34,6 +34,25 @@ import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Backspace
 
+import app.cashjournal.domain.model.Currency
+
+@Composable
+fun CustomNumericKeypad(
+    currencyCode: String,
+    onKeyPressed: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    hapticsEnabled: Boolean = true
+) {
+    val currency = Currency.findByCode(currencyCode)
+    CustomNumericKeypad(
+        onDigitPress = onKeyPressed,
+        onBackspacePress = { onKeyPressed("⌫") },
+        modifier = modifier,
+        isZeroDecimal = currency.isZeroDecimal,
+        hapticsEnabled = hapticsEnabled
+    )
+}
+
 @Composable
 fun CustomNumericKeypad(
     onDigitPress: (String) -> Unit,

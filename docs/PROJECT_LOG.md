@@ -89,8 +89,28 @@ This log is kept up to date after every step. Any AI assistant or developer read
   - [x] Completion confirmation screen with scaled Phosphor `CheckCircle` icon transitioning seamlessly into main application.
   - [x] Heading line heights refined (`lineHeight = 38.sp`) across all onboarding steps.
   - [x] Tested live on Android 14 AVD (`CashJournal_Pixel`), captured 13 screenshots covering all steps and interactive states (`docs/screenshots/phase4_*.png`).
-- [ ] **Phase 5: Main Screens and Sheets**
+- [x] **Phase 5: Main Screens and Sheets**
+  - [x] Room Database schema: `cashjournal_db` with `AccountEntity`, `TransactionEntity`, `MonthlyPlanEntity`, and reactive DAOs (`AccountDao`, `TransactionDao`, `MonthlyPlanDao`).
+  - [x] DataStore preferences: `UserPreferencesRepository` with reactive StateFlows for language, primary currency, name, rail side, FLAG_SECURE screen privacy, biometrics, haptics, and weather options.
+  - [x] Domain entities & seeder: `ExampleDataSeeder` generating 4 realistic accounts (BCA Main, Mandiri, GoPay, Bibit Vault) and 10 dynamic transactions spanning today and yesterday, plus a 7.5M IDR monthly spending plan.
+  - [x] Reactive ViewModel: `MainViewModel` implementing Safe-to-Spend formula `floor(remaining / max(1, daysLeft))`, atomic expense/income/transfer logging, balance calculations, net worth aggregation, account reordering, budget adjustments, and toast orchestration.
+  - [x] Main Scaffold: `MainAppScaffold` integrating GreetingBar, floating SideRail (clock arc, privacy vault toggle, 5 nav icons, quick-add "+" button), responsive 20dp/78dp margin mirroring, animated screen transitions, toast pill, and modal bottom sheet hosting.
+  - [x] Screens:
+    - `DashboardScreen`: Total Net Worth header (masked/unmasked), 28dp glass Safe-to-Spend card with 64dp Canvas circular arc gauge, Active Accounts horizontal carousel, Recent Activity (5 transactions), and Monthly Budget Runway card.
+    - `LedgerScreen`: Activity Ledger with 4 filter pills (All 10, Expense 7, Income 2, Transfer 1), real-time search field (notes, categories, amounts), day groupings ("TODAY", "YESTERDAY").
+    - `AccountsScreen`: Accounts overview with World Currencies subtle card (refresh, converted totals, USD/EUR/SGD/JPY/MYR/SAR quick chips, "+ World"), 24dp glass account cards with 4dp left color border, percent pill, balance, progress bar against max balance, and Reorder mode (Up/Down buttons).
+    - `AccountDetailScreen`: Account header, 24dp balance card, Inflow (emerald) and Outflow (charcoal) tiles, account-specific transactions list, adaptive rail back button.
+    - `AnalyticsScreen`: Last 6 Months inflow/outflow bar chart (transfers excluded), Monthly Spending Runway with Cobalt budget amount, −/slider/+ controls, and Spending Donut chart with top 4 categories + Other.
+    - `SettingsScreen`: 8 cards (Language segmented, Main currency row, Security & Access with FLAG_SECURE callback, Sensory & Feedback, Sidebar placement & Shake to swap, Weather & °C/°F, Data & Portability with Clear All Data red confirmation, About).
+  - [x] Sheets:
+    - `LogTransactionSheet`: Expense/Income/Transfer segmented, account chips, live category detection pill, 36sp Space Grotesk amount, 3-column `CustomNumericKeypad`, Cobalt save button.
+    - `NewAccountSheet`: 28-char name input, starting balance, 6 accent color circles with 110% ring checkmark, Create Account button.
+    - `MainCurrencySheet`: Searchable country/currency list with conversion confirmation dialog.
+    - `WorldCurrenciesSheet`: Searchable world currencies with converted totals.
+    - `WeatherDetailSheet`: Privacy location selector (~1 km approx, city search, off).
+  - [x] Verified end-to-end on Android 14 AVD (`CashJournal_Pixel`), captured 11 screenshots covering all screens, privacy vault masking, sheet input, category detection, and atomic transaction persistence.
 - [ ] **Phase 6: Services**
 - [ ] **Phase 7: Motion and Behavior**
 - [ ] **Phase 8: Verification & Delivery**
+
 
