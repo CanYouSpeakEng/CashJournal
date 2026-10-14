@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CashJournal</string>
+    <string name="welcome_title">Uang Anda, di ponsel Anda.</string>
+    <string name="welcome_subtitle">Catat rekening, pengeluaran, dan arus kas. Semuanya tersimpan di perangkat ini.</string>
+</resources>

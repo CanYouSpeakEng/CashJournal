@@ -110,6 +110,7 @@ object CashTypography {
         fontFamily = PlusJakartaSans,
         fontWeight = FontWeight.ExtraBold,
         fontSize = 32.sp,
+        lineHeight = 38.sp,
         color = CashColors.Charcoal
     )
 }

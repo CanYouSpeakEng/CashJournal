@@ -75,8 +75,22 @@ This log is kept up to date after every step. Any AI assistant or developer read
     - `docs/screenshots/phase3_shared_components.png` (Default state)
     - `docs/screenshots/phase3_masked_and_toast.png` (Vault privacy toggle with balance masking and toast pill)
     - `docs/screenshots/phase3_components_scrolled.png` (Keypad, transaction list, and toggle switch)
-- [ ] **Phase 4: Onboarding**
+- [x] **Phase 4: Onboarding**
+  - [x] Natural typed string dictionaries for English & Indonesian in `OnboardingStrings.kt` (zero emojis).
+  - [x] ISO Country & Currency mapping with real-time localized names in `Country.kt`.
+  - [x] Full 7-step onboarding flow in `OnboardingScreen.kt` with segmented progress indicators, animated page slides, and haptic feedback:
+    - Step 1: Welcome (Value prop & offline privacy).
+    - Step 2: Language selector (English / Indonesian with instant UI update).
+    - Step 3: Region & Currency selection with live search filter.
+    - Step 4: Name input with 40-character Space Grotesk counter.
+    - Step 5: Weather privacy settings (Approximate location / City search / Not now).
+    - Step 6: Navigation rail placement (Left / Right with mini phone wireframe preview) & Shake to Swap toggle.
+    - Step 7: Ready / Example data selector (Load example data vs Start from scratch).
+  - [x] Completion confirmation screen with scaled Phosphor `CheckCircle` icon transitioning seamlessly into main application.
+  - [x] Heading line heights refined (`lineHeight = 38.sp`) across all onboarding steps.
+  - [x] Tested live on Android 14 AVD (`CashJournal_Pixel`), captured 13 screenshots covering all steps and interactive states (`docs/screenshots/phase4_*.png`).
 - [ ] **Phase 5: Main Screens and Sheets**
 - [ ] **Phase 6: Services**
 - [ ] **Phase 7: Motion and Behavior**
 - [ ] **Phase 8: Verification & Delivery**
+
