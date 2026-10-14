@@ -22,6 +22,9 @@ val SpaceGrotesk = FontFamily(
     Font(R.font.space_grotesk, FontWeight.Bold)
 )
 
+val PlusJakartaSansFamily = PlusJakartaSans
+val SpaceGroteskFamily = SpaceGrotesk
+
 object CashTypography {
     // Labels & Numbers in Space Grotesk
     val LabelSmall = TextStyle(

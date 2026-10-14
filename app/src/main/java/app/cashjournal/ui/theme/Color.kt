@@ -45,6 +45,7 @@ object CashColors {
     val Slate300 = Color(0xFFCBD5E1)
     val Slate400 = Color(0xFF94A3B8)
     val Slate500 = Color(0xFF64748B)
+    val Slate600 = Color(0xFF475569)
     val Slate800 = Color(0xFF1E293B)
 
     // Status
@@ -93,3 +94,39 @@ object CashColors {
         else -> CobaltDark
     }
 }
+
+val Cobalt = CashColors.Cobalt
+val CobaltDark = CashColors.CobaltDark
+val CobaltLight = CashColors.CobaltLight
+val Emerald = CashColors.Emerald
+val EmeraldDark = CashColors.EmeraldDark
+val EmeraldLight = CashColors.EmeraldLight
+val Persimmon = CashColors.Persimmon
+val PersimmonDark = CashColors.PersimmonDark
+val PersimmonLight = CashColors.PersimmonLight
+val Saffron = CashColors.Saffron
+val SaffronDark = CashColors.SaffronDark
+val SaffronLight = CashColors.SaffronLight
+val Iris = CashColors.Iris
+val IrisDark = CashColors.IrisDark
+val IrisLight = CashColors.IrisLight
+val Berry = CashColors.Berry
+val BerryDark = CashColors.BerryDark
+val BerryLight = CashColors.BerryLight
+val Charcoal = CashColors.Charcoal
+val Slate50 = CashColors.Slate50
+val Slate100 = CashColors.Slate100
+val Slate200 = CashColors.Slate200
+val Slate300 = CashColors.Slate300
+val Slate400 = CashColors.Slate400
+val Slate500 = CashColors.Slate500
+val Slate600 = CashColors.Slate600
+val Slate800 = CashColors.Slate800
+val Recalibrate = CashColors.Recalibrate
+val GlassCardBackground = CashColors.GlassCardBg
+val SubtleCardBackground = CashColors.GlassCardSubtleBg
+val SideRailBackground = CashColors.SideRailBg
+val GlassBorder = CashColors.GlassBorder
+val SheetBackground = CashColors.SheetBg
+val ScrimColor = CashColors.Scrim
+

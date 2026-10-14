@@ -1,0 +1,113 @@
+package app.cashjournal.domain.model
+
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.adamglin.PhosphorIcons
+import com.adamglin.phosphoricons.Regular
+import com.adamglin.phosphoricons.regular.ArrowsLeftRight
+import com.adamglin.phosphoricons.regular.ChartLineUp
+import com.adamglin.phosphoricons.regular.Coffee
+import com.adamglin.phosphoricons.regular.House
+import com.adamglin.phosphoricons.regular.Lightning
+import com.adamglin.phosphoricons.regular.Money
+import com.adamglin.phosphoricons.regular.ShoppingBag
+import com.adamglin.phosphoricons.regular.Tag
+import com.adamglin.phosphoricons.regular.Train
+
+enum class Category(
+    val key: String,
+    val defaultName: String,
+    val indonesianName: String,
+    val defaultAccent: AccentKey,
+    val keywords: List<String>
+) {
+    FOOD(
+        key = "FOOD",
+        defaultName = "Food & Dining",
+        indonesianName = "Makanan & Minuman",
+        defaultAccent = AccentKey.PERSIMMON,
+        keywords = listOf("coffee", "kopi", "food", "eat", "makan", "mie", "warung", "resto", "lunch", "dinner")
+    ),
+    TRANSPORT(
+        key = "TRANSPORT",
+        defaultName = "Transport",
+        indonesianName = "Transportasi",
+        defaultAccent = AccentKey.IRIS,
+        keywords = listOf("transport", "gojek", "grab", "bensin", "fuel", "gas", "train", "bus", "parking", "parkir", "toll", "tol")
+    ),
+    SHOPPING(
+        key = "SHOPPING",
+        defaultName = "Shopping",
+        indonesianName = "Belanja",
+        defaultAccent = AccentKey.BERRY,
+        keywords = listOf("shop", "belanja", "clothes", "baju", "shoes", "sepatu", "mall", "store", "tokopedia", "shopee", "lazada")
+    ),
+    UTILITIES(
+        key = "UTILITIES",
+        defaultName = "Utilities",
+        indonesianName = "Tagihan",
+        defaultAccent = AccentKey.SAFFRON,
+        keywords = listOf("utility", "utilities", "listrik", "electric", "water", "air", "internet", "wifi", "phone", "pulsa", "subscription")
+    ),
+    HOUSING(
+        key = "HOUSING",
+        defaultName = "Housing",
+        indonesianName = "Tempat Tinggal",
+        defaultAccent = AccentKey.COBALT,
+        keywords = listOf("house", "rent", "sewa", "kos", "kontrakan", "mortgage", "cicilan", "maintenance", "repair")
+    ),
+    INVESTMENT(
+        key = "INVESTMENT",
+        defaultName = "Investment",
+        indonesianName = "Investasi",
+        defaultAccent = AccentKey.EMERALD,
+        keywords = listOf("invest", "saham", "stock", "crypto", "reksadana", "bibit", "deposit", "tabungan", "gold", "emas")
+    ),
+    SALARY(
+        key = "SALARY",
+        defaultName = "Salary",
+        indonesianName = "Gaji",
+        defaultAccent = AccentKey.EMERALD,
+        keywords = listOf("salary", "gaji", "bonus", "freelance", "side", "project", "dividend", "dividen", "interest", "bunga")
+    ),
+    OTHER(
+        key = "OTHER",
+        defaultName = "Other",
+        indonesianName = "Lainnya",
+        defaultAccent = AccentKey.COBALT,
+        keywords = emptyList()
+    );
+
+    val icon: ImageVector
+        get() = when (this) {
+            FOOD -> PhosphorIcons.Regular.Coffee
+            TRANSPORT -> PhosphorIcons.Regular.Train
+            SHOPPING -> PhosphorIcons.Regular.ShoppingBag
+            UTILITIES -> PhosphorIcons.Regular.Lightning
+            HOUSING -> PhosphorIcons.Regular.House
+            INVESTMENT -> PhosphorIcons.Regular.ChartLineUp
+            SALARY -> PhosphorIcons.Regular.Money
+            OTHER -> PhosphorIcons.Regular.Tag
+        }
+
+    companion object {
+        fun fromKey(key: String?): Category {
+            return entries.firstOrNull { it.key.equals(key, ignoreCase = true) } ?: OTHER
+        }
+
+        fun detectFromNote(note: String): Category {
+            val lower = note.lowercase()
+            for (category in entries) {
+                if (category == OTHER) continue
+                for (keyword in category.keywords) {
+                    if (lower.contains(keyword)) {
+                        return category
+                    }
+                }
+            }
+            return OTHER
+        }
+
+        val transferIcon: ImageVector
+            get() = PhosphorIcons.Regular.ArrowsLeftRight
+    }
+}

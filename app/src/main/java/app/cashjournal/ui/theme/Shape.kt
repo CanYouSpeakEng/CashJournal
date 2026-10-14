@@ -19,3 +19,7 @@ object CashShapes {
     val ToggleTrack = RoundedCornerShape(11.dp)
     val ToggleKnob = RoundedCornerShape(8.dp)
 }
+
+val GlassCardShape = CashShapes.GlassCard
+val SubtleCardShape = CashShapes.CardSubtle
+val PillShape = CashShapes.Pill
