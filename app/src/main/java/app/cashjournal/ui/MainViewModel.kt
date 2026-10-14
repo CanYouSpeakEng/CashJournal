@@ -3,17 +3,29 @@ package app.cashjournal.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.room.withTransaction
 import app.cashjournal.data.ExampleDataSeeder
+import app.cashjournal.data.currency.CachedExchangeRates
+import app.cashjournal.data.currency.CurrencyConverter
+import app.cashjournal.data.currency.ExchangeRateService
 import app.cashjournal.data.local.AppDatabase
 import app.cashjournal.data.local.entity.AccountEntity
+import app.cashjournal.data.local.entity.MonthlyPlanEntity
 import app.cashjournal.data.local.entity.TransactionEntity
+import app.cashjournal.data.location.LocationProvider
 import app.cashjournal.data.preferences.UserPreferences
 import app.cashjournal.data.preferences.UserPreferencesRepository
+import app.cashjournal.data.weather.GeocodingCity
+import app.cashjournal.data.weather.WeatherData
+import app.cashjournal.data.weather.WeatherService
 import app.cashjournal.domain.model.AccentKey
 import app.cashjournal.domain.model.Account
 import app.cashjournal.domain.model.Category
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.domain.model.MonthlyPlan
+import app.cashjournal.domain.model.SafeToSpendCalculator
+import app.cashjournal.domain.model.SafeToSpendState
+import app.cashjournal.domain.model.SafeToSpendStatus
 import app.cashjournal.domain.model.Transaction
 import app.cashjournal.domain.model.TransactionType
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +33,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -49,24 +62,9 @@ enum class ActiveSheet {
     WEATHER_DETAIL
 }
 
-enum class SafeToSpendStatus {
-    SAFE,
-    NEAR_LIMIT,
-    RECALIBRATE,
-    SET_BUDGET
-}
+typealias SafeToSpendStatus = app.cashjournal.domain.model.SafeToSpendStatus
+typealias SafeToSpendState = app.cashjournal.domain.model.SafeToSpendState
 
-data class SafeToSpendState(
-    val safeToSpendToday: Long = 0L,
-    val remaining: Long = 0L,
-    val spentThisMonth: Long = 0L,
-    val budget: Long = 0L,
-    val daysLeft: Int = 1,
-    val isLastDay: Boolean = false,
-    val percentSpent: Float = 0f,
-    val displayPercent: Int = 0,
-    val status: SafeToSpendStatus = SafeToSpendStatus.SAFE
-)
 
 data class MainUiState(
     val currentScreen: AppScreen = AppScreen.DASHBOARD,
@@ -81,13 +79,21 @@ data class MainUiState(
     val monthlyPlan: MonthlyPlan = MonthlyPlan(),
     val userPreferences: UserPreferences = UserPreferences(),
     val isReorderMode: Boolean = false,
-    val toastMessage: String? = null
+    val toastMessage: String? = null,
+    val weatherData: WeatherData? = null,
+    val cachedRates: CachedExchangeRates? = null,
+    val isRatesOffline: Boolean = false,
+    val citySearchResults: List<GeocodingCity> = emptyList(),
+    val isSearchingCity: Boolean = false
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val database = AppDatabase.getInstance(application)
     private val preferencesRepository = UserPreferencesRepository(application)
+    private val weatherService = WeatherService()
+    private val exchangeRateService = ExchangeRateService()
+    private val locationProvider = LocationProvider(application)
 
     private val _currentScreen = MutableStateFlow(AppScreen.DASHBOARD)
     private val _selectedAccount = MutableStateFlow<Account?>(null)
@@ -95,6 +101,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _hideBalances = MutableStateFlow(false)
     private val _isReorderMode = MutableStateFlow(false)
     private val _toastMessage = MutableStateFlow<String?>(null)
+    private val _isRatesOffline = MutableStateFlow(false)
+    private val _citySearchResults = MutableStateFlow<List<GeocodingCity>>(emptyList())
+    private val _isSearchingCity = MutableStateFlow(false)
 
     val currentScreen = _currentScreen.asStateFlow()
     val activeSheet = _activeSheet.asStateFlow()
@@ -104,30 +113,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val transactionsFlow = database.transactionDao().getAllTransactionsFlow()
     private val monthlyPlanFlow = database.monthlyPlanDao().getPlanFlow()
     private val preferencesFlow = preferencesRepository.userPreferencesFlow
+    private val weatherFlow = preferencesRepository.cachedWeatherFlow
+    private val ratesFlow = preferencesRepository.cachedRatesFlow
 
     val uiState: StateFlow<MainUiState> = combine(
-        accountsFlow,
-        transactionsFlow,
-        monthlyPlanFlow,
-        preferencesFlow,
-        _currentScreen,
-        _selectedAccount,
-        _activeSheet,
-        _hideBalances,
-        _isReorderMode,
-        _toastMessage
-    ) { args ->
-        val rawAccounts = (args[0] as List<*>).filterIsInstance<AccountEntity>().map { it.toDomain() }
-        val rawTransactions = (args[1] as List<*>).filterIsInstance<TransactionEntity>().map { it.toDomain() }
-        val rawPlanEntity = args[2] as? app.cashjournal.data.local.entity.MonthlyPlanEntity
-        val plan = rawPlanEntity?.toDomain() ?: MonthlyPlan()
-        val prefs = args[3] as UserPreferences
-        val screen = args[4] as AppScreen
-        val account = args[5] as? Account
-        val sheet = args[6] as? ActiveSheet
-        val hideBal = args[7] as Boolean
-        val reorder = args[8] as Boolean
-        val toast = args[9] as? String
+        combine(accountsFlow, transactionsFlow, monthlyPlanFlow, preferencesFlow) { accs, txs, planEntity, prefs ->
+            val domainAccs = accs.map { it.toDomain() }
+            val domainTxs = txs.map { it.toDomain() }
+            val domainPlan = planEntity?.toDomain() ?: MonthlyPlan()
+            Quad(domainAccs, domainTxs, domainPlan, prefs)
+        },
+        combine(weatherFlow, ratesFlow, _isRatesOffline, _citySearchResults, _isSearchingCity) { weather, rates, offline, cities, searching ->
+            Pent(weather, rates, offline, cities, searching)
+        },
+        combine(_currentScreen, _selectedAccount, _activeSheet, _hideBalances, _isReorderMode, _toastMessage) { args ->
+            args
+        }
+    ) { group1, group2, group3 ->
+        val (rawAccounts, rawTransactions, plan, prefs) = group1
+        val (weather, rates, isOffline, cityResults, isSearching) = group2
+
+        val screen = group3[0] as AppScreen
+        val account = group3[1] as? Account
+        val sheet = group3[2] as? ActiveSheet
+        val hideBal = group3[3] as Boolean
+        val reorder = group3[4] as Boolean
+        val toast = group3[5] as? String
 
         val totalWorth = rawAccounts.sumOf { it.balance }
         val recentTx = rawTransactions.take(5)
@@ -148,7 +159,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             monthlyPlan = plan,
             userPreferences = prefs,
             isReorderMode = reorder,
-            toastMessage = toast
+            toastMessage = toast,
+            weatherData = weather,
+            cachedRates = rates,
+            isRatesOffline = isOffline,
+            citySearchResults = cityResults,
+            isSearchingCity = isSearching
         )
     }.stateIn(
         scope = viewModelScope,
@@ -157,73 +173,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     )
 
     init {
-        // Check if database needs initial seeding
+        // Automatically check if rates or weather need refresh on startup
         viewModelScope.launch {
-            val existing = database.accountDao().getAllAccountsFlow()
-            // In onCreate / start, we will let onboarding seed or check if empty
+            val prefs = preferencesFlow.first()
+            val cachedRates = ratesFlow.first()
+            if (exchangeRateService.shouldAutoRefresh(cachedRates?.fetchedAt ?: 0L)) {
+                refreshRates(manual = false)
+            }
+            if (prefs.weatherOption != "not_now") {
+                refreshWeather()
+            }
         }
     }
 
     private fun calculateSafeToSpend(plan: MonthlyPlan, transactions: List<Transaction>): SafeToSpendState {
-        val cal = Calendar.getInstance()
-        val todayMonthKey = SimpleDateFormat("yyyy-MM", Locale.US).format(cal.time)
+        return SafeToSpendCalculator.calculate(plan, transactions)
+    }
 
-        // Starting spent only if applies to current month
-        val startingSpent = if (plan.monthKey == todayMonthKey) plan.startingSpent else 0L
 
-        // Expenses for current month
-        val currentMonthExpenses = transactions.filter { tx ->
-            tx.type == TransactionType.EXPENSE && isCurrentMonth(tx.date, cal)
-        }.sumOf { it.amount }
-
-        val totalSpent = startingSpent + currentMonthExpenses
-        val budget = plan.budget
-        val remaining = if (budget > totalSpent) budget - totalSpent else 0L
-
-        val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
-        val dayOfMonth = cal.get(Calendar.DAY_OF_MONTH)
-        val daysLeft = daysInMonth - dayOfMonth
-        val isLastDay = daysLeft <= 0
-
-        val divisor = if (daysLeft > 0) daysLeft else 1
-        val perDay = floor(remaining.toDouble() / divisor).toLong()
-
-        val percent = if (budget > 0) (totalSpent.toFloat() / budget.toFloat()) else 0f
-        val displayPct = min(100, (percent * 100).roundToInt())
-
-        val status = when {
-            budget <= 0L -> SafeToSpendStatus.SET_BUDGET
-            remaining <= 0L -> SafeToSpendStatus.RECALIBRATE
-            percent >= 0.70f -> SafeToSpendStatus.NEAR_LIMIT
-            else -> SafeToSpendStatus.SAFE
+    fun seedExampleData() {
+        viewModelScope.launch {
+            ExampleDataSeeder.seed(database)
         }
-
-        return SafeToSpendState(
-            safeToSpendToday = perDay,
-            remaining = remaining,
-            spentThisMonth = totalSpent,
-            budget = budget,
-            daysLeft = if (daysLeft > 0) daysLeft else 0,
-            isLastDay = isLastDay,
-            percentSpent = percent,
-            displayPercent = displayPct,
-            status = status
-        )
     }
 
-    private fun isCurrentMonth(timestamp: Long, cal: Calendar): Boolean {
-        val txCal = Calendar.getInstance().apply { timeInMillis = timestamp }
-        return txCal.get(Calendar.YEAR) == cal.get(Calendar.YEAR) &&
-                txCal.get(Calendar.MONTH) == cal.get(Calendar.MONTH)
-    }
-
-    // ------------------------------------------------------------------------
-    // Navigation & UI Actions
-    // ------------------------------------------------------------------------
     fun setScreen(screen: AppScreen) {
         _currentScreen.value = screen
-        if (screen != AppScreen.ACCOUNT_DETAIL) {
-            _selectedAccount.value = null
+        if (screen != AppScreen.ACCOUNTS) {
+            _isReorderMode.value = false
         }
     }
 
@@ -234,16 +211,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun openSheet(sheet: ActiveSheet) {
         _activeSheet.value = sheet
+        if (sheet == ActiveSheet.WORLD_CURRENCIES) {
+            // Check if rates cache is older than 12 hours per Section 10
+            val lastFetched = uiState.value.cachedRates?.fetchedAt ?: 0L
+            if (exchangeRateService.shouldAutoRefresh(lastFetched)) {
+                refreshRates(manual = false)
+            }
+        }
     }
 
     fun dismissSheet() {
         _activeSheet.value = null
+        _citySearchResults.value = emptyList()
     }
 
     fun toggleHideBalances() {
-        val next = !_hideBalances.value
-        _hideBalances.value = next
-        if (!next) {
+        _hideBalances.value = !_hideBalances.value
+        if (!_hideBalances.value) {
             showToast("Balances revealed")
         }
     }
@@ -260,15 +244,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _toastMessage.value = null
     }
 
-    // ------------------------------------------------------------------------
-    // Data Actions
-    // ------------------------------------------------------------------------
-    fun seedExampleData() {
-        viewModelScope.launch {
-            ExampleDataSeeder.seed(database)
-        }
-    }
-
     fun logTransaction(
         type: TransactionType,
         sourceAccountId: String?,
@@ -281,65 +256,54 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        if (sourceAccountId == null) {
+        if (sourceAccountId.isNullOrBlank()) {
             showToast("Select an account")
             return
         }
 
-        if (type == TransactionType.TRANSFER) {
-            if (destAccountId == null || destAccountId == sourceAccountId) {
-                showToast("Select a different destination account")
-                return
-            }
+        if (type == TransactionType.TRANSFER && (destAccountId == null || destAccountId == sourceAccountId)) {
+            showToast("Select a different destination account")
+            return
         }
 
+        val detectedCategory = Category.detectFromNote(note)
+
         viewModelScope.launch {
-            val detectedCategory = if (type == TransactionType.TRANSFER) {
-                Category.OTHER
-            } else {
-                Category.detectFromNote(note)
-            }
+            val sourceAcc = database.accountDao().getAccountById(sourceAccountId)
+            val destAcc = destAccountId?.let { database.accountDao().getAccountById(it) }
 
             val title = when (type) {
-                TransactionType.EXPENSE -> if (note.isNotBlank()) note else detectedCategory.defaultName
-                TransactionType.INCOME -> if (note.isNotBlank()) note else "Income"
-                TransactionType.TRANSFER -> {
-                    val src = database.accountDao().getAccountById(sourceAccountId)?.name ?: "Source"
-                    val dst = database.accountDao().getAccountById(destAccountId ?: "")?.name ?: "Destination"
-                    "$src → $dst"
-                }
+                TransactionType.EXPENSE -> note.ifBlank { detectedCategory.defaultName }
+                TransactionType.INCOME -> note.ifBlank { "Income" }
+                TransactionType.TRANSFER -> "${sourceAcc?.name ?: "Source"} \u2192 ${destAcc?.name ?: "Destination"}"
             }
 
+            val txCategory = if (type == TransactionType.TRANSFER) "TRANSFER" else detectedCategory.key
             val iconKey = when (type) {
-                TransactionType.TRANSFER -> "ArrowsLeftRight"
-                TransactionType.INCOME -> "ArrowDownLeft"
                 TransactionType.EXPENSE -> detectedCategory.key
+                TransactionType.INCOME -> "ArrowDownLeft"
+                TransactionType.TRANSFER -> "ArrowsLeftRight"
             }
-
             val accentKey = when (type) {
-                TransactionType.TRANSFER -> AccentKey.COBALT
-                TransactionType.INCOME -> AccentKey.EMERALD
-                TransactionType.EXPENSE -> {
-                    val srcAcc = database.accountDao().getAccountById(sourceAccountId)
-                    AccentKey.fromKey(srcAcc?.accentKey)
-                }
+                TransactionType.EXPENSE -> sourceAcc?.accentKey ?: "COBALT"
+                TransactionType.INCOME -> "EMERALD"
+                TransactionType.TRANSFER -> "COBALT"
             }
 
             val tx = TransactionEntity(
                 id = UUID.randomUUID().toString(),
-                title = title,
-                category = detectedCategory.key,
-                type = type.name,
-                amount = amount,
-                date = System.currentTimeMillis(),
-                iconKey = iconKey,
-                accentKey = accentKey.name,
                 sourceAccountId = sourceAccountId,
                 destinationAccountId = destAccountId,
+                type = type.name,
+                amount = amount,
+                title = title,
+                category = txCategory,
+                date = System.currentTimeMillis(),
+                iconKey = iconKey,
+                accentKey = accentKey,
                 updatedAt = System.currentTimeMillis()
             )
 
-            // Atomic balance updates
             when (type) {
                 TransactionType.EXPENSE -> {
                     database.accountDao().updateBalance(sourceAccountId, -amount)
@@ -366,7 +330,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         viewModelScope.launch {
-            val currentAccounts = database.accountDao().getAccountById("acc-bca-main") // just checking
             val account = AccountEntity(
                 id = UUID.randomUUID().toString(),
                 name = name.take(28),
@@ -401,7 +364,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val current = uiState.value.monthlyPlan
             val monthKey = SimpleDateFormat("yyyy-MM", Locale.US).format(Date())
             database.monthlyPlanDao().upsert(
-                app.cashjournal.data.local.entity.MonthlyPlanEntity(
+                MonthlyPlanEntity(
                     id = current.id,
                     budget = newBudget.coerceAtLeast(0L),
                     startingSpent = current.startingSpent,
@@ -417,10 +380,194 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // --- Weather Services ---
+
+    fun refreshWeather() {
+        viewModelScope.launch {
+            val prefs = preferencesRepository.userPreferencesFlow.first()
+            if (prefs.weatherOption == "not_now") return@launch
+
+            val isFahrenheit = prefs.temperatureUnit.equals("F", ignoreCase = true)
+
+            if (prefs.weatherOption == "search" && prefs.weatherCityLat != 0.0) {
+                val result = weatherService.fetchWeather(
+                    latitude = prefs.weatherCityLat,
+                    longitude = prefs.weatherCityLon,
+                    isFahrenheit = isFahrenheit,
+                    locationLabel = prefs.weatherCityLabel.ifBlank { "Selected city" }
+                )
+                result.onSuccess { preferencesRepository.updateWeatherCache(it) }
+            } else {
+                // Approximate location
+                val coords = locationProvider.getCoarseLocation()
+                val lat = coords?.first ?: -6.20 // Default to Jakarta if emulator location off
+                val lon = coords?.second ?: 106.81
+                val result = weatherService.fetchWeather(
+                    latitude = lat,
+                    longitude = lon,
+                    isFahrenheit = isFahrenheit,
+                    locationLabel = "Approximate location"
+                )
+                result.onSuccess { preferencesRepository.updateWeatherCache(it) }
+            }
+        }
+    }
+
+    fun searchCity(query: String) {
+        viewModelScope.launch {
+            _isSearchingCity.value = true
+            val lang = preferencesRepository.userPreferencesFlow.first().language
+            val result = weatherService.searchCity(query, lang)
+            result.onSuccess { _citySearchResults.value = it }
+            _isSearchingCity.value = false
+        }
+    }
+
+    fun selectCity(city: GeocodingCity) {
+        viewModelScope.launch {
+            preferencesRepository.updateWeatherOption("search", city.name, city.latitude, city.longitude)
+            _citySearchResults.value = emptyList()
+            refreshWeather()
+            dismissSheet()
+            showToast("Weather location set to ${city.name}")
+        }
+    }
+
+    fun setWeatherOption(option: String) {
+        viewModelScope.launch {
+            preferencesRepository.updateWeatherOption(option)
+            if (option == "not_now") {
+                // Kept in preferences
+            } else if (option == "approx") {
+                refreshWeather()
+            }
+        }
+    }
+
+    // --- Exchange Rate Services ---
+
+    fun refreshRates(manual: Boolean) {
+        viewModelScope.launch {
+            val cached = preferencesRepository.cachedRatesFlow.first()
+            if (manual && !exchangeRateService.canManualRefresh(cached?.fetchedAt ?: 0L)) {
+                showToast("Rates already updated recently")
+                return@launch
+            }
+
+            val currentCode = preferencesRepository.userPreferencesFlow.first().currencyCode
+            val result = exchangeRateService.fetchRates(currentCode)
+
+            result.onSuccess { freshRates ->
+                preferencesRepository.updateRatesCache(freshRates)
+                _isRatesOffline.value = false
+                if (manual) {
+                    showToast("Rates updated")
+                }
+            }.onFailure {
+                _isRatesOffline.value = true
+                if (manual) {
+                    showToast("Unable to refresh rates (offline)")
+                }
+            }
+        }
+    }
+
+    fun changeMainCurrency(targetCode: String) {
+        viewModelScope.launch {
+            val prefs = preferencesRepository.userPreferencesFlow.first()
+            val currentCode = prefs.currencyCode
+            if (currentCode.equals(targetCode, ignoreCase = true)) {
+                dismissSheet()
+                return@launch
+            }
+
+            val cached = preferencesRepository.cachedRatesFlow.first()
+            if (cached == null || cached.rates.isEmpty()) {
+                showToast("Connect to the internet once to change your currency.")
+                return@launch
+            }
+
+            val sourceDecimals = Currency.getDecimals(currentCode)
+            val targetDecimals = Currency.getDecimals(targetCode)
+
+            val currentAccounts = database.accountDao().getAllAccountsFlow().first()
+            val convertedAccounts = currentAccounts.map { acc ->
+                val newBal = CurrencyConverter.convertMinorUnits(
+                    amountMinor = acc.balance,
+                    sourceCode = currentCode,
+                    targetCode = targetCode,
+                    baseCode = cached.baseCode,
+                    rates = cached.rates,
+                    sourceDecimals = sourceDecimals,
+                    targetDecimals = targetDecimals
+                )
+                acc.copy(balance = newBal, updatedAt = System.currentTimeMillis())
+            }
+
+            val currentTx = database.transactionDao().getAllTransactionsFlow().first()
+            val convertedTx = currentTx.map { tx ->
+                val newAmt = CurrencyConverter.convertMinorUnits(
+                    amountMinor = tx.amount,
+                    sourceCode = currentCode,
+                    targetCode = targetCode,
+                    baseCode = cached.baseCode,
+                    rates = cached.rates,
+                    sourceDecimals = sourceDecimals,
+                    targetDecimals = targetDecimals
+                )
+                tx.copy(amount = newAmt, updatedAt = System.currentTimeMillis())
+            }
+
+            val currentPlan = database.monthlyPlanDao().getPlan()
+            val convertedPlan = currentPlan?.let { p ->
+                val newBudget = CurrencyConverter.convertMinorUnits(
+                    amountMinor = p.budget,
+                    sourceCode = currentCode,
+                    targetCode = targetCode,
+                    baseCode = cached.baseCode,
+                    rates = cached.rates,
+                    sourceDecimals = sourceDecimals,
+                    targetDecimals = targetDecimals
+                )
+                val newStartingSpent = CurrencyConverter.convertMinorUnits(
+                    amountMinor = p.startingSpent,
+                    sourceCode = currentCode,
+                    targetCode = targetCode,
+                    baseCode = cached.baseCode,
+                    rates = cached.rates,
+                    sourceDecimals = sourceDecimals,
+                    targetDecimals = targetDecimals
+                )
+                p.copy(budget = newBudget, startingSpent = newStartingSpent)
+            }
+
+            database.withTransaction {
+                database.accountDao().insertAll(convertedAccounts)
+                database.transactionDao().insertAll(convertedTx)
+                convertedPlan?.let { database.monthlyPlanDao().upsert(it) }
+            }
+
+            preferencesRepository.updateCurrencyCode(targetCode)
+            dismissSheet()
+            showToast("Currency changed to $targetCode")
+
+            // Automatically re-fetch rates using the new base currency
+            refreshRates(manual = false)
+        }
+    }
+
     fun clearAllData() {
         viewModelScope.launch {
-            ExampleDataSeeder.clearAll(database)
-            showToast("All data cleared")
+            database.withTransaction {
+                database.accountDao().deleteAll()
+                database.transactionDao().deleteAll()
+                database.monthlyPlanDao().deleteAll()
+            }
+            setScreen(AppScreen.DASHBOARD)
+            showToast("All data deleted")
         }
     }
 }
+
+private data class Quad<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
+private data class Pent<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)

@@ -31,6 +31,17 @@ data class Currency(
             return ALL_CURRENCIES.firstOrNull { it.code.equals(code, ignoreCase = true) } ?: IDR
         }
 
+        fun getDecimals(code: String): Int {
+            return try {
+                val std = ALL_CURRENCIES.firstOrNull { it.code.equals(code, ignoreCase = true) }
+                if (std != null) return std.decimalDigits
+                val jCurr = java.util.Currency.getInstance(code)
+                if (jCurr.defaultFractionDigits >= 0) jCurr.defaultFractionDigits else 2
+            } catch (_: Exception) {
+                2
+            }
+        }
+
         /**
          * Formats minor units into localized string.
          * For IDR, uses dots for thousands and no decimal: Rp 12.500.000

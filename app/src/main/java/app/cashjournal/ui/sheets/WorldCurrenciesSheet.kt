@@ -32,6 +32,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.cashjournal.data.currency.CachedExchangeRates
+import app.cashjournal.data.currency.CurrencyConverter
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.ui.components.GlassCard
 import app.cashjournal.ui.components.SubtleGlassCard
@@ -39,6 +41,7 @@ import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Cobalt
 import app.cashjournal.ui.theme.Emerald
 import app.cashjournal.ui.theme.PlusJakartaSansFamily
+import app.cashjournal.ui.theme.Saffron
 import app.cashjournal.ui.theme.Slate100
 import app.cashjournal.ui.theme.Slate200
 import app.cashjournal.ui.theme.Slate400
@@ -49,17 +52,20 @@ import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.MagnifyingGlass
 import com.adamglin.phosphoricons.regular.X
+import kotlin.math.pow
 
 data class WorldCurrencyInfo(
     val code: String,
     val name: String,
-    val symbol: String,
-    val rateToIdr: Double
+    val symbol: String
 )
 
 @Composable
 fun WorldCurrenciesSheet(
-    totalNetWorthIdr: Long,
+    totalNetWorth: Long,
+    mainCurrencyCode: String,
+    cachedRates: CachedExchangeRates?,
+    isRatesOffline: Boolean,
     selectedCode: String,
     onSelectCode: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -67,22 +73,32 @@ fun WorldCurrenciesSheet(
 ) {
     var searchQuery by remember { mutableStateOf("") }
 
-    val worldCurrencies = listOf(
-        WorldCurrencyInfo("USD", "US Dollar", "US$", 15700.0),
-        WorldCurrencyInfo("EUR", "Euro", "€", 17100.0),
-        WorldCurrencyInfo("SGD", "Singapore Dollar", "S$", 11900.0),
-        WorldCurrencyInfo("JPY", "Japanese Yen", "¥", 105.0),
-        WorldCurrencyInfo("GBP", "British Pound", "£", 19800.0),
-        WorldCurrencyInfo("AUD", "Australian Dollar", "A$", 10400.0),
-        WorldCurrencyInfo("MYR", "Malaysian Ringgit", "RM", 3550.0),
-        WorldCurrencyInfo("SAR", "Saudi Riyal", "SR", 4180.0)
-    )
+    val majorCurrencies = remember {
+        listOf(
+            WorldCurrencyInfo("USD", "US Dollar", "US$"),
+            WorldCurrencyInfo("EUR", "Euro", "€"),
+            WorldCurrencyInfo("SGD", "Singapore Dollar", "S$"),
+            WorldCurrencyInfo("JPY", "Japanese Yen", "¥"),
+            WorldCurrencyInfo("GBP", "British Pound", "£"),
+            WorldCurrencyInfo("AUD", "Australian Dollar", "A$"),
+            WorldCurrencyInfo("MYR", "Malaysian Ringgit", "RM"),
+            WorldCurrencyInfo("SAR", "Saudi Riyal", "SR"),
+            WorldCurrencyInfo("CNY", "Chinese Yuan", "¥"),
+            WorldCurrencyInfo("CAD", "Canadian Dollar", "C$"),
+            WorldCurrencyInfo("CHF", "Swiss Franc", "CHF"),
+            WorldCurrencyInfo("HKD", "Hong Kong Dollar", "HK$"),
+            WorldCurrencyInfo("NZD", "New Zealand Dollar", "NZ$"),
+            WorldCurrencyInfo("KRW", "South Korean Won", "₩"),
+            WorldCurrencyInfo("THB", "Thai Baht", "฿"),
+            WorldCurrencyInfo("IDR", "Indonesian Rupiah", "Rp")
+        )
+    }
 
     val filteredList = remember(searchQuery) {
         if (searchQuery.isBlank()) {
-            worldCurrencies
+            majorCurrencies
         } else {
-            worldCurrencies.filter {
+            majorCurrencies.filter {
                 it.code.contains(searchQuery, ignoreCase = true) ||
                         it.name.contains(searchQuery, ignoreCase = true)
             }
@@ -116,9 +132,22 @@ fun WorldCurrenciesSheet(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Emerald))
+                    val dotColor = if (isRatesOffline) Saffron else Emerald
+                    val statusText = if (cachedRates != null) {
+                        if (isRatesOffline) "Offline · last update ${cachedRates.timeLastUpdateUtc}"
+                        else "Updated daily · ${cachedRates.timeLastUpdateUtc}"
+                    } else {
+                        "No rates yet"
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(dotColor)
+                    )
                     Text(
-                        text = "Updated daily · Oct 14, 09:30",
+                        text = statusText,
                         fontFamily = PlusJakartaSansFamily,
                         fontSize = 11.sp,
                         color = Slate500
@@ -139,44 +168,46 @@ fun WorldCurrenciesSheet(
         // Search Field
         SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
             Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Icon(
                     imageVector = PhosphorIcons.Regular.MagnifyingGlass,
                     contentDescription = "Search",
-                    tint = Slate500,
+                    tint = Slate400,
                     modifier = Modifier.size(18.dp)
                 )
-
-                Spacer(modifier = Modifier.width(10.dp))
 
                 BasicTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
+                    modifier = Modifier.fillMaxWidth(),
                     textStyle = androidx.compose.ui.text.TextStyle(
                         fontFamily = PlusJakartaSansFamily,
                         fontSize = 14.sp,
                         color = Charcoal
                     ),
                     cursorBrush = SolidColor(Cobalt),
+                    singleLine = true,
                     decorationBox = { innerTextField ->
                         if (searchQuery.isEmpty()) {
                             Text(
-                                text = "Search currency (USD, JPY, EUR, SGD...)",
+                                text = "Search currency (USD, JPY, EUR, SGD, GBP...)",
                                 fontFamily = PlusJakartaSansFamily,
-                                fontSize = 13.sp,
+                                fontSize = 14.sp,
                                 color = Slate400
                             )
                         }
                         innerTextField()
-                    },
-                    modifier = Modifier.fillMaxWidth()
+                    }
                 )
             }
         }
 
-        // List
+        // Currency Rows List
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -184,70 +215,99 @@ fun WorldCurrenciesSheet(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            filteredList.forEach { item ->
-                val isSelected = item.code.equals(selectedCode, ignoreCase = true)
-                val converted = (totalNetWorthIdr / item.rateToIdr).toLong()
+            val sourceDecimals = Currency.getDecimals(mainCurrencyCode)
+
+            filteredList.forEach { currency ->
+                val isSelected = currency.code.equals(selectedCode, ignoreCase = true)
+                val targetDecimals = Currency.getDecimals(currency.code)
+
+                val convertedTotal = if (cachedRates != null && cachedRates.rates.isNotEmpty()) {
+                    CurrencyConverter.convertMinorUnits(
+                        amountMinor = totalNetWorth,
+                        sourceCode = mainCurrencyCode,
+                        targetCode = currency.code,
+                        baseCode = cachedRates.baseCode,
+                        rates = cachedRates.rates,
+                        sourceDecimals = sourceDecimals,
+                        targetDecimals = targetDecimals
+                    )
+                } else {
+                    totalNetWorth
+                }
+
+                val rateForOneUnit = if (cachedRates != null && cachedRates.rates.isNotEmpty()) {
+                    val oneUnitMinor = 10.0.pow(targetDecimals.toDouble()).toLong()
+                    CurrencyConverter.convertMinorUnits(
+                        amountMinor = oneUnitMinor,
+                        sourceCode = currency.code,
+                        targetCode = mainCurrencyCode,
+                        baseCode = cachedRates.baseCode,
+                        rates = cachedRates.rates,
+                        sourceDecimals = targetDecimals,
+                        targetDecimals = sourceDecimals
+                    )
+                } else {
+                    1L
+                }
 
                 GlassCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onSelectCode(item.code) },
+                        .clickable { onSelectCode(currency.code) },
                     borderWidth = if (isSelected) 2.dp else 1.dp,
                     borderColor = if (isSelected) Cobalt else Slate200
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(14.dp),
+                            .padding(12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            // Badge
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Slate100),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(Slate100)
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = item.code,
-                                        fontFamily = SpaceGroteskFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp,
-                                        color = Cobalt
-                                    )
-                                }
-
                                 Text(
-                                    text = item.name,
-                                    fontFamily = PlusJakartaSansFamily,
+                                    text = currency.code,
+                                    fontFamily = SpaceGroteskFamily,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    color = Charcoal
+                                    fontSize = 11.sp,
+                                    color = Cobalt
                                 )
                             }
 
-                            Text(
-                                text = "1 ${item.code} = ${Currency.formatMinor(item.rateToIdr.toLong(), "IDR")}",
-                                fontFamily = SpaceGroteskFamily,
-                                fontSize = 11.sp,
-                                color = Slate500
-                            )
+                            Column {
+                                Text(
+                                    text = currency.name,
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = Charcoal
+                                )
+                                Text(
+                                    text = "1 ${currency.code} = ${Currency.formatMinor(rateForOneUnit, mainCurrencyCode)}",
+                                    fontFamily = SpaceGroteskFamily,
+                                    fontSize = 11.sp,
+                                    color = Slate500
+                                )
+                            }
                         }
 
-                        Column(
-                            horizontalAlignment = Alignment.End,
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
+                        Column(horizontalAlignment = Alignment.End) {
                             Text(
-                                text = "${item.symbol} ${Currency.formatMinor(converted, item.code, includeSymbol = false)}",
+                                text = Currency.formatMinor(convertedTotal, currency.code),
                                 fontFamily = SpaceGroteskFamily,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
+                                fontSize = 13.sp,
                                 color = Charcoal
                             )
 
@@ -256,7 +316,7 @@ fun WorldCurrenciesSheet(
                                 fontFamily = PlusJakartaSansFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp,
-                                color = if (isSelected) Cobalt else Slate500
+                                color = if (isSelected) Cobalt else Slate400
                             )
                         }
                     }

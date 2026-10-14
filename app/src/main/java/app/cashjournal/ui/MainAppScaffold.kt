@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.collectAsState
+import app.cashjournal.data.weather.WeatherIconMapper
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.ui.components.GreetingBar
 import app.cashjournal.ui.components.NavTab
@@ -48,7 +49,7 @@ import app.cashjournal.ui.theme.Slate100
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Sun
-import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,20 +61,28 @@ fun MainAppScaffold(
     val railOnRight = state.userPreferences.railOnRight
     val isAccountDetail = state.currentScreen == AppScreen.ACCOUNT_DETAIL
 
-    // Auto-dismiss toast
-    LaunchedEffect(state.toastMessage) {
-        if (state.toastMessage != null) {
-            delay(2200)
-            viewModel.clearToast()
-        }
-    }
-
+    // Map screen to NavTab
     val currentNavTab = when (state.currentScreen) {
         AppScreen.DASHBOARD -> NavTab.DASHBOARD
         AppScreen.LEDGER -> NavTab.LEDGER
         AppScreen.ACCOUNTS, AppScreen.ACCOUNT_DETAIL -> NavTab.ACCOUNTS
         AppScreen.ANALYTICS -> NavTab.ANALYTICS
         AppScreen.SETTINGS -> NavTab.SETTINGS
+    }
+
+    // Modal sheet state
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    val weather = state.weatherData
+    val weatherIcon = if (weather != null) {
+        WeatherIconMapper.getIcon(weather.weatherCode, weather.isDay)
+    } else {
+        PhosphorIcons.Regular.Sun
+    }
+    val tempText = if (weather != null && state.userPreferences.weatherOption != "not_now") {
+        "${weather.temperature.roundToInt()}\u00B0${state.userPreferences.temperatureUnit}"
+    } else {
+        "24\u00B0C"
     }
 
     Box(
@@ -96,15 +105,15 @@ fun MainAppScaffold(
                 GreetingBar(
                     greeting = "ACCOUNT",
                     name = state.selectedAccount!!.name,
-                    weatherIcon = PhosphorIcons.Regular.Sun,
-                    temperature = "24°C",
+                    weatherIcon = weatherIcon,
+                    temperature = tempText,
                     modifier = Modifier.fillMaxWidth()
                 )
             } else {
                 GreetingBar(
                     name = state.userPreferences.userName,
-                    weatherIcon = PhosphorIcons.Regular.Sun,
-                    temperature = "24°C",
+                    weatherIcon = weatherIcon,
+                    temperature = tempText,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -142,7 +151,8 @@ fun MainAppScaffold(
                         onAddAccountClick = { viewModel.openSheet(ActiveSheet.NEW_ACCOUNT) },
                         onMoveAccount = { idx, up -> viewModel.moveAccount(idx, up) },
                         onToggleReorderMode = { viewModel.setReorderMode(it) },
-                        onOpenWorldCurrencies = { viewModel.openSheet(ActiveSheet.WORLD_CURRENCIES) }
+                        onOpenWorldCurrencies = { viewModel.openSheet(ActiveSheet.WORLD_CURRENCIES) },
+                        onRefreshRates = { viewModel.refreshRates(manual = true) }
                     )
 
                     AppScreen.ACCOUNT_DETAIL -> {
@@ -221,12 +231,11 @@ fun MainAppScaffold(
 
         // Modal Bottom Sheets
         state.activeSheet?.let { sheet ->
-            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
             ModalBottomSheet(
                 onDismissRequest = { viewModel.dismissSheet() },
                 sheetState = sheetState,
                 containerColor = Color.White,
+                scrimColor = Color(0x4D0F172A), // 30% Charcoal per brief section 5
                 dragHandle = null
             ) {
                 when (sheet) {
@@ -250,15 +259,16 @@ fun MainAppScaffold(
                     ActiveSheet.MAIN_CURRENCY -> MainCurrencySheet(
                         currentCurrencyCode = state.userPreferences.currencyCode,
                         onSelectCurrency = { code ->
-                            viewModel.updatePreferences { it.updateCurrencyCode(code) }
-                            viewModel.dismissSheet()
-                            viewModel.showToast("Main currency changed to $code")
+                            viewModel.changeMainCurrency(code)
                         },
                         onDismiss = { viewModel.dismissSheet() }
                     )
 
                     ActiveSheet.WORLD_CURRENCIES -> WorldCurrenciesSheet(
-                        totalNetWorthIdr = state.totalNetWorth,
+                        totalNetWorth = state.totalNetWorth,
+                        mainCurrencyCode = state.userPreferences.currencyCode,
+                        cachedRates = state.cachedRates,
+                        isRatesOffline = state.isRatesOffline,
                         selectedCode = state.userPreferences.selectedWorldCurrency,
                         onSelectCode = { code ->
                             viewModel.updatePreferences { it.updateSelectedWorldCurrency(code) }
@@ -270,9 +280,18 @@ fun MainAppScaffold(
 
                     ActiveSheet.WEATHER_DETAIL -> WeatherDetailSheet(
                         currentOption = state.userPreferences.weatherOption,
-                        onSelectOption = { opt ->
-                            viewModel.updatePreferences { it.updateWeatherOption(opt) }
+                        citySearchResults = state.citySearchResults,
+                        isSearchingCity = state.isSearchingCity,
+                        onSearchCity = { query -> viewModel.searchCity(query) },
+                        onSelectCity = { city ->
+                            viewModel.selectCity(city)
                             viewModel.dismissSheet()
+                        },
+                        onSelectOption = { opt ->
+                            viewModel.setWeatherOption(opt)
+                            if (opt != "search") {
+                                viewModel.dismissSheet()
+                            }
                         },
                         onDismiss = { viewModel.dismissSheet() }
                     )
@@ -281,4 +300,3 @@ fun MainAppScaffold(
         }
     }
 }
-

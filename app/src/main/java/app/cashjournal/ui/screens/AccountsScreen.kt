@@ -47,7 +47,9 @@ import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Cobalt
 import app.cashjournal.ui.theme.Emerald
 import app.cashjournal.ui.theme.PlusJakartaSansFamily
+import app.cashjournal.ui.theme.Saffron
 import app.cashjournal.ui.theme.Slate100
+import kotlin.math.pow
 import app.cashjournal.ui.theme.Slate200
 import app.cashjournal.ui.theme.Slate400
 import app.cashjournal.ui.theme.Slate500
@@ -72,12 +74,13 @@ fun AccountsScreen(
     onMoveAccount: (index: Int, moveUp: Boolean) -> Unit,
     onToggleReorderMode: (Boolean) -> Unit,
     onOpenWorldCurrencies: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onRefreshRates: () -> Unit = {}
 ) {
     var selectedWorldCurrency by remember { mutableStateOf("USD") }
     val mainCurrency = Currency.findByCode(state.userPreferences.currencyCode)
 
-    // Quick conversion rates for world card (IDR base defaults)
+    val cachedRates = state.cachedRates
     val ratesToIdr = mapOf(
         "USD" to 15700.0,
         "EUR" to 17100.0,
@@ -87,11 +90,23 @@ fun AccountsScreen(
         "SAR" to 4180.0
     )
 
-    val currentRate = ratesToIdr[selectedWorldCurrency] ?: 15700.0
-    val convertedTotal = if (mainCurrency.code == "IDR") {
-        (state.totalNetWorth / currentRate).toLong()
+    val sourceDecimals = Currency.getDecimals(mainCurrency.code)
+    val targetDecimals = Currency.getDecimals(selectedWorldCurrency)
+
+    val convertedTotal = if (cachedRates != null && cachedRates.rates.isNotEmpty()) {
+        app.cashjournal.data.currency.CurrencyConverter.convertMinorUnits(
+            amountMinor = state.totalNetWorth,
+            sourceCode = mainCurrency.code,
+            targetCode = selectedWorldCurrency,
+            baseCode = cachedRates.baseCode,
+            rates = cachedRates.rates,
+            sourceDecimals = sourceDecimals,
+            targetDecimals = targetDecimals
+        )
     } else {
-        state.totalNetWorth
+        val currentRate = ratesToIdr[selectedWorldCurrency] ?: 15700.0
+        val totalMajor = state.totalNetWorth.toDouble()
+        ((totalMajor / currentRate) * 100).toLong()
     }
 
     val maxBalance = state.accounts.maxOfOrNull { it.balance }?.coerceAtLeast(1L) ?: 1L
@@ -189,8 +204,26 @@ fun AccountsScreen(
                         imageVector = PhosphorIcons.Regular.ArrowsClockwise,
                         contentDescription = "Refresh",
                         tint = Slate500,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .clickable { onRefreshRates() }
                     )
+                }
+
+                val rateForOneUnit = if (cachedRates != null && cachedRates.rates.isNotEmpty()) {
+                    val oneUnitMinor = 10.0.pow(targetDecimals.toDouble()).toLong()
+                    app.cashjournal.data.currency.CurrencyConverter.convertMinorUnits(
+                        amountMinor = oneUnitMinor,
+                        sourceCode = selectedWorldCurrency,
+                        targetCode = mainCurrency.code,
+                        baseCode = cachedRates.baseCode,
+                        rates = cachedRates.rates,
+                        sourceDecimals = targetDecimals,
+                        targetDecimals = sourceDecimals
+                    )
+                } else {
+                    ratesToIdr[selectedWorldCurrency]?.toLong() ?: 15700L
                 }
 
                 Row(
@@ -216,19 +249,44 @@ fun AccountsScreen(
                     }
 
                     Text(
-                        text = "1 $selectedWorldCurrency = ${Currency.formatMinor(currentRate.toLong(), mainCurrency.code)}",
+                        text = "1 $selectedWorldCurrency = ${Currency.formatMinor(rateForOneUnit, mainCurrency.code)}",
                         fontFamily = SpaceGroteskFamily,
                         fontSize = 11.sp,
                         color = Slate500
                     )
                 }
 
-                Text(
-                    text = "Updated daily · Oct 14, 09:30",
-                    fontFamily = PlusJakartaSansFamily,
-                    fontSize = 11.sp,
-                    color = Slate500
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    if (cachedRates != null) {
+                        val dotColor = if (state.isRatesOffline) Saffron else Emerald
+                        val statusText = if (state.isRatesOffline) {
+                            "Offline · last update ${cachedRates.timeLastUpdateUtc}"
+                        } else {
+                            "Updated daily · ${cachedRates.timeLastUpdateUtc}"
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(dotColor, CircleShape)
+                        )
+                        Text(
+                            text = statusText,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontSize = 11.sp,
+                            color = Slate500
+                        )
+                    } else {
+                        Text(
+                            text = "No rates yet",
+                            fontFamily = PlusJakartaSansFamily,
+                            fontSize = 11.sp,
+                            color = Slate500
+                        )
+                    }
+                }
 
                 // Quick Currency Chips
                 Row(
