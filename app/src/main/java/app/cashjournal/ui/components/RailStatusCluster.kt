@@ -2,6 +2,7 @@ package app.cashjournal.ui.components
 
 import android.content.Context
 import android.os.BatteryManager
+import android.telephony.TelephonyManager
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cashjournal.ui.theme.CashColors
 import app.cashjournal.ui.theme.PlusJakartaSans
+import app.cashjournal.util.SignalStrengthHelper
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.CaretLeft
@@ -63,7 +65,7 @@ import kotlin.math.sin
  * Implements the circular status button design:
  * - Outer 270° arc: Dynamic battery level indicator (Green > 30%, Amber <= 30%, Red <= 10%).
  * - Remaining battery stroke in dark charcoal.
- * - Bottom 90° gap: 5 signal strength dots (polar angles 55°, 70°, 90°, 110°, 125°).
+ * - Bottom 90° gap: 4 signal strength dots (symmetrically spaced at 60°, 80°, 100°, 120°).
  * - Center: Privacy eye icon (Eye when visible, EyeSlash when masked). Tapping toggles privacy.
  * - Below circle: Clean bold time indicator in Plus Jakarta Sans ExtraBold (e.g. "6:30").
  * - Below time: Subtle horizontal divider rule (36dp).
@@ -94,6 +96,19 @@ fun RailStatusCluster(
         )
     }
 
+    // Real device signal strength reading (offline & private, translated to 0..4 dots)
+    var signalLevel by remember {
+        mutableIntStateOf(
+            try {
+                val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+                val rawLevel = tm?.signalStrength?.level ?: 3
+                SignalStrengthHelper.translateToFourDots(rawLevel, maxScale = 4)
+            } catch (_: Exception) {
+                3
+            }
+        )
+    }
+
     val formatTime = remember(context) {
         {
             val is24h = android.text.format.DateFormat.is24HourFormat(context)
@@ -102,7 +117,7 @@ fun RailStatusCluster(
         }
     }
 
-    // Refresh time & battery every 30 seconds
+    // Refresh time, battery & signal every 30 seconds
     var timeString by remember {
         mutableStateOf(formatTime())
     }
@@ -115,6 +130,13 @@ fun RailStatusCluster(
                 val bm = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
                 val capacity = bm?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
                 if (capacity in 0..100) batteryLevel = capacity
+            } catch (_: Exception) {
+                // keep current
+            }
+            try {
+                val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+                val rawLevel = tm?.signalStrength?.level ?: 3
+                signalLevel = SignalStrengthHelper.translateToFourDots(rawLevel, maxScale = 4)
             } catch (_: Exception) {
                 // keep current
             }
@@ -164,10 +186,10 @@ fun RailStatusCluster(
                         modifier = Modifier.size(42.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        // Status Ring: Battery Arc & Signal Dots
+                        // Status Ring: Battery Arc & 4 Signal Dots
                         StatusRingCanvas(
                             batteryPercent = batteryLevel,
-                            activeSignalBars = 4, // 4 out of 5 bars
+                            activeSignalBars = signalLevel,
                             modifier = Modifier.size(38.dp)
                         )
 
@@ -269,9 +291,9 @@ private fun StatusRingCanvas(
         }
 
         // 3. Signal Strength Dots in the bottom 90° gap:
-        // Angles: 55°, 70°, 90°, 110°, 125°
-        val dotAngles = floatArrayOf(55f, 70f, 90f, 110f, 125f)
-        val dotRadiusPx = 1.5.dp.toPx()
+        // Symmetrically spaced across 45° to 135°: angles 60°, 80°, 100°, 120°
+        val dotAngles = floatArrayOf(60f, 80f, 100f, 120f)
+        val dotRadiusPx = 1.6.dp.toPx()
 
         for (i in dotAngles.indices) {
             val angleDeg = dotAngles[i]

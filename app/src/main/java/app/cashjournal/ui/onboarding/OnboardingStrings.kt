@@ -53,6 +53,8 @@ data class OnboardingTexts(
     val permNotifDesc: String,
     val permStorageTitle: String,
     val permStorageDesc: String,
+    val permStorageTag: String,
+    val permStorageTagDesc: String,
     val permAllowed: String,
     val permGrant: String,
 
@@ -113,7 +115,9 @@ val EnglishOnboardingTexts = OnboardingTexts(
     permNotifTitle = "Daily Reminders",
     permNotifDesc = "Optional evening reminders to record expenses. No ads, zero promotional spam.",
     permStorageTitle = "Local Storage & Offline Export",
-    permStorageDesc = "Save and export private CSV ledger records directly to your device storage.",
+    permStorageDesc = "CashJournal saves your records in a private on-device sandbox. Zero filesystem or storage permissions are needed or requested.",
+    permStorageTag = "Device Sandbox",
+    permStorageTagDesc = "No permission needed",
     permAllowed = "Allowed",
     permGrant = "Allow",
 
@@ -121,8 +125,8 @@ val EnglishOnboardingTexts = OnboardingTexts(
     readySubtitle = "Choose how you'd like to start.",
     scratchTitle = "Start from scratch",
     scratchDesc = "Begin empty. Add your accounts when you're ready.",
-    exampleTitle = "Load example data",
-    exampleDesc = "Sample accounts and transactions so you can explore. Remove them anytime in Settings.",
+    exampleTitle = "Load Demo Mode",
+    exampleDesc = "Sample accounts and transactions to explore the app. Remove anytime in Settings.",
     exampleNeedsNet = "Needs an internet connection once",
     finishBtn = "Finish"
 )
@@ -174,7 +178,9 @@ val IndonesianOnboardingTexts = OnboardingTexts(
     permNotifTitle = "Pengingat Harian",
     permNotifDesc = "Pengingat malam opsional untuk mencatat pengeluaran. Tanpa iklan atau spam.",
     permStorageTitle = "Penyimpanan Lokal & Ekspor Offline",
-    permStorageDesc = "Simpan dan ekspor catatan buku kas CSV langsung ke memori perangkat Anda.",
+    permStorageDesc = "CashJournal menyimpan catatan Anda di sandbox perangkat terisolasi. Tanpa izin penyimpanan atau akses berkas apa pun yang diperlukan atau diminta.",
+    permStorageTag = "Sandbox Perangkat",
+    permStorageTagDesc = "Tanpa perlu izin",
     permAllowed = "Diizinkan",
     permGrant = "Izinkan",
 
@@ -182,7 +188,7 @@ val IndonesianOnboardingTexts = OnboardingTexts(
     readySubtitle = "Pilih bagaimana Anda ingin memulai.",
     scratchTitle = "Mulai dari awal",
     scratchDesc = "Mulai kosong. Tambahkan rekening saat Anda siap.",
-    exampleTitle = "Muat data contoh",
+    exampleTitle = "Muat Mode Demo",
     exampleDesc = "Contoh rekening dan transaksi agar Anda bisa menjelajah. Hapus kapan saja di Pengaturan.",
     exampleNeedsNet = "Perlu koneksi internet sekali",
     finishBtn = "Selesai"

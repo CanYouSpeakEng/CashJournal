@@ -92,6 +92,7 @@ import com.adamglin.phosphoricons.regular.Check
 import com.adamglin.phosphoricons.regular.CheckCircle
 import com.adamglin.phosphoricons.regular.CloudSlash
 import com.adamglin.phosphoricons.regular.DeviceMobile
+import com.adamglin.phosphoricons.regular.Lock
 import com.adamglin.phosphoricons.regular.MagnifyingGlass
 import com.adamglin.phosphoricons.regular.MapPin
 import com.adamglin.phosphoricons.regular.ShieldCheck
@@ -1044,16 +1045,100 @@ private fun Step6Permissions(
             }
         )
 
-        // 3. Local Storage Card (Sandboxed & Private)
-        PermissionItemCard(
+        // 3. Local Storage Card (Sandboxed & Private - Zero permissions requested)
+        StorageSandboxCard(
             title = texts.permStorageTitle,
             description = texts.permStorageDesc,
-            icon = PhosphorIcons.Regular.DeviceMobile,
-            isGranted = true,
-            allowedText = texts.permAllowed,
-            grantText = texts.permGrant,
-            onRequest = {}
+            tag = texts.permStorageTag,
+            tagDesc = texts.permStorageTagDesc
         )
+    }
+}
+
+@Composable
+private fun StorageSandboxCard(
+    title: String,
+    description: String,
+    tag: String,
+    tagDesc: String
+) {
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Cobalt.copy(alpha = 0.10f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = PhosphorIcons.Regular.ShieldCheck,
+                    contentDescription = null,
+                    tint = Cobalt,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = title,
+                    fontFamily = PlusJakartaSansFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = Charcoal
+                )
+                Text(
+                    text = description,
+                    fontFamily = PlusJakartaSansFamily,
+                    fontSize = 12.sp,
+                    color = Slate500,
+                    lineHeight = 16.sp
+                )
+            }
+
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Slate100)
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = PhosphorIcons.Regular.Lock,
+                        contentDescription = null,
+                        tint = Slate600,
+                        modifier = Modifier.size(11.dp)
+                    )
+                    Text(
+                        text = tag,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        color = Slate600
+                    )
+                }
+                Text(
+                    text = tagDesc,
+                    fontFamily = SpaceGroteskFamily,
+                    fontSize = 10.sp,
+                    color = Slate400
+                )
+            }
+        }
     }
 }
 
