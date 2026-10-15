@@ -7,23 +7,45 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import app.cashjournal.R
 
+import androidx.compose.material3.Typography
+
 val PlusJakartaSans = FontFamily(
-    Font(R.font.plus_jakarta_sans, FontWeight.Light),
-    Font(R.font.plus_jakarta_sans, FontWeight.Normal),
-    Font(R.font.plus_jakarta_sans, FontWeight.Medium),
-    Font(R.font.plus_jakarta_sans, FontWeight.SemiBold),
-    Font(R.font.plus_jakarta_sans, FontWeight.Bold),
-    Font(R.font.plus_jakarta_sans, FontWeight.ExtraBold)
+    Font(R.font.plus_jakarta_sans_light, FontWeight.Light),
+    Font(R.font.plus_jakarta_sans_regular, FontWeight.Normal),
+    Font(R.font.plus_jakarta_sans_medium, FontWeight.Medium),
+    Font(R.font.plus_jakarta_sans_semibold, FontWeight.SemiBold),
+    Font(R.font.plus_jakarta_sans_bold, FontWeight.Bold),
+    Font(R.font.plus_jakarta_sans_extrabold, FontWeight.ExtraBold)
 )
 
 val SpaceGrotesk = FontFamily(
-    Font(R.font.space_grotesk, FontWeight.Medium),
-    Font(R.font.space_grotesk, FontWeight.SemiBold),
-    Font(R.font.space_grotesk, FontWeight.Bold)
+    Font(R.font.space_grotesk_medium, FontWeight.Normal),
+    Font(R.font.space_grotesk_medium, FontWeight.Medium),
+    Font(R.font.space_grotesk_semibold, FontWeight.SemiBold),
+    Font(R.font.space_grotesk_bold, FontWeight.Bold),
+    Font(R.font.space_grotesk_bold, FontWeight.ExtraBold)
 )
 
 val PlusJakartaSansFamily = PlusJakartaSans
 val SpaceGroteskFamily = SpaceGrotesk
+
+val CashMaterialTypography = Typography(
+    displayLarge = TextStyle(fontFamily = PlusJakartaSans, fontWeight = FontWeight.ExtraBold),
+    displayMedium = TextStyle(fontFamily = PlusJakartaSans, fontWeight = FontWeight.Bold),
+    displaySmall = TextStyle(fontFamily = PlusJakartaSans, fontWeight = FontWeight.Bold),
+    headlineLarge = TextStyle(fontFamily = PlusJakartaSans, fontWeight = FontWeight.ExtraBold),
+    headlineMedium = TextStyle(fontFamily = PlusJakartaSans, fontWeight = FontWeight.Bold),
+    headlineSmall = TextStyle(fontFamily = PlusJakartaSans, fontWeight = FontWeight.Bold),
+    titleLarge = TextStyle(fontFamily = PlusJakartaSans, fontWeight = FontWeight.Bold),
+    titleMedium = TextStyle(fontFamily = PlusJakartaSans, fontWeight = FontWeight.SemiBold),
+    titleSmall = TextStyle(fontFamily = PlusJakartaSans, fontWeight = FontWeight.SemiBold),
+    bodyLarge = TextStyle(fontFamily = PlusJakartaSans, fontWeight = FontWeight.Normal),
+    bodyMedium = TextStyle(fontFamily = PlusJakartaSans, fontWeight = FontWeight.Medium),
+    bodySmall = TextStyle(fontFamily = PlusJakartaSans, fontWeight = FontWeight.Normal),
+    labelLarge = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold),
+    labelMedium = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold),
+    labelSmall = TextStyle(fontFamily = SpaceGrotesk, fontWeight = FontWeight.Bold)
+)
 
 object CashTypography {
     // Labels & Numbers in Space Grotesk

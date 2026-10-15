@@ -32,6 +32,7 @@ fun CashJournalTheme(
 ) {
     MaterialTheme(
         colorScheme = LightColorScheme,
+        typography = CashMaterialTypography,
         content = content
     )
 }

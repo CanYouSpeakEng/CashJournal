@@ -152,90 +152,50 @@ fun SideRail(
         label = "backButtonScale"
     )
 
-    // Side rail container: 42dp pill, translucent white at 88%
+    // Side rail container: 54dp pill, translucent white at 88%
     Surface(
         modifier = modifier
-            .width(42.dp)
+            .width(54.dp)
             .shadow(
                 elevation = 10.dp,
-                shape = RoundedCornerShape(21.dp),
+                shape = RoundedCornerShape(27.dp),
                 ambientColor = Charcoal.copy(alpha = 0.08f),
                 spotColor = Charcoal.copy(alpha = 0.12f)
             ),
-        shape = RoundedCornerShape(21.dp),
+        shape = RoundedCornerShape(27.dp),
         color = Color(0xE0FFFFFF), // 88% white per brief section 12
         border = BorderStroke(1.dp, GlassBorder)
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 10.dp),
+            modifier = Modifier.padding(vertical = 12.dp, horizontal = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Top Zone: Clock Arc or Back Button
-            if (isNestedScreen) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .scale(backButtonScale)
-                        .clip(CircleShape)
-                        .clickable {
-                            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                            onBackClick?.invoke()
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = PhosphorIcons.Regular.CaretLeft,
-                        contentDescription = "Back",
-                        tint = Charcoal,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            } else {
-                // Clock Zone with animated characters
-                ClockArcDisplay(
-                    timeString = timeString,
-                    isNested = false
-                )
-
-                // Privacy Vault Toggle (Lock when visible, EyeSlash when hidden)
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .clickable {
-                            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                            onToggleBalances()
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (balancesVisible) PhosphorIcons.Regular.Lock else PhosphorIcons.Regular.EyeSlash,
-                        contentDescription = if (balancesVisible) "Hide Balances" else "Show Balances",
-                        tint = Slate500,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(2.dp))
+            // Top Zone: Unified Status Ring (Battery Arc + Signal Dots), Privacy Eye Toggle, Clock & Divider
+            RailStatusCluster(
+                balancesVisible = balancesVisible,
+                onToggleBalances = onToggleBalances,
+                isNestedScreen = isNestedScreen,
+                onBackClick = onBackClick,
+                hapticsEnabled = hapticsEnabled
+            )
 
             // Navigation Area with Liquid Drip Canvas
             Box(
                 modifier = Modifier
-                    .width(36.dp)
-                    .height(212.dp) // 5 buttons (36dp) + 4 gaps (8dp) = 212dp
+                    .width(42.dp)
+                    .height(242.dp) // 5 buttons (42dp) + 4 gaps (8dp) = 242dp
             ) {
                 // Liquid Tab Drip Canvas
                 Canvas(modifier = Modifier.matchParentSize()) {
-                    val stepPx = 44.dp.toPx() // 36dp + 8dp spacing
-                    val buttonRadius = 18.dp.toPx()
-                    val buttonDiameter = 36.dp.toPx()
+                    val stepPx = 50.dp.toPx() // 42dp + 8dp spacing
+                    val buttonRadius = 21.dp.toPx()
+                    val buttonDiameter = 42.dp.toPx()
 
                     val currentCenterY = buttonRadius + dripAnim.value * stepPx
                     val stretchExtraPx = stretchFraction * 14.dp.toPx()
                     val blobHeight = buttonDiameter + stretchExtraPx
-                    val blobWidth = (buttonDiameter - stretchFraction * 6.dp.toPx()).coerceAtLeast(24.dp.toPx())
+                    val blobWidth = (buttonDiameter - stretchFraction * 6.dp.toPx()).coerceAtLeast(28.dp.toPx())
 
                     val top = currentCenterY - blobHeight / 2f
                     val left = (size.width - blobWidth) / 2f
@@ -308,15 +268,15 @@ fun SideRail(
             // Divider before Quick Add
             Box(
                 modifier = Modifier
-                    .width(24.dp)
+                    .width(28.dp)
                     .height(1.dp)
                     .background(Slate200)
             )
 
-            // "+" Button at bottom: 40dp button, opens Log transaction
+            // "+" Button at bottom: 42dp button, opens Log transaction
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(42.dp)
                     .clip(CircleShape)
                     .background(Color.White)
                     .clickable {
@@ -396,7 +356,7 @@ private fun RailNavButton(
 
     Box(
         modifier = Modifier
-            .size(36.dp)
+            .size(42.dp)
             .clip(CircleShape)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -409,7 +369,7 @@ private fun RailNavButton(
             imageVector = icon,
             contentDescription = contentDescription,
             tint = iconColor,
-            modifier = Modifier.size(18.dp)
+            modifier = Modifier.size(20.dp)
         )
     }
 }

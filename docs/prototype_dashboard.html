@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>DompetKu — Fluid Cockpit Prototype v9 (HOD Final)</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@0.383.0/dist/umd/lucide.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'], mono: ['"Space Grotesk"', 'monospace'] },
+          colors: {
+            cobalt: { DEFAULT: '#1D4ED8', light: '#EFF6FF', dark: '#1E40AF' },
+            emerald: { DEFAULT: '#059669', light: '#ECFDF5', dark: '#065F46' },
+            persimmon: { DEFAULT: '#EA580C', light: '#FFF7ED', dark: '#C2410C' },
+            saffron: { DEFAULT: '#D97706', light: '#FFFBEB', dark: '#B45309' },
+            iris: { DEFAULT: '#6366F1', light: '#EEF2FF', dark: '#4338CA' },
+            berry: { DEFAULT: '#E11D48', light: '#FFF1F2', dark: '#BE123C' },
+            charcoal: { DEFAULT: '#0F172A', muted: '#475569', subtle: '#94A3B8' }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      /* 3 BORDERS ARCHITECTURE:
+         - Top border: 15% (content never rises above)
+         - Bottom border: 75% (bottom 25% is permanent negative space)
+         - Third border: Sidebar boundary (content never goes under sidebar) */
+      --win-top: 15%;
+      --win-bottom: 25%;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    :focus-visible { outline: 2px solid #1D4ED8; outline-offset: 2px; }
+    button { user-select: none; }
+
+    body {
+      background-color: #CBD5E1; color: #0F172A;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      margin: 0; padding: 0; overflow: hidden; height: 100vh; width: 100vw;
+    }
+
+    #phoneShell {
+      --rail-p: 0;
+      --content-left: calc(20px + var(--rail-p, 0) * 58px);
+      --content-right: calc(78px - var(--rail-p, 0) * 58px);
+    }
+
+    .glass-card {
+      background: rgba(255,255,255,0.78);
+      backdrop-filter: blur(28px) saturate(180%); -webkit-backdrop-filter: blur(28px) saturate(180%);
+      border: 1px solid rgba(255,255,255,0.95);
+      box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -6px rgba(15,23,42,0.06), 0 20px 48px -12px rgba(15,23,42,0.05);
+      transition: opacity .18s ease;
+    }
+    .glass-card-subtle {
+      background: rgba(255,255,255,0.58);
+      backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%);
+      border: 1px solid rgba(255,255,255,0.85);
+      box-shadow: 0 4px 16px -4px rgba(15,23,42,0.04);
+      transition: opacity .18s ease;
+    }
+
+    /* ===== Account-driven gradient field ===== */
+    .liquid-canvas-bg { position: absolute; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+    #gradientField { position: absolute; inset: 0; will-change: transform; }
+    .field-anchor {
+      position: absolute; aspect-ratio: 1; opacity: 0.32; transform: translate(-50%, -50%);
+      transition: left 1.2s cubic-bezier(0.16,1,0.3,1), top 1.2s cubic-bezier(0.16,1,0.3,1), width 1.2s cubic-bezier(0.16,1,0.3,1), opacity 0.9s ease;
+    }
+    .field-inner {
+      position: absolute; inset: 0; border-radius: 48% 52% 60% 40% / 45% 55% 45% 55%;
+      filter: blur(56px); transition: background-color 1s ease;
+      animation: morphLiquid 30s ease-in-out infinite alternate;
+    }
+    @keyframes morphLiquid {
+      0%   { border-radius: 48% 52% 60% 40% / 45% 55% 45% 55%; transform: translate3d(0,0,0) scale(1) rotate(0deg); }
+      50%  { border-radius: 65% 35% 40% 60% / 55% 45% 55% 45%; transform: translate3d(20px,-16px,0) scale(1.06) rotate(25deg); }
+      100% { border-radius: 35% 65% 55% 45% / 40% 60% 40% 60%; transform: translate3d(-14px,14px,0) scale(0.96) rotate(-20deg); }
+    }
+    .mini-field .field-inner { filter: blur(14px); }
+
+    /* ===== Side rail (Centred on Content Window) ===== */
+    .duo-side-rail {
+      position: absolute; top: calc(var(--win-top) + (100% - var(--win-top) - var(--win-bottom)) / 2); right: 12px; z-index: 40;
+      display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 12px 7px;
+      border-radius: 9999px; background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(32px) saturate(200%); -webkit-backdrop-filter: blur(32px) saturate(200%);
+      border: 1px solid rgba(255,255,255,0.95);
+      box-shadow: 0 12px 32px -6px rgba(15,23,42,0.12), 0 4px 12px -2px rgba(15,23,42,0.05), inset 0 1px 1px rgba(255,255,255,0.8);
+      transform-origin: 50% 100%; will-change: transform;
+    }
+    .rail-btn {
+      position: relative; z-index: 1; width: 42px; height: 42px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; color: #64748B; background: transparent;
+      transition: color .25s ease, background-color .25s ease, transform .28s cubic-bezier(0.34,1.56,0.64,1), box-shadow .25s ease;
+    }
+    .rail-btn:hover { color: #0F172A; background: rgba(241,245,249,0.8); }
+    .rail-btn.active { color: #fff; background: #1D4ED8; box-shadow: 0 6px 16px -2px rgba(29,78,216,0.4); }
+    .rail-btn:active { transform: scale(0.92); }
+    .rail-goo { position: absolute; inset: 0; z-index: 0; pointer-events: none; filter: url(#goo); opacity: 0; transition: opacity .18s ease; }
+    .goo-dot { position: absolute; left: 0; top: 0; width: 42px; height: 42px; border-radius: 50%; background: #1D4ED8; will-change: transform; }
+    .droplet-canvas { position: absolute; inset: 0; pointer-events: none; z-index: 100; }
+
+    /* Rail top zone (about the original height). Curved time on top, the balance-privacy
+       button (eye or lock) in the middle, and the Back button that takes the top spot in nested views. */
+    .rail-top { position: relative; width: 42px; height: 50px; }
+    .rail-arc { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+    .arc-digit {
+      font-family: 'Space Grotesk', monospace; font-weight: 700; font-size: 9px;
+      fill: #0F172A; text-anchor: middle; dominant-baseline: central;
+    }
+
+    .rail-privacy {
+      position: absolute; left: 50%; top: 13px; width: 28px; height: 28px; margin-left: -14px;
+      border: 0; padding: 0; border-radius: 50%; color: #0F172A; background: transparent;
+      transition: opacity .3s ease, transform .4s ease, background-color .25s ease;
+    }
+    .rail-privacy:hover { background: rgba(241,245,249,0.8); }
+    .rail-privacy:active { transform: scale(0.9); }
+    .rail-privacy .ic {
+      position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px;
+      transition: opacity .25s ease, transform .35s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .rail-privacy .ic-hidden { opacity: 0; transform: scale(0.4) rotate(90deg); }
+    .rail-privacy[aria-pressed="true"] .ic-hidden { opacity: 1; transform: none; }
+    .rail-privacy[aria-pressed="true"] .ic-vault { opacity: 0; transform: scale(0.4) rotate(-90deg); }
+    .rail-top.has-back .rail-privacy { opacity: 0; transform: scale(0.4); pointer-events: none; }
+
+    /* Tiny "Local vault" popup that opens beside the sidebar */
+    .vault-pop {
+      position: absolute; top: 27px; right: calc(100% + 16px); width: max-content; max-width: 150px;
+      padding: 7px 10px; border-radius: 12px; z-index: 45;
+      background: rgba(255,255,255,0.97); border: 1px solid rgba(226,232,240,0.95);
+      box-shadow: 0 8px 20px -6px rgba(15,23,42,0.2);
+      font: 500 10px 'Plus Jakarta Sans', sans-serif; color: #475569; line-height: 1.35;
+      opacity: 0; pointer-events: none; transform: translate(6px, -50%);
+      transition: opacity .2s ease, transform .3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .vault-pop b { display: block; font: 700 11px 'Space Grotesk', monospace; color: #0F172A; margin-bottom: 2px; }
+    .vault-pop::after {
+      content: ''; position: absolute; right: -5px; top: 50%; margin-top: -5px;
+      width: 8px; height: 8px; background: inherit;
+      border-top: 1px solid rgba(226,232,240,0.95); border-right: 1px solid rgba(226,232,240,0.95);
+      transform: rotate(45deg);
+    }
+    .vault-pop.show { opacity: 1; transform: translate(0, -50%); }
+
+    .rail-back {
+      position: absolute; left: 50%; top: 0; width: 30px; height: 30px; margin-left: -15px;
+      border: 0; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      background: #0F172A; color: #fff; box-shadow: 0 4px 10px -2px rgba(15,23,42,0.35);
+      opacity: 0; transform: scale(0.4); pointer-events: none;
+      transition: opacity .3s ease .15s, transform .6s cubic-bezier(0.34,1.56,0.64,1) .15s;
+    }
+    .rail-top.has-back .rail-back { opacity: 1; transform: scale(1); pointer-events: auto; }
+    .rail-top.has-back .rail-back:active { transform: scale(0.9); }
+
+    /* ===== TOP BAR (Strictly in the 15% top zone, un-overlapped by content) ===== */
+    .top-bar {
+      position: absolute; left: 20px; right: 20px; top: calc(var(--win-top) - 58px); height: 46px; z-index: 35;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .privacy-pill {
+      height: 34px; padding: 0 13px; border-radius: 9999px; display: flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.85); border: 1px solid rgba(226,232,240,0.95); color: #475569;
+      font: 700 11px 'Space Grotesk', monospace; box-shadow: 0 2px 8px -2px rgba(15,23,42,0.1);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      transition: background-color .3s ease, color .3s ease, border-color .3s ease, transform .2s ease;
+    }
+    .privacy-pill:active { transform: scale(0.95); }
+    .privacy-pill[aria-pressed="true"] { background: #1D4ED8; color: #fff; border-color: #1D4ED8; }
+
+    /* ===== PAGE WINDOW (The 3 Borders Content Stage) =====
+       Bounded by:
+       - Top Border: var(--win-top) = 15%
+       - Bottom Border: var(--win-bottom) = 25% (from bottom)
+       - Third Border: var(--content-right) / var(--content-left) = Stops BEFORE the sidebar! */
+    .page-window {
+      position: absolute;
+      top: var(--win-top);
+      bottom: var(--win-bottom);
+      left: var(--content-left, 20px);
+      right: var(--content-right, 78px);
+      z-index: 20;
+      overflow: hidden;
+      /* No transition on left/right: the rope physics update these every frame, so the
+         content tracks the sidebar exactly instead of lagging behind it. */
+    }
+    .page-scroll {
+      position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain;
+      display: flex; flex-direction: column; gap: 12px;
+      padding-top: 4px; padding-bottom: 24px; padding-left: 2px; padding-right: 4px;
+      /* Dynamic Top Mask:
+         - At rest (st == 0): --top-mask-stop is 0px -> NO top mist! Total Kekayaan Bersih is 100% crisp!
+         - During scroll: dynamically fades content leaving through the top border. */
+      --top-mask-stop: 0px;
+      --mv: linear-gradient(to bottom,
+        rgba(0,0,0,0) 0px,
+        rgba(0,0,0,0.2) calc(var(--top-mask-stop) * 0.3),
+        rgba(0,0,0,0.7) calc(var(--top-mask-stop) * 0.7),
+        #000 var(--top-mask-stop),
+        #000 calc(100% - 64px),
+        rgba(0,0,0,0.6) calc(100% - 40px),
+        rgba(0,0,0,0.15) calc(100% - 20px),
+        rgba(0,0,0,0) calc(100% - 6px),
+        rgba(0,0,0,0) 100%
+      );
+      -webkit-mask-image: var(--mv); mask-image: var(--mv);
+    }
+    .page-scroll > * { flex-shrink: 0; }
+    .page-scroll.is-off { display: none; }
+    .page-scroll.screen-view { animation: screenIn .35s cubic-bezier(0.16,1,0.3,1) both; }
+    @keyframes screenIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    /* Horizontal carousel stays STRICTLY within the content window (never goes under sidebar).
+       - Generous vertical padding allows bottom drop shadows & glow to dissipate without cutoffs.
+       - Horizontal mist dissolves cards softly as they approach the Third Border! */
+    .carousel-rail {
+      display: flex; align-items: center; gap: 12px; overflow-x: auto; overflow-y: hidden;
+      padding: 6px 4px 24px 4px;
+      margin-bottom: -16px;
+      --mh: linear-gradient(to right,
+        #000 calc(100% - 48px),
+        rgba(0,0,0,0.5) calc(100% - 20px),
+        rgba(0,0,0,0) 100%
+      );
+      -webkit-mask-image: var(--mh); mask-image: var(--mh);
+    }
+
+    .ledger-pills-rail {
+      display: flex; align-items: center; gap: 8px; overflow-x: auto; overflow-y: hidden;
+      padding: 2px 2px 6px 2px;
+      --mh: linear-gradient(to right,
+        #000 calc(100% - 28px),
+        rgba(0,0,0,0.45) calc(100% - 12px),
+        rgba(0,0,0,0) 100%
+      );
+      -webkit-mask-image: var(--mh); mask-image: var(--mh);
+    }
+
+    /* Scroll-for-more pill: sits IN THE NEGATIVE SPACE below the 75% bottom border!
+       Never overlaps cards or content! */
+    .cue-wrap {
+      position: absolute;
+      left: var(--content-left, 20px);
+      right: var(--content-right, 78px);
+      top: calc(100% - var(--win-bottom) + 16px);
+      display: flex; justify-content: center; pointer-events: none; z-index: 30;
+    }
+    .cue-pill {
+      pointer-events: none; opacity: 0; transform: translateY(8px);
+      transition: opacity .35s ease, transform .35s ease;
+      display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 9999px;
+      background: rgba(255,255,255,0.88); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(226,232,240,0.9); box-shadow: 0 6px 18px -6px rgba(15,23,42,0.18);
+    }
+    .cue-pill.cue-on { opacity: 1; transform: none; pointer-events: auto; cursor: pointer; }
+    .cue-pill.cue-on i, .cue-pill.cue-on svg { animation: cueBob 2.4s ease-in-out infinite; }
+    @keyframes cueBob { 0%,100% { transform: translateY(-1px); } 50% { transform: translateY(3px); } }
+
+    /* Private numbers: pure uniform dots without commas/periods so magnitude is completely obscured */
+    .mc { display: inline-block; transition: opacity .11s ease, transform .11s ease, filter .11s ease; }
+    .mc.flip { opacity: 0; transform: translateY(-4px) scale(0.5); filter: blur(2px); }
+    .mc-sep { display: inline-block; transition: opacity .15s ease; }
+    .mc-mask { display: inline-block; letter-spacing: 0.12em; }
+
+    /* Visualizer for the 3 Borders (Prototype Guide) */
+    #guides { position: absolute; inset: 0; z-index: 90; pointer-events: none; display: none; }
+    .show-guides #guides { display: block; }
+    .guide-line { position: absolute; left: 0; right: 0; border-top: 1.5px dashed #E11D48; }
+    .guide-tag { position: absolute; left: 8px; transform: translateY(-100%); font: 600 9px 'Space Grotesk', monospace; color: #E11D48; background: rgba(255,255,255,0.92); padding: 1px 6px; border-radius: 6px; }
+    .guide-line-vert {
+      position: absolute; top: var(--win-top); bottom: var(--win-bottom); right: var(--content-right, 78px); left: auto;
+      border-right: 1.5px dashed #E11D48; z-index: 91; pointer-events: none;
+    }
+    .guide-tag-vert {
+      position: absolute; top: 8px; right: 6px; white-space: nowrap; font: 600 8px 'Space Grotesk', monospace;
+      color: #E11D48; background: rgba(255,255,255,0.95); padding: 1px 5px; border-radius: 4px;
+    }
+    .guide-band { position: absolute; left: 0; right: 0; bottom: 0; height: var(--win-bottom); background: repeating-linear-gradient(45deg, rgba(225,29,72,0.07) 0 8px, transparent 8px 16px); }
+
+    /* Physical rocker switch */
+    .rocker { position: relative; width: 52px; height: 30px; border-radius: 11px; background: #CBD5E1; box-shadow: inset 0 2px 4px rgba(15,23,42,0.18); transition: background-color .25s ease; flex-shrink: 0; }
+    .rocker[aria-checked="true"] { background: #1D4ED8; }
+    .rocker-knob { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 8px; background: #fff; box-shadow: 0 2px 5px rgba(15,23,42,0.28); transition: transform .28s cubic-bezier(0.34,1.56,0.64,1); }
+    .rocker[aria-checked="true"] .rocker-knob { transform: translateX(22px); }
+
+    .shake { animation: shake .4s ease; }
+    @keyframes shake { 20%,60% { transform: translateX(-6px); } 40%,80% { transform: translateX(6px); } }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .field-inner, .page-scroll.screen-view, .shake, .cue-pill i, .cue-pill svg { animation: none !important; }
+      .rail-btn, .rail-goo, .field-anchor, .cue-pill, .mc, .arc-digit, .rail-privacy, .rail-privacy .ic, .vault-pop, .rail-back { transition: none !important; }
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <filter id="goo">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
+      <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="goo" />
+      <feComposite in="SourceGraphic" in2="goo" operator="atop" />
+    </filter>
+  </svg>
+
+  <!-- Prototype-only controls (NOT part of the app UI) -->
+  <div class="hidden lg:flex fixed left-6 top-1/2 -translate-y-1/2 flex-col gap-2 w-48 p-3 rounded-2xl bg-white/80 backdrop-blur border border-slate-200 shadow-lg z-50">
+    <span class="text-[10px] font-mono font-bold uppercase tracking-widest text-charcoal-muted">3 Borders Architecture</span>
+    <button onclick="toggleGuides()" id="guidesBtn" class="px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-mono font-bold text-charcoal hover:bg-slate-200 transition text-left">3 Borders Guide: OFF</button>
+    <button onclick="flipSidebar()" class="px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-mono font-bold text-charcoal hover:bg-slate-200 transition text-left">Swap Sidebar</button>
+    <button onclick="triggerSimulatedShake()" class="px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-mono font-bold text-charcoal hover:bg-slate-200 transition text-left">Simulate Shake</button>
+    <button onclick="openCurSheet()" class="px-3 py-2 rounded-xl bg-cobalt-light border border-cobalt/30 text-xs font-mono font-bold text-cobalt hover:bg-cobalt/20 transition text-left">Live World Rates</button>
+  </div>
+
+  <div id="phoneShell" class="relative w-full h-full max-w-[430px] max-h-[920px] sm:h-[860px] sm:rounded-[48px] overflow-hidden bg-white shadow-[0_28px_80px_-20px_rgba(15,23,42,0.18)] sm:border-[8px] sm:border-slate-800">
+
+    <div class="liquid-canvas-bg"><div id="gradientField"></div></div>
+    <canvas id="dropletCanvas" class="droplet-canvas"></canvas>
+
+    <!-- 3 BORDERS VISUALIZER -->
+    <div id="guides" aria-hidden="true">
+      <div class="guide-line" style="top: var(--win-top)"><span class="guide-tag">TOP BORDER (15%) · Content dissolves before top bar</span></div>
+      <div class="guide-line" style="bottom: var(--win-bottom)"><span class="guide-tag" style="transform:none; top:3px">BOTTOM BORDER (75%) · Permanent 25% negative space below</span></div>
+      <div id="guideThirdBorder" class="guide-line-vert"><span id="guideThirdTag" class="guide-tag-vert">THIRD BORDER (SIDEBAR)</span></div>
+      <div class="guide-band"></div>
+    </div>
+
+    <!-- TOP BAR (Permanently in the 15% top zone, un-overlapped by content) -->
+    <div class="top-bar">
+      <div id="topLeft" class="min-w-0"></div>
+    </div>
+
+    <!-- SIDE RAIL (Centred on content window) -->
+    <aside id="duoRail" class="duo-side-rail" aria-label="Main navigation">
+      <div id="railGoo" class="rail-goo" aria-hidden="true">
+        <span id="gooLead" class="goo-dot"></span>
+        <span class="goo-dot goo-mid" style="display:none"></span>
+        <span class="goo-dot goo-mid" style="display:none"></span>
+        <span class="goo-dot goo-mid" style="display:none"></span>
+        <span id="gooTrail" class="goo-dot"></span>
+      </div>
+      <div class="pb-1.5 border-b border-slate-200/80">
+        <div id="railTop" class="rail-top">
+          <svg id="railArc" class="rail-arc" width="42" height="50" aria-hidden="true">
+            <text class="arc-digit">1</text>
+            <text class="arc-digit">4</text>
+            <text class="arc-digit">:</text>
+            <text class="arc-digit">2</text>
+            <text class="arc-digit">9</text>
+          </svg>
+          <button id="privacyBtn" class="rail-privacy" aria-pressed="false" aria-label="Toggle balance privacy" title="Toggle balance privacy" onclick="onPrivacyTap()"><i data-lucide="lock" class="ic ic-vault"></i><i data-lucide="eye-off" class="ic ic-hidden"></i></button>
+          <div id="vaultPop" class="vault-pop" role="status"><b>Local vault</b>Your data stays on this device.</div>
+          <button id="backBtn" class="rail-back" onclick="goBack()" aria-label="Back" title="Back"><i data-lucide="chevron-left" class="w-5 h-5 stroke-[2.5]"></i></button>
+        </div>
+      </div>
+      <button onclick="switchScreen('dashboard', this)" class="rail-btn active" data-screen="dashboard" aria-current="page" aria-label="Dashboard" title="Dashboard"><i data-lucide="layout-dashboard" class="w-5 h-5"></i></button>
+      <button onclick="switchScreen('ledger', this)" class="rail-btn" data-screen="ledger" aria-label="Ledger" title="Ledger"><i data-lucide="receipt-text" class="w-5 h-5"></i></button>
+      <button onclick="switchScreen('accounts', this)" class="rail-btn" data-screen="accounts" aria-label="Accounts" title="Accounts"><i data-lucide="wallet" class="w-5 h-5"></i></button>
+      <button onclick="switchScreen('analytics', this)" class="rail-btn" data-screen="analytics" aria-label="Analytics" title="Analytics"><i data-lucide="bar-chart-3" class="w-5 h-5"></i></button>
+      <button onclick="switchScreen('settings', this)" class="rail-btn" data-screen="settings" aria-label="Settings" title="Settings"><i data-lucide="settings-2" class="w-5 h-5"></i></button>
+      <div class="pt-2 border-t border-slate-200/80">
+        <button onclick="openFastLoggingSheet(event)" class="w-10 h-10 rounded-full bg-cobalt text-white flex items-center justify-center shadow-lg shadow-cobalt/25 active:scale-90 transition transform" aria-label="Log transaction" title="Log transaction"><i data-lucide="plus" class="w-5 h-5 stroke-[2.5]"></i></button>
+      </div>
+    </aside>
+
+    <!-- ============ PAGE WINDOW (3 Borders Bounded Content Stage) ============ -->
+    <main id="pageWindow" class="page-window">
+
+      <!-- DASHBOARD -->
+      <section id="screen-dashboard" class="page-scroll screen-view hide-scrollbar">
+        <div class="header-hero-block">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-mono tracking-widest text-charcoal-muted uppercase font-bold">Total Net Worth</span>
+          </div>
+          <div class="mt-1 flex items-baseline">
+            <span class="font-mono text-2xl font-bold text-cobalt mr-1.5">Rp</span>
+            <h1 id="heroNet" class="font-mono text-3xl sm:text-4xl font-extrabold tracking-tight text-charcoal">0</h1>
+          </div>
+          <div id="heroMeta" class="text-xs text-charcoal-muted mt-1 font-medium"></div>
+        </div>
+
+        <div class="glass-card rounded-[28px] p-4 flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <span class="text-[10px] font-mono tracking-widest text-charcoal-muted uppercase font-bold">Safe-to-Spend Today</span>
+            <div class="mt-1 flex items-baseline gap-1">
+              <span id="s2sAmount" class="font-mono text-2xl font-extrabold text-charcoal">Rp 0</span>
+              <span class="text-[11px] font-mono text-charcoal-muted">/ day</span>
+            </div>
+            <div class="mt-1.5 flex items-center gap-2 flex-wrap">
+              <span id="s2sPill" class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full">Safe</span>
+              <span id="s2sSub" class="text-[10px] text-charcoal-muted"></span>
+            </div>
+          </div>
+          <div class="relative w-16 h-16 shrink-0">
+            <svg viewBox="0 0 64 64" class="w-16 h-16 -rotate-90">
+              <circle cx="32" cy="32" r="26" fill="none" stroke="#E2E8F0" stroke-width="7"/>
+              <circle id="s2sRing" cx="32" cy="32" r="26" fill="none" stroke="#059669" stroke-width="7" stroke-linecap="round" stroke-dasharray="163.4" stroke-dashoffset="163.4" style="transition: stroke-dashoffset .8s cubic-bezier(0.16,1,0.3,1), stroke .6s ease"/>
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <span id="s2sPct" class="font-mono text-xs font-extrabold text-charcoal">0%</span>
+              <span class="text-[8px] font-mono text-charcoal-muted -mt-0.5">spent</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-1">
+          <span class="text-xs font-bold uppercase tracking-wider text-charcoal-muted">Active Accounts</span>
+          <button onclick="switchScreen('accounts')" class="text-xs font-bold text-cobalt flex items-center gap-0.5 hover:underline">See All<i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
+        </div>
+
+        <!-- Account cards carousel: stops BEFORE Third Border and dissolves with horizontal mist -->
+        <div id="carousel" class="carousel-rail hide-scrollbar"></div>
+
+        <div class="flex items-center justify-between pt-1">
+          <span class="text-xs font-bold uppercase tracking-wider text-charcoal-muted">Recent Activity</span>
+          <button onclick="switchScreen('ledger')" class="text-xs font-bold text-cobalt flex items-center gap-0.5 hover:underline">View transactions<i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
+        </div>
+        <div id="recentList" class="space-y-2"></div>
+
+        <div class="glass-card-subtle rounded-2xl p-4 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono tracking-widest text-charcoal-muted uppercase font-bold">Monthly Budget Runway</span>
+            <span id="budgetCap" class="font-mono text-xs font-bold text-charcoal"></span>
+          </div>
+          <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div id="budgetBar" class="h-full rounded-full transition-all duration-500" style="width:0%"></div>
+          </div>
+          <div class="flex justify-between text-[10px] font-mono text-charcoal-muted">
+            <span id="budgetSpent"></span>
+            <span>Days left: <b id="daysLeftText" class="text-charcoal"></b></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- LEDGER (MUTASI) -->
+      <section id="screen-ledger" class="page-scroll screen-view is-off hide-scrollbar">
+        <div>
+          <h2 class="text-xl font-extrabold text-charcoal tracking-tight">Activity Ledger</h2>
+          <p id="ledgerSub" class="text-xs text-charcoal-muted"></p>
+        </div>
+        <div id="ledgerPills" class="ledger-pills-rail hide-scrollbar"></div>
+        <div class="relative">
+          <i data-lucide="search" class="w-3.5 h-3.5 text-charcoal-subtle absolute left-3 top-1/2 -translate-y-1/2"></i>
+          <input id="ledgerSearch" oninput="renderAndRefresh()" type="text" placeholder="Search notes, categories, amounts..." class="w-full rounded-xl border border-slate-200 bg-white/80 pl-9 pr-3 py-2 text-xs font-semibold text-charcoal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cobalt/30">
+        </div>
+        <div id="ledgerList" class="space-y-2"></div>
+      </section>
+
+      <!-- ACCOUNTS (REKENING) -->
+      <section id="screen-accounts" class="page-scroll screen-view is-off hide-scrollbar">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-extrabold text-charcoal tracking-tight">Accounts</h2>
+            <p id="accSub" class="text-xs text-charcoal-muted"></p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="editToggle" onclick="toggleEditMode()" class="px-3 h-8 rounded-xl bg-white border border-slate-200 text-[11px] font-mono font-bold text-charcoal shadow-sm active:scale-95 transition">Edit</button>
+            <button onclick="openAccountSheet(event)" aria-label="Add account" class="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-cobalt shadow-sm active:scale-95 transition"><i data-lucide="plus" class="w-4 h-4"></i></button>
+          </div>
+        </div>
+
+        <!-- Real-Time World Currency Station -->
+        <div class="glass-card-subtle rounded-2xl p-3.5 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] font-mono tracking-widest text-charcoal-muted uppercase font-bold">Total in World Currencies</span>
+            <button onclick="fetchRealtimeRates()" title="Refresh live rates" class="text-[10px] font-mono text-cobalt hover:underline flex items-center gap-1"><i data-lucide="refresh-cw" class="w-2.5 h-2.5"></i><span id="curRateStatus">Real-Time</span></button>
+          </div>
+          <div class="flex items-baseline justify-between">
+            <div id="curValue" class="font-mono text-xl font-extrabold text-charcoal"></div>
+            <span id="curRate" class="text-[10px] font-mono text-charcoal-muted"></span>
+          </div>
+          <div class="flex items-center gap-1.5 flex-wrap pt-1">
+            <div id="curChips" class="flex gap-1.5 flex-wrap"></div>
+            <button onclick="openCurSheet()" class="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-cobalt-light text-cobalt border border-cobalt/30 hover:bg-cobalt/20 transition flex items-center gap-1"><i data-lucide="globe" class="w-3 h-3"></i>+ World</button>
+          </div>
+        </div>
+
+        <div id="vaultList" class="space-y-2.5"></div>
+      </section>
+
+      <!-- ACCOUNT DETAIL (Nested view: rail clock transforms to Back button) -->
+      <section id="screen-accountDetail" class="page-scroll screen-view is-off hide-scrollbar">
+        <div id="detailBody" class="space-y-3"></div>
+      </section>
+
+      <!-- ANALYTICS -->
+      <section id="screen-analytics" class="page-scroll screen-view is-off hide-scrollbar">
+        <div>
+          <h2 class="text-xl font-extrabold text-charcoal tracking-tight">Analytics</h2>
+          <p class="text-xs text-charcoal-muted">Cash flow, spending burn, and runway telemetry</p>
+        </div>
+
+        <div class="glass-card rounded-3xl p-4">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-[10px] font-mono tracking-widest text-charcoal-muted uppercase font-bold">Last 6 Months</span>
+            <div class="flex items-center gap-3 text-[10px] font-mono text-charcoal-muted">
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald"></span>Inflow</span>
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-persimmon"></span>Outflow</span>
+            </div>
+          </div>
+          <div id="dualBars" class="flex items-end justify-between h-28 gap-2"></div>
+        </div>
+
+        <div class="glass-card rounded-3xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-charcoal">Monthly Spending Runway</span>
+            <span id="sliderDisplayBudget" class="font-mono text-xs font-extrabold text-cobalt">Rp 0</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <button onclick="stepBudget(-500000)" aria-label="Decrease budget" class="w-11 h-11 rounded-2xl bg-slate-100 border border-slate-200 text-charcoal font-bold font-mono text-base active:scale-90 transition">−</button>
+            <input type="range" id="budgetRange" min="2000000" max="15000000" step="500000" value="7500000" oninput="onBudgetChange(this.value)" class="flex-1 accent-cobalt cursor-pointer">
+            <button onclick="stepBudget(500000)" aria-label="Increase budget" class="w-11 h-11 rounded-2xl bg-slate-100 border border-slate-200 text-charcoal font-bold font-mono text-base active:scale-90 transition">+</button>
+          </div>
+          <div id="recalcText" class="text-[11px] font-mono font-bold text-center"></div>
+        </div>
+
+        <div class="glass-card rounded-3xl p-4 flex items-center gap-4">
+          <div class="w-24 h-24 rounded-full shrink-0 relative" style="background: conic-gradient(#EA580C 0 34%, #1D4ED8 34% 60%, #D97706 60% 78%, #6366F1 78% 90%, #94A3B8 90% 100%)">
+            <div class="absolute inset-[14px] rounded-full bg-white flex flex-col items-center justify-center">
+              <span class="text-[8px] font-mono text-charcoal-muted uppercase">Outflow</span>
+              <span class="font-mono text-[11px] font-extrabold text-charcoal"><span class="m" data-t="3,3 jt"></span></span>
+            </div>
+          </div>
+          <div class="flex-1 space-y-1.5 text-[11px]">
+            <div class="flex justify-between"><span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-persimmon"></span>Food &amp; Dining</span><span class="font-mono font-bold">34%</span></div>
+            <div class="flex justify-between"><span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-cobalt"></span>Housing</span><span class="font-mono font-bold">26%</span></div>
+            <div class="flex justify-between"><span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-saffron"></span>Transportation</span><span class="font-mono font-bold">18%</span></div>
+            <div class="flex justify-between"><span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-iris"></span>Utilities</span><span class="font-mono font-bold">12%</span></div>
+            <div class="flex justify-between"><span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-slate-400"></span>General</span><span class="font-mono font-bold">10%</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS (All cards cleanly visible and scrollable) -->
+      <section id="screen-settings" class="page-scroll screen-view is-off hide-scrollbar">
+        <div>
+          <h2 class="text-xl font-extrabold text-charcoal tracking-tight">Settings</h2>
+          <p class="text-xs text-charcoal-muted">System configuration &amp; cockpit ergonomics</p>
+        </div>
+
+        <!-- Security -->
+        <div class="glass-card-subtle rounded-2xl p-4 space-y-3">
+          <span class="text-[10px] font-mono tracking-widest text-charcoal-muted uppercase font-bold">Security &amp; Access</span>
+          <div class="flex items-center justify-between"><span class="text-xs font-bold text-charcoal">PIN Code</span><button class="rocker" role="switch" aria-checked="true" data-key="pin" onclick="toggleRocker(this)"><span class="rocker-knob"></span></button></div>
+          <div class="flex items-center justify-between"><span class="text-xs font-bold text-charcoal">Biometrics</span><button class="rocker" role="switch" aria-checked="true" data-key="bio" onclick="toggleRocker(this)"><span class="rocker-knob"></span></button></div>
+          <div class="flex items-center justify-between"><span class="text-xs font-bold text-charcoal">Screen privacy</span><button class="rocker" role="switch" aria-checked="false" data-key="secure" onclick="toggleRocker(this)"><span class="rocker-knob"></span></button></div>
+        </div>
+
+        <!-- Sensory & Feedback -->
+        <div class="glass-card-subtle rounded-2xl p-4 space-y-3">
+          <span class="text-[10px] font-mono tracking-widest text-charcoal-muted uppercase font-bold">Sensory &amp; Feedback</span>
+          <div class="flex items-center justify-between"><span class="text-xs font-bold text-charcoal">Sound effects</span><button class="rocker" role="switch" aria-checked="true" data-key="sound" onclick="toggleRocker(this)"><span class="rocker-knob"></span></button></div>
+          <div class="flex items-center justify-between"><span class="text-xs font-bold text-charcoal">Tactile haptics</span><button class="rocker" role="switch" aria-checked="true" data-key="haptic" onclick="toggleRocker(this)"><span class="rocker-knob"></span></button></div>
+          <div class="flex items-center justify-between"><span class="text-xs font-bold text-charcoal">Daily reminder</span><button class="rocker" role="switch" aria-checked="true" data-key="remind" onclick="toggleRocker(this)"><span class="rocker-knob"></span></button></div>
+        </div>
+
+        <!-- Sidebar Setting (Left on the left, Right on the right!) -->
+        <div class="glass-card-subtle rounded-2xl p-4 space-y-3">
+          <span class="text-[10px] font-mono tracking-widest text-charcoal-muted uppercase font-bold">Sidebar Placement</span>
+          <div class="grid grid-cols-2 gap-2">
+            <button data-side="left" onclick="moveSidebarTo('left')" class="side-seg text-xs font-bold px-3 py-2.5 rounded-xl transition">Left</button>
+            <button data-side="right" onclick="moveSidebarTo('right')" class="side-seg text-xs font-bold px-3 py-2.5 rounded-xl transition">Right</button>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <div><div class="text-xs font-bold text-charcoal">Shake to swap sides</div><div class="text-[10px] text-charcoal-muted">Optional, uses motion sensor</div></div>
+            <button class="rocker" role="switch" aria-checked="false" data-key="shake" onclick="toggleRocker(this)"><span class="rocker-knob"></span></button>
+          </div>
+        </div>
+
+        <!-- Data & Language -->
+        <div class="glass-card-subtle rounded-2xl p-4 space-y-3">
+          <span class="text-[10px] font-mono tracking-widest text-charcoal-muted uppercase font-bold">Data &amp; Portability</span>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="showToast('Excel export built in Phase 7')" class="text-xs font-bold px-3 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-charcoal active:scale-95 transition">Export Excel</button>
+            <button onclick="showToast('Smart import built in Phase 7')" class="text-xs font-bold px-3 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-charcoal active:scale-95 transition">Smart Import</button>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="showToast('Language switcher configured in Phase i18n')" class="text-xs font-bold px-3 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-charcoal">Indonesia</button>
+            <button onclick="showToast('English is active')" class="text-xs font-bold px-3 py-2.5 rounded-xl bg-cobalt text-white shadow-sm">English</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Scroll-for-more pill: floating in NEGATIVE SPACE below the 75% bottom border (NEVER overlaps cards!) -->
+    <div class="cue-wrap">
+      <button id="cuePill" class="cue-pill" onclick="scrollMore()" aria-label="Scroll for more">
+        <span class="text-[11px] font-mono font-bold text-charcoal">Scroll for more</span>
+        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-cobalt"></i>
+      </button>
+    </div>
+
+    <!-- Fast Logging Sheet -->
+    <div id="logSheet" class="absolute inset-0 z-50 bg-charcoal/30 backdrop-blur-md flex flex-col justify-end transform translate-y-full transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]" role="dialog" aria-modal="true" aria-label="Log transaction">
+      <div class="bg-white/95 border-t border-white rounded-t-[36px] p-6 flex flex-col max-h-[92%] overflow-y-auto hide-scrollbar shadow-[0_-20px_60px_rgba(15,23,42,0.15)]">
+        <button class="w-12 h-1 bg-slate-300 rounded-full mx-auto mb-3 cursor-pointer" onclick="closeFastLoggingSheet(event)" aria-label="Close"></button>
+        <div class="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-2xl text-xs font-mono font-bold text-center">
+          <button id="rockerExp" onclick="setTxnType('outflow')" class="py-2 rounded-xl bg-persimmon text-white shadow-sm transition">Expense</button>
+          <button id="rockerInc" onclick="setTxnType('income')" class="py-2 rounded-xl text-charcoal-muted transition">Income</button>
+          <button id="rockerTrf" onclick="setTxnType('transfer')" class="py-2 rounded-xl text-charcoal-muted transition">Transfer</button>
+        </div>
+        <div class="mt-3">
+          <span id="fromLabel" class="text-[10px] font-mono tracking-widest text-charcoal-muted uppercase font-bold">Account</span>
+          <div id="fromChips" class="flex items-center gap-2 mt-2 overflow-x-auto hide-scrollbar pb-1"></div>
+        </div>
+        <div id="toWrap" class="mt-2 hidden">
+          <span id="toLabel" class="text-[10px] font-mono tracking-widest text-charcoal-muted uppercase font-bold">To Account</span>
+          <div id="toChips" class="flex items-center gap-2 mt-2 overflow-x-auto hide-scrollbar pb-1"></div>
+        </div>
+        <div id="noteWrap" class="mt-3">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-[10px] font-mono tracking-widest text-charcoal-muted uppercase font-bold">Note</span>
+            <div id="smartCategoryPill" class="text-[10px] font-mono font-bold text-cobalt bg-cobalt-light px-2 py-0.5 rounded-full flex items-center gap-1 border border-cobalt/20"><span>🏷️</span><span>General</span></div>
+          </div>
+          <input id="noteInput" type="text" placeholder="e.g. Coffee, Lunch, Salary" oninput="detectCategory(this.value)" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-charcoal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cobalt/30">
+        </div>
+        <div class="py-3 text-center">
+          <div class="font-mono text-4xl font-extrabold text-charcoal tracking-tight flex items-center justify-center"><span class="text-cobalt mr-1 text-2xl">Rp</span><span id="keypadValue">0</span></div>
+        </div>
+        <div id="numpad" class="grid grid-cols-3 gap-2 mb-3"></div>
+        <button id="saveBtn" onclick="executeSave(event)" class="w-full py-3.5 rounded-2xl bg-cobalt text-white font-bold text-xs uppercase font-mono tracking-wider shadow-lg shadow-cobalt/25 active:scale-95 transition">Save Transaction</button>
+      </div>
+    </div>
+
+    <!-- New Account Sheet -->
+    <div id="accountSheet" class="absolute inset-0 z-50 bg-charcoal/30 backdrop-blur-md flex flex-col justify-end transform translate-y-full transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]" role="dialog" aria-modal="true" aria-label="New account">
+      <div class="bg-white/95 border-t border-white rounded-t-[36px] p-6 pb-8 space-y-4 shadow-[0_-20px_60px_rgba(15,23,42,0.15)]">
+        <div class="flex items-center justify-between">
+          <span class="font-mono text-xs font-bold text-charcoal uppercase tracking-wider">New Account</span>
+          <button onclick="closeAccountSheet(event)" aria-label="Close" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-charcoal-muted"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+        <label class="block"><span class="text-[10px] font-mono tracking-widest text-charcoal-muted uppercase font-bold">Account Name</span>
+          <input id="accName" type="text" maxlength="28" placeholder="e.g. Checking Account, Cash Wallet" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-semibold text-charcoal focus:outline-none focus:ring-2 focus:ring-cobalt/30"></label>
+        <label class="block"><span class="text-[10px] font-mono tracking-widest text-charcoal-muted uppercase font-bold">Starting Balance (Rp)</span>
+          <input id="accAmount" type="text" inputmode="numeric" placeholder="1000000" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-mono font-semibold text-charcoal focus:outline-none focus:ring-2 focus:ring-cobalt/30"></label>
+        <div><span class="text-[10px] font-mono tracking-widest text-charcoal-muted uppercase font-bold">Accent Color</span><div id="accSwatches" class="flex items-center gap-2.5 mt-2"></div></div>
+        <button onclick="saveAccount()" class="w-full py-3.5 rounded-2xl bg-cobalt text-white font-bold text-xs uppercase font-mono tracking-wider shadow-lg shadow-cobalt/25 active:scale-95 transition">Create Account</button>
+      </div>
+    </div>
+
+    <!-- Real-Time World Currency Picker Sheet -->
+    <div id="curSheet" class="absolute inset-0 z-50 bg-charcoal/30 backdrop-blur-md flex flex-col justify-end transform translate-y-full transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]" role="dialog" aria-modal="true" aria-label="Select World Currency">
+      <div class="bg-white/95 border-t border-white rounded-t-[36px] p-6 pb-8 space-y-4 shadow-[0_-20px_60px_rgba(15,23,42,0.15)] max-h-[88%] flex flex-col">
+        <div class="flex items-center justify-between shrink-0">
+          <div>
+            <h3 class="font-mono text-sm font-bold text-charcoal uppercase tracking-wider">World Currencies</h3>
+            <p id="curSheetStatus" class="text-[10px] font-mono text-emerald flex items-center gap-1 mt-0.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald animate-pulse"></span>Live Rates (100% Free Open API)</p>
+          </div>
+          <button onclick="closeCurSheet(event)" aria-label="Close" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-charcoal-muted active:scale-90 transition"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+        <div class="relative shrink-0">
+          <i data-lucide="search" class="w-3.5 h-3.5 text-charcoal-subtle absolute left-3 top-1/2 -translate-y-1/2"></i>
+          <input id="curSearchInput" type="text" placeholder="Search currency (USD, JPY, EUR, SGD, GBP...)" oninput="filterWorldCurrencies(this.value)" class="w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 py-2 text-xs font-semibold text-charcoal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cobalt/30">
+        </div>
+        <div id="worldCurList" class="flex-1 overflow-y-auto hide-scrollbar space-y-2 pr-0.5"></div>
+      </div>
+    </div>
+
+    <!-- Onboarding -->
+    <div id="onboarding" style="display:none !important;" class="absolute inset-0 z-[60] flex items-end bg-charcoal/25 backdrop-blur-md transition-opacity duration-300" role="dialog" aria-modal="true">
+      <div class="w-full bg-white/95 border-t border-white rounded-t-[36px] p-6 pb-8 shadow-[0_-20px_60px_rgba(15,23,42,0.15)] space-y-5 max-h-[94%] overflow-y-auto hide-scrollbar">
+        <div>
+          <h2 class="text-2xl font-extrabold text-charcoal tracking-tight">Customize Your Cockpit</h2>
+          <p class="text-xs text-charcoal-muted mt-1">You can adjust this anytime in Settings.</p>
+        </div>
+        <div>
+          <span class="text-[10px] font-mono tracking-widest uppercase font-bold text-charcoal-muted">Sidebar Placement</span>
+          <div class="grid grid-cols-2 gap-2 mt-2">
+            <button data-side="left" onclick="setOnboardHand('left')" class="ob-seg text-xs font-bold px-3 py-2.5 rounded-xl transition">Left</button>
+            <button data-side="right" onclick="setOnboardHand('right')" class="ob-seg text-xs font-bold px-3 py-2.5 rounded-xl transition">Right</button>
+          </div>
+        </div>
+        <div class="glass-card-subtle rounded-2xl p-3.5 flex items-center justify-between gap-3">
+          <div><div class="text-xs font-bold text-charcoal">Shake to swap sides</div><div class="text-[10px] text-charcoal-muted mt-0.5">Optional. A firm shake moves the sidebar to the other side.</div></div>
+          <button class="rocker" role="switch" aria-checked="false" data-key="shake" onclick="toggleRocker(this)"><span class="rocker-knob"></span></button>
+        </div>
+        <div class="glass-card-subtle rounded-2xl p-3.5 flex items-center gap-4">
+          <div class="relative shrink-0 w-[80px] h-[150px] rounded-[20px] border-[4px] border-slate-800 bg-white overflow-hidden" aria-hidden="true">
+            <div id="miniField" class="mini-field absolute inset-0"></div>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xs font-bold text-charcoal">Your balances paint the background</div>
+            <p id="demoCaption" class="text-[10px] text-charcoal-muted mt-1 leading-relaxed"></p>
+          </div>
+        </div>
+        <button onclick="finishOnboarding()" class="w-full py-3.5 rounded-2xl bg-cobalt text-white font-bold text-xs uppercase font-mono tracking-wider shadow-lg shadow-cobalt/25 active:scale-95 transition">Get Started</button>
+      </div>
+    </div>
+
+    <div id="flowToast" class="absolute top-[6%] left-1/2 -translate-x-1/2 z-[70] transform -translate-y-20 opacity-0 transition-all duration-300 pointer-events-none" role="status" aria-live="polite">
+      <div class="px-4 py-2 rounded-full bg-charcoal text-white flex items-center space-x-2 shadow-xl border border-white/10">
+        <span id="toastDot" class="w-2 h-2 rounded-full bg-emerald"></span>
+        <span id="toastMsg" class="font-mono text-xs font-bold"></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    lucide.createIcons();
+    const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // ================= STATE =================
+    const ACCENTS = { cobalt:'#1D4ED8', emerald:'#059669', persimmon:'#EA580C', saffron:'#D97706', iris:'#6366F1', berry:'#E11D48' };
+    const FIELD_SPOTS = [{x:30,y:24},{x:78,y:62},{x:24,y:80},{x:76,y:14},{x:58,y:94},{x:12,y:48}];
+    const ICON_BG = { cobalt:'bg-cobalt-light text-cobalt', emerald:'bg-emerald-light text-emerald', persimmon:'bg-persimmon-light text-persimmon', saffron:'bg-saffron-light text-saffron', iris:'bg-iris-light text-iris', berry:'bg-berry-light text-berry' };
+
+    // Real-Time World Currency Directory (100% Free Open API)
+    const WORLD_CURRENCIES = [
+      { code:'USD', name:'US Dollar', flag:'🇺🇸', sym:'US$', r:15680 },
+      { code:'SGD', name:'Singapore Dollar', flag:'🇸🇬', sym:'S$', r:11890 },
+      { code:'MYR', name:'Malaysian Ringgit', flag:'🇲🇾', sym:'RM', r:3650 },
+      { code:'JPY', name:'Japanese Yen', flag:'🇯🇵', sym:'¥', r:103.5 },
+      { code:'EUR', name:'Euro', flag:'🇪🇺', sym:'€', r:16950 },
+      { code:'GBP', name:'British Pound', flag:'🇬🇧', sym:'£', r:20380 },
+      { code:'SAR', name:'Saudi Riyal', flag:'🇸🇦', sym:'SR', r:4180 },
+      { code:'AED', name:'UAE Dirham', flag:'🇦🇪', sym:'AED', r:4270 },
+      { code:'AUD', name:'Australian Dollar', flag:'🇦🇺', sym:'A$', r:10420 },
+      { code:'CNY', name:'Chinese Yuan', flag:'🇨🇳', sym:'¥', r:2210 },
+      { code:'THB', name:'Thai Baht', flag:'🇹🇭', sym:'฿', r:475 },
+      { code:'KRW', name:'South Korean Won', flag:'🇰🇷', sym:'₩', r:11.4 },
+      { code:'HKD', name:'Hong Kong Dollar', flag:'🇭🇰', sym:'HK$', r:2015 },
+      { code:'CAD', name:'Canadian Dollar', flag:'🇨🇦', sym:'C$', r:11450 },
+      { code:'CHF', name:'Swiss Franc', flag:'🇨🇭', sym:'CHF', r:17920 },
+      { code:'TRY', name:'Turkish Lira', flag:'🇹🇷', sym:'₺', r:455 },
+      { code:'INR', name:'Indian Rupee', flag:'🇮🇳', sym:'₹', r:186 },
+      { code:'NZD', name:'New Zealand Dollar', flag:'🇳🇿', sym:'NZ$', r:9480 },
+      { code:'PHP', name:'Philippine Peso', flag:'🇵🇭', sym:'₱', r:272 },
+      { code:'VND', name:'Vietnamese Dong', flag:'🇻🇳', sym:'₫', r:0.62 },
+      { code:'TWD', name:'New Taiwan Dollar', flag:'🇹🇼', sym:'NT$', r:488 }
+    ];
+    const RATES = {};
+    WORLD_CURRENCIES.forEach(c => { RATES[c.code] = { r: c.r, s: c.sym }; });
+
+    const SAMPLE_ACCOUNTS = [
+      { name:'BCA Main', color:'cobalt', balance:12500000 },
+      { name:'Mandiri', color:'emerald', balance:4200000 },
+      { name:'GoPay', color:'persimmon', balance:950000 },
+      { name:'Bibit Vault', color:'iris', balance:800000 }
+    ];
+    const SAMPLE_TX = [
+      { title:'Artisan Coffee', category:'Food & Dining', type:'outflow', amount:-28000, day:'Today', icon:'coffee', color:'persimmon', acc:3 },
+      { title:'Tech Corp Salary', category:'Salary', type:'income', amount:4500000, day:'Today', icon:'arrow-down-left', color:'emerald', acc:1 },
+      { title:'City Subway Pass', category:'Transportation', type:'outflow', amount:-14000, day:'Today', icon:'train-front', color:'saffron', acc:3 },
+      { title:'Lunch & Dining', category:'Food & Dining', type:'outflow', amount:-35000, day:'Today', icon:'utensils', color:'persimmon', acc:3 },
+      { title:'Portfolio Dividend', category:'Investment', type:'income', amount:185000, day:'Yesterday', icon:'sparkles', color:'emerald', acc:4 },
+      { title:'Electricity Bill', category:'Utilities', type:'outflow', amount:-250000, day:'Yesterday', icon:'zap', color:'iris', acc:2 },
+      { title:'Ride to Office', category:'Transportation', type:'outflow', amount:-22000, day:'Yesterday', icon:'bike', color:'saffron', acc:3 },
+      { title:'BCA Main → GoPay', category:'Transfer', type:'transfer', amount:500000, day:'Tuesday, Oct 12', icon:'arrow-left-right', color:'cobalt', acc:1, to:3 },
+      { title:'Apartment Rent', category:'Housing', type:'outflow', amount:-1200000, day:'Tuesday, Oct 12', icon:'home', color:'cobalt', acc:2 },
+      { title:'Online Shopping', category:'Shopping', type:'outflow', amount:-146000, day:'Tuesday, Oct 12', icon:'shopping-bag', color:'berry', acc:1 }
+    ];
+    const BARS = [['May',6.2,4.1],['Jun',6.2,5.0],['Jul',6.4,4.4],['Aug',6.4,5.2],['Sep',7.0,4.8],['Oct',4.7,3.3]];
+
+    const appState = {
+      accounts: [], transactions: [], activeScreen: 'dashboard', detailId: null,
+      keypad: '0', txnType: 'outflow', fromId: null, toId: null, category: { icon:'🏷️', name:'General' },
+      masked: false, budget: 7500000, committed: 3250000, daysLeft: 17,
+      filter: 'all', editMode: false, cur: 'USD', prefs: { shake: false }
+    };
+    const navStack = [];
+    let accentDraft = 'cobalt';
+
+    const gradientField = document.getElementById('gradientField');
+    const railEl = document.getElementById('duoRail');
+    const shell = document.getElementById('phoneShell');
+    const gooLayer = document.getElementById('railGoo');
+    const gooLead = document.getElementById('gooLead');
+    const gooTrail = document.getElementById('gooTrail');
+    const gooMids = [...document.querySelectorAll('#railGoo .goo-mid')];
+    const NAV_STEP = 52; // centre-to-centre spacing of rail buttons (42px + 10px gap)
+
+    // ================= HELPERS =================
+    const fmt = n => Math.abs(Math.round(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const total = () => appState.accounts.reduce((s, a) => s + a.balance, 0);
+    const getAcc = id => appState.accounts.find(a => a.id === id);
+
+    // Private numbers: pure uniform dots WITHOUT commas or periods so magnitude is impossible to guess
+    const DOT = '•';
+    const MASK_DOTS = '•••••••';
+    function mChars(text, masked) {
+      if (masked) {
+        return `<span class="mc-mask font-mono tracking-wider">${MASK_DOTS}</span>`;
+      }
+      return [...text].map(ch => {
+        if (/\d/.test(ch)) return `<span class="mc" data-d="${ch}">${ch}</span>`;
+        if (/[.,]/.test(ch)) return `<span class="mc-sep" data-sep="${ch}">${esc(ch)}</span>`;
+        return esc(ch);
+      }).join('');
+    }
+    const M = text => `<span class="m" data-t="${esc(text)}">${mChars(text, appState.masked)}</span>`;
+    const rp = n => M('Rp ' + fmt(n));
+    const signed = n => (n > 0 ? '+' : n < 0 ? '−' : '') + rp(n);
+
+    let maskGen = 0;
+    const onScreen = el => {
+      if (el.offsetParent === null) return false;
+      const r = el.getBoundingClientRect(), s = shell.getBoundingClientRect();
+      return r.bottom > s.top && r.top < s.bottom && r.right > s.left && r.left < s.right;
+    };
+    // Pin an element to its old width, then animate it to the width the masked (or revealed) value needs.
+    // The cards around it reflow smoothly instead of snapping.
+    function measureHtml(el, html) {
+      const probe = document.createElement(el.tagName.toLowerCase());
+      probe.className = el.className;
+      probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;display:inline-block;';
+      probe.innerHTML = html; el.parentNode.appendChild(probe);
+      const w = probe.getBoundingClientRect().width; probe.remove(); return w;
+    }
+    function animateWidth(el, w0, w1, gen) {
+      el.style.display = 'inline-block'; el.style.verticalAlign = 'bottom'; el.style.whiteSpace = 'nowrap';
+      el.style.transition = 'none'; el.style.width = w0 + 'px'; void el.offsetWidth;
+      el.style.transition = 'width .48s cubic-bezier(0.16,1,0.3,1)'; el.style.width = w1 + 'px';
+      el._wGen = gen;
+      setTimeout(() => {
+        if (el._wGen !== gen) return;
+        el.style.transition = ''; el.style.width = ''; el.style.display = ''; el.style.verticalAlign = ''; el.style.whiteSpace = '';
+      }, 520);
+    }
+    function setMasked(on) {
+      appState.masked = on; const gen = ++maskGen;
+      const btn = document.getElementById('privacyBtn');
+      btn.setAttribute('aria-pressed', on);
+      lucide.createIcons();
+
+      document.querySelectorAll('.m').forEach(el => {
+        const rawText = el.dataset.t;
+        const live = !REDUCED && onScreen(el);
+        if (!live) {
+          el.innerHTML = mChars(rawText, on);
+          return;
+        }
+        const w0 = el.getBoundingClientRect().width;
+        const w1 = measureHtml(el, on ? `<span class="mc-mask font-mono tracking-wider">${MASK_DOTS}</span>` : mChars(rawText, false));
+        animateWidth(el, w0, w1, gen);
+
+        if (on) {
+          // Wave hide: collapse commas/dots and flip numbers into uniform solid dots from right to left
+          const digits = [...el.querySelectorAll('.mc')];
+          const seps = [...el.querySelectorAll('.mc-sep')];
+          seps.forEach(s => { s.style.opacity = '0'; s.style.display = 'none'; });
+          digits.forEach((d, i) => {
+            const order = digits.length - 1 - i;
+            setTimeout(() => {
+              if (gen !== maskGen) return;
+              d.classList.add('flip');
+              setTimeout(() => {
+                if (gen !== maskGen) return;
+                d.textContent = DOT;
+                d.classList.remove('flip');
+              }, 90);
+            }, order * 32);
+          });
+          setTimeout(() => {
+            if (gen !== maskGen) return;
+            el.innerHTML = `<span class="mc-mask font-mono tracking-wider">${MASK_DOTS}</span>`;
+          }, digits.length * 32 + 110);
+        } else {
+          // Wave reveal: expand dots into digits with separators from left to right
+          el.innerHTML = mChars(rawText, false);
+          const digits = [...el.querySelectorAll('.mc')];
+          const seps = [...el.querySelectorAll('.mc-sep')];
+          seps.forEach(s => { s.style.opacity = '0'; });
+          digits.forEach(d => { d.textContent = DOT; });
+          digits.forEach((d, i) => {
+            setTimeout(() => {
+              if (gen !== maskGen) return;
+              d.classList.add('flip');
+              setTimeout(() => {
+                if (gen !== maskGen) return;
+                d.textContent = d.dataset.d;
+                d.classList.remove('flip');
+              }, 90);
+            }, i * 32);
+          });
+          setTimeout(() => {
+            if (gen !== maskGen) return;
+            seps.forEach(s => { s.style.opacity = '1'; s.style.transition = 'opacity 0.2s ease'; });
+          }, digits.length * 32);
+        }
+      });
+    }
+    function toggleBalancePrivacy() { setMasked(!appState.masked); showToast(appState.masked ? 'Balances hidden' : 'Balances revealed'); }
+
+    // ================= AUDIO =================
+    let audioCtx = null;
+    function chime() {
+      try {
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+        [820, 1140].forEach((f, i) => {
+          const o = audioCtx.createOscillator(), g = audioCtx.createGain(), t = now + i * 0.04;
+          o.type = 'sine'; o.frequency.setValueAtTime(f * 1.4, t); o.frequency.exponentialRampToValueAtTime(f * 0.6, t + 0.12);
+          g.gain.setValueAtTime(0.045, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+          o.connect(g); g.connect(audioCtx.destination); o.start(t); o.stop(t + 0.12);
+        });
+      } catch (e) {}
+    }
+
+    // ================= SETTLEMENT SPLASH =================
+    const dCanvas = document.getElementById('dropletCanvas'), dCtx = dCanvas.getContext('2d');
+    const parts = []; let dRun = false;
+    function sizeDroplet() { const r = dCanvas.parentElement.getBoundingClientRect(); dCanvas.width = r.width; dCanvas.height = r.height; }
+    function splash(x, y) {
+      chime(); if (REDUCED) return;
+      for (let i = 0; i < 14; i++) { const a = Math.PI * 2 * i / 14 + Math.random() * 0.4, s = 2 + Math.random() * 4; parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 2.5, r: 2 + Math.random() * 3, al: 1 }); }
+      if (!dRun) { dRun = true; requestAnimationFrame(animSplash); }
+    }
+    function animSplash() {
+      dCtx.clearRect(0, 0, dCanvas.width, dCanvas.height);
+      for (let i = parts.length - 1; i >= 0; i--) {
+        const p = parts[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.28; p.al *= 0.93; p.r *= 0.97;
+        dCtx.beginPath(); dCtx.arc(p.x, p.y, Math.max(0.5, p.r), 0, 6.283); dCtx.fillStyle = `rgba(29,78,216,${p.al})`; dCtx.fill();
+        if (p.al < 0.02) parts.splice(i, 1);
+      }
+      if (parts.length) requestAnimationFrame(animSplash); else dRun = false;
+    }
+
+    // ================= GRADIENT FIELD =================
+    function paintField(container, accs) {
+      const sorted = [...accs].sort((a, b) => b.balance - a.balance);
+      const max = Math.max(1, ...sorted.map(a => a.balance));
+      const nodes = container._nodes || (container._nodes = []);
+      while (nodes.length > sorted.length) { const n = nodes.pop(); n.style.opacity = '0'; setTimeout(() => n.remove(), 1000); }
+      while (nodes.length < sorted.length) {
+        const n = document.createElement('div'); n.className = 'field-anchor'; n.style.opacity = '0';
+        const inner = document.createElement('div'); inner.className = 'field-inner'; n.appendChild(inner);
+        container.appendChild(n); nodes.push(n); requestAnimationFrame(() => { n.style.opacity = ''; });
+      }
+      sorted.forEach((a, i) => {
+        const n = nodes[i], sp = FIELD_SPOTS[i % FIELD_SPOTS.length], sh = a.balance / max;
+        n.style.left = sp.x + '%'; n.style.top = sp.y + '%'; n.style.width = (28 + 42 * Math.pow(sh, 0.8)).toFixed(1) + '%';
+        n.firstChild.style.background = ACCENTS[a.color] || ACCENTS.cobalt;
+      });
+    }
+
+    // ================= ROPE SIDEBAR & 3 BORDERS =================
+    const rope = { head: 0, tail: 0, headV: 0, tailV: 0, target: 0, raf: null, last: 0 };
+    let railSide = 'right';
+    const travelPx = () => Math.max(1, shell.clientWidth - railEl.offsetWidth - 24);
+    const spring = (pos, vel, tgt, k, c, dt) => { vel += ((tgt - pos) * k - vel * c) * dt; return [pos + vel * dt, vel]; };
+    function renderRope() {
+      const H = railEl.offsetHeight || 300;
+      const lean = clamp(Math.atan((rope.tail - rope.head) / H) * 180 / Math.PI, -18, 18);
+      railEl.style.transform = `translateY(-50%) translateX(${rope.tail.toFixed(2)}px) skewX(${lean.toFixed(2)}deg)`;
+      // The sidebar body is positioned by rope.tail, so the content edges must use the same value.
+      // Using the head/tail average let the content run ahead of the sidebar mid-flip.
+      const p = clamp(-rope.tail / travelPx(), 0, 1);
+      shell.style.setProperty('--rail-p', p.toFixed(4));
+      gradientField.style.transform = `translate3d(${(-rope.tail * 0.05).toFixed(2)}px,0,0)`;
+      updateGuideThirdBorder();
+    }
+    function ropeFrame(now) {
+      const dt = Math.min(1 / 30, Math.max(1 / 240, (now - rope.last) / 1000)); rope.last = now;
+      [rope.head, rope.headV] = spring(rope.head, rope.headV, rope.target, 320, 23, dt);
+      [rope.tail, rope.tailV] = spring(rope.tail, rope.tailV, rope.target, 120, 17, dt);
+      renderRope();
+      if (Math.abs(rope.head - rope.target) < 0.1 && Math.abs(rope.tail - rope.target) < 0.1 && Math.abs(rope.headV) < 0.5 && Math.abs(rope.tailV) < 0.5) {
+        rope.head = rope.tail = rope.target; rope.headV = rope.tailV = 0; renderRope(); rope.raf = null; refreshActive(); return;
+      }
+      rope.raf = requestAnimationFrame(ropeFrame);
+    }
+    function updateGuideThirdBorder() {
+      const g = document.getElementById('guideThirdBorder');
+      const tag = document.getElementById('guideThirdTag');
+      if (!g) return;
+      if (railSide === 'left') {
+        g.style.left = 'var(--content-left, 78px)';
+        g.style.right = 'auto';
+        g.style.borderLeft = '1.5px dashed #E11D48';
+        g.style.borderRight = 'none';
+        if (tag) { tag.style.left = '6px'; tag.style.right = 'auto'; }
+      } else {
+        g.style.right = 'var(--content-right, 78px)';
+        g.style.left = 'auto';
+        g.style.borderRight = '1.5px dashed #E11D48';
+        g.style.borderLeft = 'none';
+        if (tag) { tag.style.right = '6px'; tag.style.left = 'auto'; }
+      }
+    }
+    function syncSideUI() {
+      document.querySelectorAll('.side-seg, .ob-seg').forEach(b => {
+        const on = b.dataset.side === railSide;
+        b.className = (b.classList.contains('ob-seg') ? 'ob-seg' : 'side-seg') + ' text-xs font-bold px-3 py-2.5 rounded-xl transition ' + (on ? 'bg-cobalt text-white shadow-sm' : 'bg-slate-100 text-charcoal border border-slate-200');
+      });
+      updateGuideThirdBorder();
+    }
+    function flipSidebar() {
+      railSide = railSide === 'right' ? 'left' : 'right';
+      rope.target = railSide === 'left' ? -travelPx() : 0;
+      if (navigator.vibrate) navigator.vibrate(10);
+      if (REDUCED) { rope.head = rope.tail = rope.target; rope.headV = rope.tailV = 0; renderRope(); refreshActive(); }
+      else if (!rope.raf) { rope.last = performance.now(); rope.raf = requestAnimationFrame(ropeFrame); }
+      syncSideUI(); showToast(`Sidebar docked ${railSide === 'right' ? 'Right' : 'Left'}`);
+    }
+    function moveSidebarTo(side) { if (side !== railSide) flipSidebar(); }
+    function triggerSimulatedShake() { shell.classList.add('shake'); setTimeout(() => shell.classList.remove('shake'), 420); flipSidebar(); }
+    function setSideImmediate(side) {
+      railSide = side; rope.target = side === 'left' ? -travelPx() : 0;
+      rope.head = rope.tail = rope.target; rope.headV = rope.tailV = 0; renderRope(); syncSideUI();
+    }
+
+    const SHAKE = { th: 12, gap: 120, win: 800, min: 3, cool: 1200 };
+    let lastG = null, peaks = [], lastPeak = 0, lastShake = 0, shakeListening = false;
+    function onMotion(e) {
+      const g = e.accelerationIncludingGravity; if (!g || g.x == null) return;
+      if (!lastG) { lastG = { x: g.x, y: g.y, z: g.z }; return; }
+      const j = Math.hypot(g.x - lastG.x, g.y - lastG.y, g.z - lastG.z); lastG = { x: g.x, y: g.y, z: g.z };
+      if (j < SHAKE.th) return;
+      const now = performance.now(); if (now - lastPeak < SHAKE.gap) return; lastPeak = now;
+      peaks = peaks.filter(t => now - t <= SHAKE.win); peaks.push(now);
+      if (peaks.length >= SHAKE.min && now - lastShake > SHAKE.cool) { lastShake = now; peaks = []; flipSidebar(); }
+    }
+    async function enableShake() {
+      if (!('DeviceMotionEvent' in window)) return false;
+      try { if (typeof DeviceMotionEvent.requestPermission === 'function' && await DeviceMotionEvent.requestPermission() !== 'granted') return false; } catch (e) { return false; }
+      if (!shakeListening) { window.addEventListener('devicemotion', onMotion); shakeListening = true; }
+      return true;
+    }
+
+    // ================= GOO NAV DRIP =================
+    const DRIP_MS = 420, DR = 21;
+    let navBtn = document.querySelector('.rail-btn.active'), dripTarget = null, dripRaf = null;
+    const eio = p => p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2, ei = p => p * p * p;
+    const navC = b => ({ x: b.offsetLeft + b.offsetWidth / 2, y: b.offsetTop + b.offsetHeight / 2 });
+    const dot = (el, cx, cy, r) => el.style.transform = `translate3d(${cx - DR}px,${cy - DR}px,0) scale(${r / DR})`;
+    function setActiveNav(b) { document.querySelectorAll('.rail-btn').forEach(x => { x.classList.remove('active'); x.removeAttribute('aria-current'); }); b.classList.add('active'); b.setAttribute('aria-current', 'page'); }
+    function settle(b) { if (dripRaf) cancelAnimationFrame(dripRaf); dripRaf = null; dripTarget = null; setActiveNav(b); gooLayer.style.opacity = '0'; navBtn = b; }
+    function dripTo(to) {
+      if (!to) return; if (dripTarget) settle(dripTarget);
+      if (to === navBtn) { setActiveNav(to); return; }
+      const from = navBtn; if (!from || REDUCED) { settle(to); return; }
+      const a = navC(from), b = navC(to), dy = b.y - a.y; dripTarget = to;
+      from.classList.remove('active'); from.removeAttribute('aria-current'); gooLayer.style.opacity = '1';
+      // Long jumps get extra middle drops so the blobs never split: 1 to 2 keeps the original two-drop drip
+      const midCount = Math.min(gooMids.length, Math.max(0, Math.ceil(Math.abs(dy) / NAV_STEP) - 1));
+      gooMids.forEach((el, j) => { el.style.display = j < midCount ? '' : 'none'; dot(el, a.x, a.y, DR); });
+      dot(gooLead, a.x, a.y, DR); dot(gooTrail, a.x, a.y, DR);
+      const t0 = performance.now();
+      const frame = now => {
+        const p = Math.min(1, (now - t0) / DRIP_MS), tr = eio(Math.min(1, p / 0.8)), pull = ei(Math.max(0, (p - 0.12) / 0.88));
+        dot(gooLead, a.x + Math.sin(p * 6.283) * 1.2 * (1 - p), a.y + dy * tr, DR + Math.sin(Math.min(1, p / 0.8) * Math.PI) * 3.5);
+        gooMids.forEach((el, j) => {
+          if (j >= midCount) return;
+          const f = (j + 1) / (midCount + 1);
+          dot(el, a.x, a.y + dy * (tr * (1 - f) + pull * f), Math.max(0.5, DR * (1 - pull * 0.95 * f)));
+        });
+        dot(gooTrail, a.x, a.y + dy * pull, Math.max(0.5, DR * (1 - pull * 0.95)));
+        if (p < 1) dripRaf = requestAnimationFrame(frame); else settle(to);
+      };
+      dripRaf = requestAnimationFrame(frame);
+    }
+
+    // ================= PAGE WINDOW, ZERO-HARD-EDGE MIST & SCROLL CUE =================
+    const cue = document.getElementById('cuePill');
+    const scrollers = [...document.querySelectorAll('.page-scroll')];
+    const activeScroller = () => document.getElementById('screen-' + appState.activeScreen);
+
+    function layoutPage(sc) {
+      if (!sc || sc.classList.contains('is-off')) return;
+      applyMist(sc);
+    }
+
+    function applyMist(sc) {
+      if (!sc || sc.classList.contains('is-off')) return;
+      const st = sc.scrollTop, ch = sc.clientHeight;
+      const more = st + ch < sc.scrollHeight - 16;
+      if (sc === activeScroller()) cue.classList.toggle('cue-on', more);
+
+      // Top mist guarantee:
+      // At rest (st <= 1px), mask starts at #000 0% -> Zero dimming on Total Kekayaan Bersih (Gambar 1 fix)!
+      if (st <= 1) {
+        sc.style.webkitMaskImage = 'linear-gradient(to bottom, #000 0%, #000 calc(100% - 64px), rgba(0,0,0,0.6) calc(100% - 40px), rgba(0,0,0,0.15) calc(100% - 20px), rgba(0,0,0,0) calc(100% - 6px))';
+        sc.style.maskImage = 'linear-gradient(to bottom, #000 0%, #000 calc(100% - 64px), rgba(0,0,0,0.6) calc(100% - 40px), rgba(0,0,0,0.15) calc(100% - 20px), rgba(0,0,0,0) calc(100% - 6px))';
+      } else {
+        const topStop = Math.min(36, st);
+        sc.style.setProperty('--top-mask-stop', topStop + 'px');
+        sc.style.webkitMaskImage = 'var(--mv)';
+        sc.style.maskImage = 'var(--mv)';
+      }
+
+      // Per-card smooth dissolve so backdrop-filter glass cards NEVER hit a razor-sharp cut!
+      // Select all cards, items, chips, and hero blocks across all screens
+      const cards = sc.querySelectorAll('.glass-card, .glass-card-subtle, .carousel-rail, #recentList > div, #vaultList > div, #ledgerList > div, #curChips, #detailBody > div, .header-hero-block');
+      cards.forEach(card => {
+        const top = card.offsetTop - st;
+        const bot = top + card.offsetHeight;
+
+        // 1. Top border exit (approaching y = 0)
+        // Only active when scrolled (st > 0). If at rest, hero block and top cards are 100% crisp.
+        if (st > 0 && top < 40) {
+          if (top <= -15) {
+            card.style.opacity = '0';
+            card.style.pointerEvents = 'none';
+          } else {
+            const p = clamp((top + 15) / 55, 0, 1);
+            card.style.opacity = (p * p).toFixed(3);
+            card.style.pointerEvents = p < 0.2 ? 'none' : 'auto';
+            if (!REDUCED && p < 0.99) card.style.transform = `scale(${0.96 + p * 0.04})`;
+            else card.style.transform = '';
+          }
+        }
+        // 2. Bottom border entry (approaching y = ch)
+        // Poka-Yoke: If card does not fit (top >= ch - 38), don't show a broken half-sliver at rest or transit!
+        else if (bot > ch - 12) {
+          if (top >= ch - 38) {
+            card.style.opacity = '0';
+            card.style.pointerEvents = 'none';
+            if (!REDUCED) card.style.transform = 'translateY(12px) scale(0.96)';
+          } else {
+            // As top crosses deeper into window from ch - 38 up to ch - 98:
+            const p = clamp((ch - 38 - top) / 60, 0, 1);
+            card.style.opacity = (p * p).toFixed(3);
+            card.style.pointerEvents = p < 0.2 ? 'none' : 'auto';
+            if (!REDUCED && p < 0.99) card.style.transform = `translateY(${((1 - p) * 12).toFixed(1)}px) scale(${0.96 + p * 0.04})`;
+            else card.style.transform = '';
+          }
+        } else {
+          card.style.opacity = '';
+          card.style.pointerEvents = 'auto';
+          card.style.transform = '';
+        }
+      });
+    }
+
+    let raf = null;
+    function refreshActive() { if (raf) return; raf = requestAnimationFrame(() => { raf = null; layoutPage(activeScroller()); }); }
+    scrollers.forEach(sc => {
+      sc.addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(() => { raf = null; applyMist(sc); }); }, { passive: true });
+      new ResizeObserver(() => layoutPage(sc)).observe(sc);
+    });
+    function scrollMore() { const sc = activeScroller(); sc.scrollBy({ top: sc.clientHeight * 0.65, behavior: REDUCED ? 'auto' : 'smooth' }); }
+
+    // ================= HORIZONTAL CAROUSEL MIST (Smooth dissolve at Third Border) =================
+    function applyHorizontalMist(rail) {
+      if (!rail) return;
+      const sl = rail.scrollLeft, rw = rail.clientWidth;
+      const cards = rail.querySelectorAll('button');
+      cards.forEach(card => {
+        const left = card.offsetLeft - sl;
+        const right = left + card.offsetWidth;
+
+        // Approaching the right boundary (Third Border)
+        if (right > rw - 8) {
+          if (left >= rw - 24) {
+            card.style.opacity = '0';
+            card.style.pointerEvents = 'none';
+            if (!REDUCED) card.style.transform = 'scale(0.95)';
+          } else {
+            const visibleW = rw - 8 - left;
+            const p = clamp(visibleW / (card.offsetWidth * 0.78), 0, 1);
+            card.style.opacity = (p * p).toFixed(3);
+            card.style.pointerEvents = p < 0.2 ? 'none' : 'auto';
+            if (!REDUCED && p < 0.99) card.style.transform = `translateX(${((1 - p) * 8).toFixed(1)}px) scale(${0.96 + p * 0.04})`;
+            else card.style.transform = '';
+          }
+        } else {
+          card.style.opacity = '';
+          card.style.pointerEvents = 'auto';
+          card.style.transform = '';
+        }
+      });
+    }
+
+    // ================= SMART AMBIENT WEATHER (0 API, Zero Config, 100% Free & Offline) =================
+    function getWeatherInfo() {
+      const h = new Date().getHours();
+      if (h >= 5 && h < 9) return { icon: '🌅', temp: '24°C', desc: 'Cool Morning' };
+      if (h >= 9 && h < 12) return { icon: '🌤️', temp: '28°C', desc: 'Sunny & Clear' };
+      if (h >= 12 && h < 15) return { icon: '☀️', temp: '32°C', desc: 'Midday Heat' };
+      if (h >= 15 && h < 18) return { icon: '⛅', temp: '30°C', desc: 'Partly Cloudy' };
+      if (h >= 18 && h < 21) return { icon: '🌆', temp: '27°C', desc: 'Golden Dusk' };
+      return { icon: '🌙', temp: '25°C', desc: 'Serene Night' };
+    }
+
+    // ================= NAVIGATION =================
+    const USER_NAME = 'Yahya';
+    function updateTopBar() {
+      const el = document.getElementById('topLeft');
+      if (appState.activeScreen === 'accountDetail' && getAcc(appState.detailId)) {
+        el.innerHTML = `
+          <div>
+            <div class="text-[10px] font-mono tracking-widest uppercase text-charcoal-muted leading-tight">Account</div>
+            <div class="text-sm font-extrabold text-charcoal truncate leading-tight">${esc(getAcc(appState.detailId).name)}</div>
+          </div>`;
+      } else {
+        const h = new Date().getHours();
+        const g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 21 ? 'Good evening' : 'Good night';
+        const w = getWeatherInfo();
+        el.innerHTML = `
+          <div class="flex items-center gap-3">
+            <!-- Clean prominent Weather Telemetry: no card, no container box, as tall as the 2-line greeting block -->
+            <div class="flex items-center gap-1.5 shrink-0" title="${w.desc} · Smart Ambient Telemetry">
+              <span class="text-2xl sm:text-3xl leading-none select-none">${w.icon}</span>
+              <span class="font-mono text-xl sm:text-2xl font-black text-charcoal tracking-tight leading-none">${w.temp}</span>
+            </div>
+            <div class="w-px h-7 bg-slate-200/90 shrink-0"></div>
+            <div class="min-w-0">
+              <div class="text-[10px] font-mono tracking-widest uppercase text-charcoal-muted leading-tight truncate">${g}</div>
+              <div class="text-base font-extrabold text-charcoal leading-tight truncate">${USER_NAME}</div>
+            </div>
+          </div>`;
+      }
+      setRailBack(navStack.length > 0);
+    }
+    function showScreen(id) {
+      const target = document.getElementById('screen-' + id); if (!target) return null;
+      cue.classList.remove('cue-on');
+      scrollers.forEach(s => s.classList.add('is-off'));
+      target.classList.remove('is-off');
+      appState.activeScreen = id; updateTopBar();
+      requestAnimationFrame(() => layoutPage(target));
+      return target;
+    }
+    function switchScreen(id, btn = null) {
+      if (id === appState.activeScreen) { if (btn) setActiveNav(btn); return; }
+      navStack.length = 0;
+      const t = showScreen(id); if (!t) return; t.scrollTop = 0;
+      const nb = btn || document.querySelector(`.rail-btn[data-screen="${id}"]`);
+      if (nb && nb.classList.contains('rail-btn')) dripTo(nb);
+    }
+    function openAccount(id) {
+      navStack.push({ screen: appState.activeScreen, top: activeScroller().scrollTop });
+      appState.detailId = id; renderDetail();
+      const t = showScreen('accountDetail'); if (t) t.scrollTop = 0;
+      lucide.createIcons();
+    }
+    function goBack() {
+      const prev = navStack.pop(); if (!prev) return;
+      const t = showScreen(prev.screen); if (t) t.scrollTop = prev.top;
+    }
+    // ===== Rail time: curved text that follows the rounded top (or bottom) of the rail =====
+    // Angles in degrees, screen coordinates: -90 is straight up.
+    const ARC_CX = 21, ARC_CY = 27, ARC_R = 15, ARC_MS = 900;
+    const ARC_TOP  = [-145, -117.5, -90, -62.5, -35];  // reads 1 4 : 2 9 left to right across the top
+    const ARC_BACK = [-215, -242.5, -270, 62.5, 35];   // 1, 4 and : travel down the left; 2 and 9 down the right
+    const ARC_DELAY = [270, 180, 150, 90, 0];          // cascade: 9, then 2, then the colon, then 4, then 1
+    const arcState = ARC_TOP.map(a => ({ a, q: 0 }));  // q: 0 = upright on top, 1 = upright on bottom
+    let arcBack = false, arcRaf = null;
+    const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function drawArc() {
+      document.querySelectorAll('#railArc .arc-digit').forEach((el, i) => {
+        const { a, q } = arcState[i];
+        const rad = a * Math.PI / 180;
+        const x = ARC_CX + ARC_R * Math.cos(rad), y = ARC_CY + ARC_R * Math.sin(rad);
+        const rot = a + 90 - 180 * q;
+        el.setAttribute('transform', `translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${rot.toFixed(2)})`);
+      });
+    }
+    function easeOutBack(t) { const c1 = 1.25, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); }
+    function setRailBack(on) {
+      document.getElementById('railTop').classList.toggle('has-back', on);
+      if (on === arcBack) return;
+      arcBack = on;
+      cancelAnimationFrame(arcRaf);
+      const from = arcState.map(c => ({ ...c }));
+      const to = on ? ARC_BACK : ARC_TOP;
+      const qTo = on ? 1 : 0;
+      if (reduceMotion) { to.forEach((a, i) => arcState[i] = { a, q: qTo }); drawArc(); return; }
+      const t0 = performance.now();
+      const step = (now) => {
+        let running = false;
+        for (let i = 0; i < arcState.length; i++) {
+          const local = (now - t0 - ARC_DELAY[i]) / ARC_MS;
+          const p = Math.min(1, Math.max(0, local));
+          if (local < 1) running = true;
+          const e = easeOutBack(p);
+          arcState[i] = { a: from[i].a + (to[i] - from[i].a) * e, q: from[i].q + (qTo - from[i].q) * e };
+        }
+        drawArc();
+        if (running) arcRaf = requestAnimationFrame(step);
+      };
+      arcRaf = requestAnimationFrame(step);
+    }
+    function updateClock() {
+      const d = new Date();
+      const text = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      document.querySelectorAll('#railArc .arc-digit').forEach((el, i) => el.textContent = text[i]);
+    }
+
+    // ===== Balance privacy lives in the rail: eye = balances visible, lock = balances hidden =====
+    let vaultTimer = null;
+    function showVaultPop() {
+      document.getElementById('vaultPop').classList.add('show');
+      clearTimeout(vaultTimer);
+      vaultTimer = setTimeout(hideVaultPop, 2600);
+    }
+    function hideVaultPop() {
+      clearTimeout(vaultTimer);
+      document.getElementById('vaultPop').classList.remove('show');
+    }
+    function onPrivacyTap() {
+      if (!appState.masked) { setMasked(true); showVaultPop(); }   // lock: hide balances and explain the local vault
+      else { setMasked(false); hideVaultPop(); showToast('Balances revealed'); }   // eye-off: reveal
+    }
+    document.addEventListener('click', e => { if (!e.target.closest('#railTop')) hideVaultPop(); });
+
+    // ================= HEADROOM (Safe-to-Spend) =================
+    function headroom() {
+      const { budget, committed, daysLeft } = appState;
+      const pct = budget > 0 ? committed / budget : 0, remaining = Math.max(0, budget - committed);
+      let st = { label:'Safe', color:'#059669' };
+      if (remaining <= 0) st = { label:'Recalibrate', color:'#F87171' };
+      else if (pct >= 0.70) st = { label:'Near Limit', color:'#D97706' };
+      return { pct, remaining, perDay: Math.round(remaining / daysLeft), st };
+    }
+    function updateHeadroom() {
+      const { pct, remaining, perDay, st } = headroom(), shown = Math.min(100, Math.round(pct * 100));
+      document.getElementById('s2sAmount').innerHTML = rp(perDay);
+      const pill = document.getElementById('s2sPill'); pill.textContent = st.label; pill.style.background = st.color + '1f'; pill.style.color = st.color;
+      document.getElementById('s2sSub').innerHTML = remaining > 0 ? `${appState.daysLeft} days left · ${rp(remaining)} remaining` : 'Monthly limit reached. Recalibrate target.';
+      const ring = document.getElementById('s2sRing'); ring.style.stroke = st.color; ring.style.strokeDashoffset = (163.4 * (1 - shown / 100)).toFixed(1);
+      document.getElementById('s2sPct').textContent = shown + '%';
+      const bar = document.getElementById('budgetBar'); bar.style.width = shown + '%'; bar.style.background = st.color;
+      document.getElementById('budgetSpent').innerHTML = 'Spent ' + rp(appState.committed);
+      document.getElementById('budgetCap').innerHTML = 'Budget ' + rp(appState.budget);
+      document.getElementById('daysLeftText').textContent = appState.daysLeft + ' days';
+      document.getElementById('sliderDisplayBudget').innerHTML = rp(appState.budget);
+      const rc = document.getElementById('recalcText'); rc.style.color = st.color;
+      rc.innerHTML = remaining > 0 ? `Safe to spend: ${rp(perDay)} / day` : 'Limit reached. Increase budget to recalibrate.';
+    }
+    function stepBudget(d) { appState.budget = clamp(appState.budget + d, 2000000, 15000000); document.getElementById('budgetRange').value = appState.budget; updateHeadroom(); chime(); }
+    function onBudgetChange(v) { appState.budget = parseInt(v); updateHeadroom(); }
+
+    // ================= RENDERING =================
+    function txRow(tx) {
+      const neutral = tx.type === 'transfer', pos = tx.amount > 0;
+      const row = document.createElement('div');
+      row.className = 'glass-card-subtle w-full rounded-2xl p-3 flex items-center justify-between';
+      row.innerHTML = `
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-9 h-9 rounded-xl ${ICON_BG[tx.color] || 'bg-slate-100 text-charcoal'} flex items-center justify-center shrink-0"><i data-lucide="${tx.icon}" class="w-4 h-4"></i></div>
+          <div class="min-w-0"><div class="text-xs font-bold text-charcoal truncate">${esc(tx.title)}</div><div class="text-[10px] font-mono text-charcoal-muted truncate">${esc(tx.category)}</div></div>
+        </div>
+        <div class="font-mono text-xs font-extrabold ${pos && !neutral ? 'text-emerald' : 'text-charcoal'} shrink-0 ml-2">${neutral ? rp(tx.amount) : signed(tx.amount)}</div>`;
+      return row;
+    }
+    function renderRecent() {
+      const c = document.getElementById('recentList'); c.innerHTML = '';
+      appState.transactions.slice(0, 5).forEach(tx => c.appendChild(txRow(tx)));
+    }
+    function renderCarousel() {
+      const rail = document.getElementById('carousel');
+      rail.innerHTML = appState.accounts.map(a => `
+        <button onclick="openAccount(${a.id})" class="shrink-0 w-[130px] text-left rounded-[22px] p-3 glass-card active:scale-95 transition" style="box-shadow: 0 10px 24px -12px ${ACCENTS[a.color]}55">
+          <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background:${ACCENTS[a.color]}"></span><span class="text-[10px] font-mono font-bold text-charcoal-muted truncate">${esc(a.name)}</span></div>
+          <div class="font-mono text-sm font-extrabold text-charcoal mt-2 truncate">${rp(a.balance)}</div>
+        </button>`).join('');
+      applyHorizontalMist(rail);
+      if (!rail._mistAttached) {
+        rail.addEventListener('scroll', () => applyHorizontalMist(rail), { passive: true });
+        rail._mistAttached = true;
+      }
+    }
+    function renderLedger() {
+      const q = (document.getElementById('ledgerSearch').value || '').trim().toLowerCase();
+      const all = appState.transactions;
+      const cnt = t => t === 'all' ? all.length : all.filter(x => x.type === t).length;
+      document.getElementById('ledgerSub').textContent = `${all.length} transactions logged`;
+      document.getElementById('ledgerPills').innerHTML = [['all','All'],['outflow','Expense'],['income','Income'],['transfer','Transfer']].map(([k, l]) => {
+        const on = appState.filter === k;
+        return `<button onclick="setFilter('${k}')" class="shrink-0 whitespace-nowrap text-[11px] font-mono px-2.5 py-1.5 rounded-full transition ${on ? 'bg-cobalt text-white font-bold shadow-sm' : 'bg-white text-charcoal border border-slate-200 font-medium'}">${l} <span class="${on ? 'text-white/80' : 'text-charcoal-subtle'}">${cnt(k)}</span></button>`;
+      }).join('');
+      let list = appState.filter === 'all' ? all : all.filter(t => t.type === appState.filter);
+      if (q) list = list.filter(t => (t.title + ' ' + t.category + ' ' + Math.abs(t.amount)).toLowerCase().includes(q));
+      const c = document.getElementById('ledgerList'); c.innerHTML = '';
+      if (!list.length) { const e = document.createElement('div'); e.className = 'text-xs text-charcoal-muted text-center py-6'; e.textContent = 'No matching transactions.'; c.appendChild(e); return; }
+      let last = null;
+      list.forEach(tx => {
+        if (tx.day !== last) { last = tx.day; const h = document.createElement('div'); h.className = 'text-[10px] font-mono tracking-widest uppercase font-bold text-charcoal-muted pt-1'; h.textContent = tx.day; c.appendChild(h); }
+        c.appendChild(txRow(tx));
+      });
+    }
+    function setFilter(k) { appState.filter = k; renderAndRefresh(); }
+
+    function renderVaults() {
+      const list = document.getElementById('vaultList'), accs = appState.accounts;
+      document.getElementById('accSub').textContent = `${accs.length} accounts${appState.editMode ? ' · reorder mode' : ''}`;
+      const t = Math.max(1, total()), max = Math.max(1, ...accs.map(a => a.balance));
+      list.innerHTML = accs.map((a, i) => {
+        const hex = ACCENTS[a.color];
+        return `<div ${appState.editMode ? '' : `onclick="openAccount(${a.id})"`} class="glass-card rounded-3xl p-4 flex items-center gap-3 ${appState.editMode ? '' : 'cursor-pointer'}" style="border-left:4px solid ${hex}">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between"><span class="text-[10px] font-mono tracking-wider uppercase font-bold truncate" style="color:${hex}">${esc(a.name)}</span><span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md" style="background:${hex}1a;color:${hex}">${Math.round(a.balance / t * 100)}%</span></div>
+            <div class="font-mono text-xl font-extrabold text-charcoal mt-1">${rp(a.balance)}</div>
+            <div class="mt-2.5 w-full h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${Math.max(2, Math.round(a.balance / max * 100))}%;background:${hex}"></div></div>
+          </div>
+          ${appState.editMode ? `<div class="flex flex-col gap-1.5">
+            <button onclick="moveAccount(${a.id},-1)" ${i === 0 ? 'disabled' : ''} aria-label="Move Up" class="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center disabled:opacity-30 active:scale-90 transition"><i data-lucide="chevron-up" class="w-4 h-4"></i></button>
+            <button onclick="moveAccount(${a.id},1)" ${i === accs.length - 1 ? 'disabled' : ''} aria-label="Move Down" class="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center disabled:opacity-30 active:scale-90 transition"><i data-lucide="chevron-down" class="w-4 h-4"></i></button>
+          </div>` : `<i data-lucide="chevron-right" class="w-4 h-4 text-charcoal-subtle shrink-0"></i>`}
+        </div>`;
+      }).join('');
+
+      const cur = RATES[appState.cur] || { r:15680, s:'US$' };
+      document.getElementById('curRate').textContent = `1 ${appState.cur} = Rp ${fmt(cur.r)}`;
+      document.getElementById('curValue').innerHTML = M(`${cur.s} ${(total() / cur.r).toLocaleString('en-US', { maximumFractionDigits: cur.r > 1000 ? 2 : 0 })}`);
+      const chipsList = ['USD','SGD','MYR','JPY','EUR','SAR'];
+      document.getElementById('curChips').innerHTML = chipsList.map(k => `<button onclick="setCur('${k}')" class="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold transition ${k === appState.cur ? 'bg-cobalt text-white shadow-sm' : 'bg-white text-charcoal border border-slate-200'}">${k}</button>`).join('');
+    }
+    function setCur(k) { appState.cur = k; renderVaults(); lucide.createIcons(); showToast(`Currency changed to ${k}`); }
+    function toggleEditMode() {
+      appState.editMode = !appState.editMode;
+      const b = document.getElementById('editToggle'); b.textContent = appState.editMode ? 'Done' : 'Edit';
+      b.className = 'px-3 h-8 rounded-xl border text-[11px] font-mono font-bold shadow-sm active:scale-95 transition ' + (appState.editMode ? 'bg-cobalt text-white border-cobalt' : 'bg-white border-slate-200 text-charcoal');
+      renderAndRefresh();
+    }
+    function moveAccount(id, dir) {
+      const i = appState.accounts.findIndex(a => a.id === id), j = i + dir; if (j < 0 || j >= appState.accounts.length) return;
+      [appState.accounts[i], appState.accounts[j]] = [appState.accounts[j], appState.accounts[i]]; renderAndRefresh();
+    }
+
+    // ================= REAL-TIME WORLD CURRENCY SHEET =================
+    async function fetchRealtimeRates() {
+      const statusEl = document.getElementById('curRateStatus');
+      const sheetStatus = document.getElementById('curSheetStatus');
+      if (statusEl) statusEl.textContent = 'Syncing...';
+      try {
+        const res = await fetch('https://open.er-api.com/v6/latest/IDR');
+        if (!res.ok) throw new Error('API offline');
+        const data = await res.json();
+        if (data && data.rates) {
+          WORLD_CURRENCIES.forEach(c => {
+            if (data.rates[c.code] && data.rates[c.code] > 0) {
+              c.r = 1 / data.rates[c.code];
+              if (RATES[c.code]) RATES[c.code].r = c.r;
+            }
+          });
+          const time = new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+          if (statusEl) statusEl.textContent = `Real-Time ${time}`;
+          if (sheetStatus) sheetStatus.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald animate-pulse"></span>Live Rates ${time} (Free Open API)`;
+          showToast('Live currency rates updated');
+        }
+      } catch (e) {
+        if (statusEl) statusEl.textContent = 'Offline (Cache)';
+        if (sheetStatus) sheetStatus.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-saffron"></span>Offline Mode (Saved Cache)`;
+        showToast('Using local cached rates');
+      }
+      renderVaults();
+      renderWorldCurList();
+    }
+    function openCurSheet() {
+      document.getElementById('curSheet').classList.remove('translate-y-full');
+      renderWorldCurList();
+      fetchRealtimeRates();
+    }
+    function closeCurSheet(e) { if (e) e.stopPropagation(); document.getElementById('curSheet').classList.add('translate-y-full'); }
+    function filterWorldCurrencies(q) { renderWorldCurList((q || '').trim().toLowerCase()); }
+    function renderWorldCurList(q = '') {
+      const list = document.getElementById('worldCurList'); if (!list) return;
+      let items = WORLD_CURRENCIES;
+      if (q) items = items.filter(c => c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q));
+      list.innerHTML = items.map(c => `
+        <div onclick="selectWorldCur('${c.code}')" class="p-3 rounded-2xl glass-card flex items-center justify-between cursor-pointer active:scale-98 transition ${c.code === appState.cur ? 'border-2 border-cobalt bg-cobalt-light/40' : 'hover:bg-slate-50'}">
+          <div class="flex items-center gap-3">
+            <span class="text-xl">${c.flag}</span>
+            <div>
+              <div class="font-mono text-xs font-bold text-charcoal flex items-center gap-1.5">${c.code} <span class="text-[10px] font-sans text-charcoal-muted font-medium">${c.name}</span></div>
+              <div class="font-mono text-[11px] text-charcoal-muted mt-0.5">1 ${c.code} = Rp ${fmt(c.r)}</div>
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="font-mono text-xs font-extrabold text-charcoal">${c.sym} ${(total() / c.r).toLocaleString('en-US', { maximumFractionDigits: c.r > 1000 ? 2 : 0 })}</div>
+            <span class="text-[9px] font-mono ${c.code === appState.cur ? 'text-cobalt font-bold' : 'text-slate-400'}">${c.code === appState.cur ? 'Active' : 'Select'}</span>
+          </div>
+        </div>`).join('');
+    }
+    function selectWorldCur(code) {
+      setCur(code);
+      closeCurSheet();
+    }
+
+    function renderDetail() {
+      const a = getAcc(appState.detailId); if (!a) return;
+      const hex = ACCENTS[a.color], t = Math.max(1, total());
+      const txs = appState.transactions.filter(x => x.acc === a.id || x.to === a.id);
+      const inflow = txs.reduce((s, x) => s + (x.type === 'income' && x.acc === a.id ? x.amount : x.type === 'transfer' && x.to === a.id ? x.amount : 0), 0);
+      const outflow = txs.reduce((s, x) => s + (x.type === 'outflow' && x.acc === a.id ? -x.amount : x.type === 'transfer' && x.acc === a.id ? x.amount : 0), 0);
+      const body = document.getElementById('detailBody'); body.innerHTML = '';
+      const add = html => { const d = document.createElement('div'); d.innerHTML = html; body.appendChild(d); return d; };
+      add(`<div class="flex items-center justify-between"><h2 class="text-xl font-extrabold tracking-tight" style="color:${hex}">${esc(a.name)}</h2><span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md" style="background:${hex}1a;color:${hex}">${Math.round(a.balance / t * 100)}% of total</span></div>`);
+      add(`<div class="glass-card rounded-3xl p-4" style="border-left:4px solid ${hex}"><span class="text-[10px] font-mono tracking-widest text-charcoal-muted uppercase font-bold">Balance</span><div class="font-mono text-3xl font-extrabold text-charcoal mt-1">${rp(a.balance)}</div></div>`);
+      add(`<div class="grid grid-cols-2 gap-3">
+        <div class="glass-card-subtle rounded-2xl p-3"><span class="text-[10px] font-mono text-charcoal-muted uppercase font-bold">Inflow</span><div class="font-mono text-sm font-extrabold text-emerald mt-0.5">${rp(inflow)}</div></div>
+        <div class="glass-card-subtle rounded-2xl p-3"><span class="text-[10px] font-mono text-charcoal-muted uppercase font-bold">Outflow</span><div class="font-mono text-sm font-extrabold text-charcoal mt-0.5">${rp(outflow)}</div></div>
+      </div>`);
+      add(`<span class="text-xs font-bold uppercase tracking-wider text-charcoal-muted">Account Activity</span>`);
+      if (!txs.length) add(`<div class="text-xs text-charcoal-muted text-center py-6">No transactions recorded for this account.</div>`);
+      txs.forEach(x => body.appendChild(txRow(x)));
+    }
+    function renderBars() {
+      document.getElementById('dualBars').innerHTML = BARS.map(([m, i, e]) => `
+        <div class="flex-1 flex flex-col items-center gap-1.5">
+          <div class="flex items-end gap-1 h-24"><div class="w-2.5 rounded-t-md bg-emerald" style="height:${i / 8 * 100}%"></div><div class="w-2.5 rounded-t-md bg-persimmon" style="height:${e / 8 * 100}%"></div></div>
+          <span class="text-[9px] font-mono text-charcoal-muted">${m}</span>
+        </div>`).join('');
+    }
+    function renderAll() {
+      document.getElementById('heroNet').innerHTML = M(fmt(total()));
+      document.getElementById('heroMeta').textContent = `${appState.accounts.length} accounts · all in Rupiah`;
+      paintField(gradientField, appState.accounts);
+      renderRecent(); renderCarousel(); renderLedger(); renderVaults(); renderFromChips(); updateHeadroom();
+      if (appState.detailId) renderDetail();
+      updateTopBar(); lucide.createIcons();
+    }
+    function renderAndRefresh() { renderAll(); requestAnimationFrame(() => layoutPage(activeScroller())); }
+
+    // ================= FAST LOGGING =================
+    (function buildNumpad() {
+      const keys = ['1','2','3','4','5','6','7','8','9','000','0','DEL'];
+      document.getElementById('numpad').innerHTML = keys.map(k => `<button onclick="keypad('${k}',event)" class="h-11 rounded-2xl bg-slate-100 border border-slate-200/80 font-mono font-bold ${k === 'DEL' ? 'text-berry' : 'text-charcoal'} ${k.length > 1 ? 'text-sm' : 'text-lg'} active:scale-95 transition flex items-center justify-center">${k === 'DEL' ? '⌫' : k}</button>`).join('');
+    })();
+    function openFastLoggingSheet(e) {
+      if (e) e.stopPropagation();
+      appState.keypad = '0'; document.getElementById('keypadValue').textContent = '0'; document.getElementById('noteInput').value = ''; detectCategory('');
+      document.getElementById('logSheet').classList.remove('translate-y-full');
+    }
+    function closeFastLoggingSheet(e) { if (e) e.stopPropagation(); document.getElementById('logSheet').classList.add('translate-y-full'); }
+    function keypad(v, e) {
+      if (e) e.stopPropagation(); let c = appState.keypad;
+      if (v === 'DEL') c = c.length > 1 ? c.slice(0, -1) : '0';
+      else if (v === '000') { if (c !== '0' && c.length < 7) c += '000'; }
+      else c = c === '0' ? v : (c.length < 9 ? c + v : c);
+      appState.keypad = c; document.getElementById('keypadValue').textContent = fmt(parseInt(c) || 0);
+    }
+    function setTxnType(t) {
+      appState.txnType = t;
+      const set = (id, on, cls) => document.getElementById(id).className = 'py-2 rounded-xl transition ' + (on ? cls + ' text-white shadow-sm' : 'text-charcoal-muted');
+      set('rockerExp', t === 'outflow', 'bg-persimmon'); set('rockerInc', t === 'income', 'bg-emerald'); set('rockerTrf', t === 'transfer', 'bg-cobalt');
+      document.getElementById('toWrap').classList.toggle('hidden', t !== 'transfer');
+      document.getElementById('noteWrap').classList.toggle('hidden', t === 'transfer');
+      document.getElementById('fromLabel').textContent = t === 'transfer' ? 'Source account' : 'Account';
+      renderFromChips(); chime();
+    }
+    function detectCategory(text) {
+      const l = text.toLowerCase(); let c = { icon:'🏷️', name:'Other' };
+      if (/coffee|kopi|food|eat|makan|mie|warung|resto|lunch|dinner/.test(l)) c = { icon:'☕', name:'Dining' };
+      else if (/mrt|gojek|grab|uber|gas|fuel|bensin|tol|train|kereta|transit/.test(l)) c = { icon:'🚇', name:'Transit' };
+      else if (/shop|shopee|tokopedia|amazon|cloth|baju/.test(l)) c = { icon:'🛍️', name:'Shopping' };
+      else if (/salary|gaji|bonus|freelance|dividend/.test(l)) c = { icon:'💰', name:'Salary' };
+      else if (/electric|power|pln|wifi|internet|water|air|bill|util/.test(l)) c = { icon:'⚡', name:'Utilities' };
+      appState.category = c;
+      document.getElementById('smartCategoryPill').innerHTML = `<span>${c.icon}</span><span>${esc(c.name)}</span>`;
+    }
+    function chipHTML(a, on, fn, disabled) {
+      const hex = ACCENTS[a.color];
+      return `<button type="button" onclick="${fn}(${a.id})" ${disabled ? 'disabled' : ''} aria-pressed="${on}" class="flex-none flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border transition ${disabled ? 'opacity-35' : ''} ${on ? 'shadow-sm text-white' : 'bg-slate-100 text-charcoal border-slate-200'}" style="${on ? `background:${hex};border-color:${hex}` : ''}"><span class="w-2 h-2 rounded-full" style="background:${on ? '#fff' : hex}"></span>${esc(a.name)}</button>`;
+    }
+    function renderFromChips() {
+      const accs = appState.accounts; if (!accs.length) return;
+      if (!getAcc(appState.fromId)) appState.fromId = accs[0].id;
+      if (appState.toId === appState.fromId || !getAcc(appState.toId)) appState.toId = (accs.find(a => a.id !== appState.fromId) || {}).id;
+      document.getElementById('fromChips').innerHTML = accs.map(a => chipHTML(a, a.id === appState.fromId, 'selectFrom', false)).join('');
+      document.getElementById('toChips').innerHTML = accs.map(a => chipHTML(a, a.id === appState.toId, 'selectTo', a.id === appState.fromId)).join('');
+    }
+    function selectFrom(id) { appState.fromId = id; if (appState.toId === id) appState.toId = (appState.accounts.find(a => a.id !== id) || {}).id; renderFromChips(); }
+    function selectTo(id) { appState.toId = id; renderFromChips(); }
+
+    function executeSave(e) {
+      const amt = parseInt(appState.keypad) || 0;
+      if (amt <= 0) { showToast('Enter an amount'); return; }
+      const fromAcc = getAcc(appState.fromId);
+      if (!fromAcc) { showToast('Select an account'); return; }
+      const note = document.getElementById('noteInput').value.trim();
+      let title = note || appState.category.name, signedAmt = -amt, icon = 'tag', col = fromAcc.color;
+      if (appState.txnType === 'income') {
+        signedAmt = amt; fromAcc.balance += amt; icon = 'arrow-down-left'; col = 'emerald';
+        if (!note) title = 'Income';
+      } else if (appState.txnType === 'outflow') {
+        fromAcc.balance -= amt; col = fromAcc.color;
+        if (appState.category.name === 'Dining') icon = 'coffee';
+        else if (appState.category.name === 'Transit') icon = 'train-front';
+        else if (appState.category.name === 'Shopping') icon = 'shopping-bag';
+        else if (appState.category.name === 'Utilities') icon = 'zap';
+        else icon = 'tag';
+      } else {
+        const toAcc = getAcc(appState.toId);
+        if (!toAcc || toAcc.id === fromAcc.id) { showToast('Select a different destination account'); return; }
+        fromAcc.balance -= amt; toAcc.balance += amt; signedAmt = amt; title = `${fromAcc.name} → ${toAcc.name}`; icon = 'arrow-left-right'; col = 'cobalt';
+      }
+      appState.transactions.unshift({
+        title, category: appState.txnType === 'transfer' ? 'Transfer' : appState.category.name,
+        type: appState.txnType, amount: signedAmt, day:'Today', icon, color: col, acc: fromAcc.id, to: appState.txnType === 'transfer' ? appState.toId : null
+      });
+      if (appState.txnType === 'outflow') appState.committed += amt;
+      closeFastLoggingSheet();
+      renderAndRefresh();
+      const rect = e.target.getBoundingClientRect(), sRect = shell.getBoundingClientRect();
+      splash(rect.left - sRect.left + rect.width / 2, rect.top - sRect.top);
+      showToast('Transaction logged');
+    }
+
+    // ================= NEW ACCOUNT SHEET =================
+    function openAccountSheet(e) {
+      if (e) e.stopPropagation();
+      document.getElementById('accName').value = ''; document.getElementById('accAmount').value = ''; accentDraft = 'cobalt';
+      renderSwatches();
+      document.getElementById('accountSheet').classList.remove('translate-y-full');
+    }
+    function closeAccountSheet(e) { if (e) e.stopPropagation(); document.getElementById('accountSheet').classList.add('translate-y-full'); }
+    function renderSwatches() {
+      document.getElementById('accSwatches').innerHTML = Object.keys(ACCENTS).map(k => `
+        <button type="button" onclick="accentDraft='${k}';renderSwatches();" class="w-8 h-8 rounded-full transition transform active:scale-90 flex items-center justify-center ${accentDraft === k ? 'ring-2 ring-offset-2 ring-cobalt scale-110' : ''}" style="background:${ACCENTS[k]}">
+          ${accentDraft === k ? '<i data-lucide="check" class="w-4 h-4 text-white"></i>' : ''}
+        </button>`).join('');
+      lucide.createIcons();
+    }
+    function saveAccount() {
+      const name = document.getElementById('accName').value.trim();
+      const bal = parseInt(document.getElementById('accAmount').value) || 0;
+      if (!name) { showToast('Account name is required'); return; }
+      const newAcc = { id: Date.now(), name, color: accentDraft, balance: Math.max(0, bal) };
+      appState.accounts.push(newAcc);
+      closeAccountSheet();
+      renderAndRefresh();
+      showToast(`Account "${name}" created`);
+    }
+
+    // ================= SETTINGS ROCKERS =================
+    function toggleRocker(el) {
+      const cur = el.getAttribute('aria-checked') === 'true', next = !cur;
+      el.setAttribute('aria-checked', String(next));
+      const k = el.dataset.key;
+      if (k === 'shake') {
+        appState.prefs.shake = next;
+        if (next) enableShake().then(ok => { showToast(ok ? 'Shake sensor activated' : 'Shake sensor not supported in this browser'); if (!ok) el.setAttribute('aria-checked', 'false'); });
+        else showToast('Shake sensor disabled');
+      } else {
+        chime();
+        showToast(next ? 'Enabled' : 'Disabled');
+      }
+    }
+
+    // ================= TOAST =================
+    let toastTimer = null;
+    function showToast(msg) {
+      const t = document.getElementById('flowToast'), m = document.getElementById('toastMsg');
+      m.textContent = msg; t.classList.remove('opacity-0', '-translate-y-20'); t.classList.add('opacity-100', 'translate-y-0');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { t.classList.remove('opacity-100', 'translate-y-0'); t.classList.add('opacity-0', '-translate-y-20'); }, 2200);
+    }
+
+    // ================= ONBOARDING =================
+    function setOnboardHand(side) { setSideImmediate(side); }
+    function finishOnboarding() {
+      const ob = document.getElementById('onboarding');
+      ob.classList.add('opacity-0', 'pointer-events-none');
+      setTimeout(() => ob.remove(), 320);
+      localStorage.setItem('dompetku_onboarded', '1');
+      if (appState.prefs.shake) enableShake();
+    }
+
+    // ================= GUIDE VISUALIZER =================
+    let guidesOn = false;
+    function toggleGuides() {
+      guidesOn = !guidesOn;
+      document.body.classList.toggle('show-guides', guidesOn);
+      document.getElementById('guidesBtn').textContent = `3 Borders Guide: ${guidesOn ? 'ON' : 'OFF'}`;
+      document.getElementById('guidesBtn').className = 'px-3 py-2 rounded-xl text-xs font-mono font-bold transition text-left ' + (guidesOn ? 'bg-berry text-white border-berry' : 'bg-slate-100 border-slate-200 text-charcoal');
+      updateGuideThirdBorder();
+    }
+
+    // ================= INIT =================
+    (function init() {
+      sizeDroplet();
+      window.addEventListener('resize', sizeDroplet);
+      appState.accounts = SAMPLE_ACCOUNTS.map((a, i) => ({ id: i + 1, ...a }));
+      appState.transactions = SAMPLE_TX.map(t => ({ ...t }));
+      appState.budget = 7500000;
+      appState.committed = 3250000;
+      appState.daysLeft = 17;
+      setSideImmediate('right');
+      renderBars();
+      renderAll();
+      updateClock(); drawArc(); setInterval(updateClock, 30000);
+      if (true) {
+        const ob = document.getElementById('onboarding'); if (ob) ob.remove();
+      } else {
+        paintField(document.getElementById('miniField'), appState.accounts);
+        document.getElementById('demoCaption').textContent = 'BCA, Mandiri, GoPay, and Bibit radiate ambient chromatic light across the canvas.';
+      }
+      setTimeout(fetchRealtimeRates, 600);
+    })();
+  </script>
+</body>
+</html>

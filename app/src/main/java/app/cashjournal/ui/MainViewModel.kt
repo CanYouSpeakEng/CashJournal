@@ -228,9 +228,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleHideBalances() {
         _hideBalances.value = !_hideBalances.value
-        if (!_hideBalances.value) {
-            showToast("Balances revealed")
-        }
+        showToast(if (_hideBalances.value) "Balances masked" else "Balances revealed")
     }
 
     fun setReorderMode(enabled: Boolean) {
