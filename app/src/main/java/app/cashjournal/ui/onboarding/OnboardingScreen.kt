@@ -78,8 +78,15 @@ import app.cashjournal.ui.theme.Slate400
 import app.cashjournal.ui.theme.Slate500
 import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
+import com.adamglin.phosphoricons.regular.Bell
 import com.adamglin.phosphoricons.regular.CaretLeft
 import com.adamglin.phosphoricons.regular.Check
 import com.adamglin.phosphoricons.regular.CheckCircle
@@ -98,7 +105,7 @@ enum class WeatherOption {
 
 @Composable
 fun OnboardingScreen(
-    onFinish: (language: AppLanguage, currencyCode: String, name: String, railOnRight: Boolean, loadExample: Boolean) -> Unit
+    onFinish: (language: AppLanguage, currencyCode: String, name: String, railOnRight: Boolean, shakeToSwap: Boolean, loadExample: Boolean) -> Unit
 ) {
     var step by remember { mutableIntStateOf(1) }
     var language by remember { mutableStateOf(AppLanguage.ENGLISH) }
@@ -145,7 +152,7 @@ fun OnboardingScreen(
 
                 Button(
                     onClick = {
-                        onFinish(language, selectedCountry.currencyCode, userName, railOnRight, loadExampleData)
+                        onFinish(language, selectedCountry.currencyCode, userName, railOnRight, shakeToSwap, loadExampleData)
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Cobalt),
                     shape = RoundedCornerShape(16.dp),
@@ -186,7 +193,7 @@ fun OnboardingScreen(
                     .padding(vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                for (i in 1..7) {
+                for (i in 1..8) {
                     val isActive = i <= step
                     val segmentColor by animateColorAsState(
                         targetValue = if (isActive) Cobalt else Slate200,
@@ -203,7 +210,7 @@ fun OnboardingScreen(
                 }
             }
 
-            // 2. Navigation Top Bar (Back button on steps 2 to 7)
+            // 2. Navigation Top Bar (Back button on steps 2 to 8)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -292,7 +299,8 @@ fun OnboardingScreen(
                                 },
                                 texts = texts
                             )
-                            6 -> Step6Layout(
+                            6 -> Step6Permissions(texts = texts)
+                            7 -> Step7Layout(
                                 railOnRight = railOnRight,
                                 onToggleRail = {
                                     hapticTick()
@@ -305,7 +313,7 @@ fun OnboardingScreen(
                                 },
                                 texts = texts
                             )
-                            7 -> Step7Ready(
+                            8 -> Step8Ready(
                                 loadExample = loadExampleData,
                                 onToggleExample = {
                                     hapticTick()
@@ -324,7 +332,7 @@ fun OnboardingScreen(
             Button(
                 onClick = {
                     hapticTick()
-                    if (step < 7) {
+                    if (step < 8) {
                         step++
                     } else {
                         isCompleted = true
@@ -343,7 +351,7 @@ fun OnboardingScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = Cobalt)
             ) {
                 Text(
-                    text = if (step == 1) texts.getStarted else if (step == 7) texts.finishBtn else texts.continueBtn,
+                    text = if (step == 1) texts.getStarted else if (step == 8) texts.finishBtn else texts.continueBtn,
                     fontFamily = PlusJakartaSansFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
@@ -948,10 +956,206 @@ private fun WeatherCard(
 }
 
 // ----------------------------------------------------------------------------
-// Step 6: Layout
+// Step 6: Transparent Privacy & Permissions
 // ----------------------------------------------------------------------------
 @Composable
-private fun Step6Layout(
+private fun Step6Permissions(
+    texts: OnboardingTexts
+) {
+    val context = LocalContext.current
+    var hasLocationPerm by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    var hasNotifPerm by remember {
+        mutableStateOf(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    android.Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+            } else {
+                true
+            }
+        )
+    }
+
+    val locationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasLocationPerm = isGranted
+    }
+
+    val notifLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasNotifPerm = isGranted
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(
+            text = texts.permissionsTitle,
+            fontFamily = PlusJakartaSansFamily,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 32.sp,
+            color = Charcoal,
+            lineHeight = 38.sp
+        )
+
+        Text(
+            text = texts.permissionsSubtitle,
+            fontFamily = PlusJakartaSansFamily,
+            fontWeight = FontWeight.Normal,
+            fontSize = 15.sp,
+            color = Slate600
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // 1. Approximate Location Card
+        PermissionItemCard(
+            title = texts.permLocationTitle,
+            description = texts.permLocationDesc,
+            icon = PhosphorIcons.Regular.MapPin,
+            isGranted = hasLocationPerm,
+            allowedText = texts.permAllowed,
+            grantText = texts.permGrant,
+            onRequest = {
+                locationLauncher.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+            }
+        )
+
+        // 2. Notifications Card
+        PermissionItemCard(
+            title = texts.permNotifTitle,
+            description = texts.permNotifDesc,
+            icon = PhosphorIcons.Regular.Bell,
+            isGranted = hasNotifPerm,
+            allowedText = texts.permAllowed,
+            grantText = texts.permGrant,
+            onRequest = {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    notifLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        )
+
+        // 3. Local Storage Card (Sandboxed & Private)
+        PermissionItemCard(
+            title = texts.permStorageTitle,
+            description = texts.permStorageDesc,
+            icon = PhosphorIcons.Regular.DeviceMobile,
+            isGranted = true,
+            allowedText = texts.permAllowed,
+            grantText = texts.permGrant,
+            onRequest = {}
+        )
+    }
+}
+
+@Composable
+private fun PermissionItemCard(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    isGranted: Boolean,
+    allowedText: String,
+    grantText: String,
+    onRequest: () -> Unit
+) {
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(if (isGranted) Emerald.copy(alpha = 0.12f) else Slate100),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (isGranted) Emerald else Cobalt,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = title,
+                    fontFamily = PlusJakartaSansFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = Charcoal
+                )
+                Text(
+                    text = description,
+                    fontFamily = PlusJakartaSansFamily,
+                    fontSize = 12.sp,
+                    color = Slate500,
+                    lineHeight = 16.sp
+                )
+            }
+
+            if (isGranted) {
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Emerald.copy(alpha = 0.12f))
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = PhosphorIcons.Regular.Check,
+                        contentDescription = "Allowed",
+                        tint = Emerald,
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Text(
+                        text = allowedText,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = Emerald
+                    )
+                }
+            } else {
+                Surface(
+                    onClick = onRequest,
+                    shape = RoundedCornerShape(12.dp),
+                    color = Cobalt,
+                    shadowElevation = 2.dp
+                ) {
+                    Text(
+                        text = grantText,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Step 7: Layout
+// ----------------------------------------------------------------------------
+@Composable
+private fun Step7Layout(
     railOnRight: Boolean,
     onToggleRail: (Boolean) -> Unit,
     shakeToSwap: Boolean,
@@ -1014,7 +1218,10 @@ private fun Step6Layout(
         }
 
         // Toggle: Shake to Swap Sides
-        GlassCard(modifier = Modifier.fillMaxWidth()) {
+        GlassCard(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { onToggleShake(!shakeToSwap) }
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1048,10 +1255,10 @@ private fun Step6Layout(
 }
 
 // ----------------------------------------------------------------------------
-// Step 7: Ready / Example Data
+// Step 8: Ready / Example Data
 // ----------------------------------------------------------------------------
 @Composable
-private fun Step7Ready(
+private fun Step8Ready(
     loadExample: Boolean,
     onToggleExample: (Boolean) -> Unit,
     texts: OnboardingTexts

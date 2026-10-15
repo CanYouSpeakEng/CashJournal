@@ -1,24 +1,24 @@
 package app.cashjournal.ui.components
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.sp
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.SpaceGroteskFamily
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun MaskedAmount(
@@ -44,6 +46,13 @@ fun MaskedAmount(
         color = textStyle.color,
         modifier = modifier
     )
+}
+
+private enum class MaskVisualState {
+    MASKED_IDLE,
+    REVEALED_IDLE,
+    WAVE_HIDING,
+    WAVE_REVEALING
 }
 
 /**
@@ -67,6 +76,27 @@ fun MaskedAmountText(
 ) {
     val easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 
+    var visualState by remember {
+        mutableStateOf(if (balancesVisible) MaskVisualState.REVEALED_IDLE else MaskVisualState.MASKED_IDLE)
+    }
+
+    LaunchedEffect(balancesVisible) {
+        val totalDigits = amountText.count { it.isDigit() }
+        if (balancesVisible) {
+            if (visualState == MaskVisualState.MASKED_IDLE) {
+                visualState = MaskVisualState.WAVE_REVEALING
+                delay(totalDigits * 32L + 200L)
+                visualState = MaskVisualState.REVEALED_IDLE
+            }
+        } else {
+            if (visualState == MaskVisualState.REVEALED_IDLE) {
+                visualState = MaskVisualState.WAVE_HIDING
+                delay(totalDigits * 32L + 110L)
+                visualState = MaskVisualState.MASKED_IDLE
+            }
+        }
+    }
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
@@ -83,73 +113,165 @@ fun MaskedAmountText(
             )
         }
 
-        AnimatedContent(
-            targetState = balancesVisible,
-            transitionSpec = {
-                fadeIn(animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing)) togetherWith
-                        fadeOut(animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing))
-            },
-            label = "masked_balance_flip"
-        ) { visible ->
-            if (visible) {
-                // Reveal digits with left-to-right staggered animation
+        when (visualState) {
+            MaskVisualState.MASKED_IDLE -> {
+                Text(
+                    text = "•••••••",
+                    fontFamily = SpaceGroteskFamily,
+                    fontWeight = fontWeight,
+                    fontSize = fontSize,
+                    letterSpacing = 0.12.sp,
+                    color = color
+                )
+            }
+            MaskVisualState.REVEALED_IDLE -> {
+                Text(
+                    text = amountText,
+                    fontFamily = SpaceGroteskFamily,
+                    fontWeight = fontWeight,
+                    fontSize = fontSize,
+                    color = color
+                )
+            }
+            MaskVisualState.WAVE_HIDING -> {
+                val totalDigits = amountText.count { it.isDigit() }
+                var digitIndex = 0
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    amountText.forEachIndexed { index, char ->
-                        val delay = (index * 32).coerceAtMost(320)
-                        val charScale by animateFloatAsState(
-                            targetValue = 1f,
-                            animationSpec = tween(durationMillis = 180, delayMillis = delay, easing = easing),
-                            label = "char_scale"
-                        )
-                        val charAlpha by animateFloatAsState(
-                            targetValue = 1f,
-                            animationSpec = tween(durationMillis = 140, delayMillis = delay, easing = FastOutSlowInEasing),
-                            label = "char_alpha"
-                        )
-
-                        Text(
-                            text = char.toString(),
-                            fontFamily = SpaceGroteskFamily,
-                            fontWeight = fontWeight,
-                            fontSize = fontSize,
-                            color = color,
-                            modifier = Modifier
-                                .scale(charScale)
-                                .alpha(charAlpha)
-                        )
+                    amountText.forEach { ch ->
+                        if (ch.isDigit()) {
+                            val dIdx = digitIndex++
+                            val delayMs = ((totalDigits - 1 - dIdx) * 32L).coerceAtLeast(0L)
+                            FlipChar(
+                                initialChar = ch,
+                                targetChar = '•',
+                                staggerDelayMs = delayMs,
+                                fontWeight = fontWeight,
+                                fontSize = fontSize,
+                                color = color
+                            )
+                        } else {
+                            FlipSeparator(
+                                char = ch,
+                                hiding = true,
+                                revealDelayMs = 0L,
+                                fontWeight = fontWeight,
+                                fontSize = fontSize,
+                                color = color
+                            )
+                        }
                     }
                 }
-            } else {
-                // Hidden: Exactly 7 "•" dots with 0.12em letter spacing
-                val maskedDots = "•••••••"
+            }
+            MaskVisualState.WAVE_REVEALING -> {
+                val totalDigits = amountText.count { it.isDigit() }
+                var digitIndex = 0
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    maskedDots.forEachIndexed { index, dot ->
-                        val delay = ((maskedDots.length - 1 - index) * 32).coerceAtMost(320)
-                        val dotScale by animateFloatAsState(
-                            targetValue = 1f,
-                            animationSpec = tween(durationMillis = 180, delayMillis = delay, easing = easing),
-                            label = "dot_scale"
-                        )
-                        val dotAlpha by animateFloatAsState(
-                            targetValue = 1f,
-                            animationSpec = tween(durationMillis = 140, delayMillis = delay, easing = FastOutSlowInEasing),
-                            label = "dot_alpha"
-                        )
-
-                        Text(
-                            text = dot.toString(),
-                            fontFamily = SpaceGroteskFamily,
-                            fontWeight = fontWeight,
-                            fontSize = fontSize,
-                            letterSpacing = 0.12.sp,
-                            color = color,
-                            modifier = Modifier
-                                .scale(dotScale)
-                                .alpha(dotAlpha)
-                        )
+                    amountText.forEach { ch ->
+                        if (ch.isDigit()) {
+                            val dIdx = digitIndex++
+                            val delayMs = (dIdx * 32L).coerceAtLeast(0L)
+                            FlipChar(
+                                initialChar = '•',
+                                targetChar = ch,
+                                staggerDelayMs = delayMs,
+                                fontWeight = fontWeight,
+                                fontSize = fontSize,
+                                color = color
+                            )
+                        } else {
+                            FlipSeparator(
+                                char = ch,
+                                hiding = false,
+                                revealDelayMs = totalDigits * 32L,
+                                fontWeight = fontWeight,
+                                fontSize = fontSize,
+                                color = color
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun FlipChar(
+    initialChar: Char,
+    targetChar: Char,
+    staggerDelayMs: Long,
+    fontWeight: FontWeight,
+    fontSize: TextUnit,
+    color: Color
+) {
+    var displayChar by remember { mutableStateOf(initialChar) }
+    val scale = remember { Animatable(1f) }
+    val alpha = remember { Animatable(1f) }
+    val offsetY = remember { Animatable(0f) }
+
+    LaunchedEffect(staggerDelayMs) {
+        delay(staggerDelayMs)
+        launch { scale.animateTo(0.45f, tween(45, easing = FastOutSlowInEasing)) }
+        launch { alpha.animateTo(0f, tween(45, easing = FastOutSlowInEasing)) }
+        offsetY.animateTo(-4f, tween(45, easing = FastOutSlowInEasing))
+
+        displayChar = targetChar
+
+        launch { scale.animateTo(1f, tween(45, easing = FastOutSlowInEasing)) }
+        launch { alpha.animateTo(1f, tween(45, easing = FastOutSlowInEasing)) }
+        offsetY.animateTo(0f, tween(45, easing = FastOutSlowInEasing))
+    }
+
+    Text(
+        text = displayChar.toString(),
+        fontFamily = SpaceGroteskFamily,
+        fontWeight = fontWeight,
+        fontSize = fontSize,
+        color = color,
+        modifier = Modifier.graphicsLayer {
+            scaleX = scale.value
+            scaleY = scale.value
+            this.alpha = alpha.value
+            translationY = offsetY.value * density
+        }
+    )
+}
+
+@Composable
+private fun FlipSeparator(
+    char: Char,
+    hiding: Boolean,
+    revealDelayMs: Long = 0L,
+    fontWeight: FontWeight,
+    fontSize: TextUnit,
+    color: Color
+) {
+    val alpha = remember { Animatable(if (hiding) 1f else 0f) }
+    val scaleX = remember { Animatable(if (hiding) 1f else 0f) }
+
+    LaunchedEffect(hiding) {
+        if (hiding) {
+            launch { alpha.animateTo(0f, tween(60)) }
+            scaleX.animateTo(0f, tween(90))
+        } else {
+            delay(revealDelayMs)
+            launch { alpha.animateTo(1f, tween(180)) }
+            scaleX.animateTo(1f, tween(180))
+        }
+    }
+
+    Box(
+        modifier = Modifier.graphicsLayer {
+            this.alpha = alpha.value
+            this.scaleX = scaleX.value
+        }
+    ) {
+        Text(
+            text = char.toString(),
+            fontFamily = SpaceGroteskFamily,
+            fontWeight = fontWeight,
+            fontSize = fontSize,
+            color = color
+        )
     }
 }

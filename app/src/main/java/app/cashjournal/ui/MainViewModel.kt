@@ -382,6 +382,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun setPin(pin: String) {
+        viewModelScope.launch {
+            preferencesRepository.setPin(pin)
+            showToast("PIN code secured")
+        }
+    }
+
+    fun removePin() {
+        viewModelScope.launch {
+            preferencesRepository.removePin()
+            showToast("PIN and biometrics disabled")
+        }
+    }
+
+    fun updateBiometrics(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.updateBiometricsEnabled(enabled)
+            showToast(if (enabled) "Biometrics enabled" else "Biometrics disabled")
+        }
+    }
+
     fun toggleRailSide() {
         viewModelScope.launch {
             val current = uiState.value.userPreferences.railOnRight

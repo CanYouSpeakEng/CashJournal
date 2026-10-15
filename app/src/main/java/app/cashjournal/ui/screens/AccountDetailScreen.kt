@@ -21,6 +21,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -77,8 +83,27 @@ fun AccountDetailScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .padding(bottom = 68.dp)
+            .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+            .drawWithContent {
+                drawContent()
+                val mistHeightPx = 64.dp.toPx()
+                val mistStartRatio = ((size.height - mistHeightPx) / size.height).coerceIn(0f, 1f)
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.0f to Color.Black,
+                            mistStartRatio to Color.Black,
+                            mistStartRatio + (1f - mistStartRatio) * 0.4f to Color.Black.copy(alpha = 0.6f),
+                            mistStartRatio + (1f - mistStartRatio) * 0.75f to Color.Black.copy(alpha = 0.15f),
+                            1.0f to Color.Transparent
+                        )
+                    ),
+                    blendMode = BlendMode.DstIn
+                )
+            }
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 120.dp),
+            .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Header Row: Account Name + Percent of Total Pill
@@ -228,7 +253,8 @@ fun AccountDetailScreen(
                         TransactionRow(
                             transaction = tx,
                             isMasked = state.hideBalances,
-                            currencyCode = state.userPreferences.currencyCode
+                            currencyCode = state.userPreferences.currencyCode,
+                            accounts = state.accounts
                         )
                     }
                 }

@@ -5,16 +5,29 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import kotlin.math.abs
 import kotlin.math.sqrt
 
+enum class KnockSensitivity(val threshold: Float, val label: String) {
+    GENTLE(8.5f, "Gentle"),
+    BALANCED(12.5f, "Balanced"),
+    FIRM(17.0f, "Firm");
+
+    companion object {
+        fun fromString(str: String): KnockSensitivity = when (str.lowercase()) {
+            "gentle" -> GENTLE
+            "firm" -> FIRM
+            else -> BALANCED
+        }
+    }
+}
+
 /**
- * Shake detector per Build Brief v2 Section 15:
- * "Shake to swap sides (when on): read the accelerometer. A change of 12 m/s² or more
- * between samples is a peak. Peaks closer than 120 ms are ignored. Three peaks within
- * 800 ms count as a shake, which moves the rail. Wait 1.2 s before the next.
- * Toast 'Shake sensor activated' or 'Shake sensor disabled' on toggle.
- * With no accelerometer: toast 'Shake sensor not available on this device'
- * and turn the switch back off."
+ * Knock & Shake detector for swapping SideRail placement:
+ * - Detects a single crisp lateral knock (against chassis or palm) on the X-axis
+ *   or a strong net acceleration impulse.
+ * - Supports configurable sensitivity (Gentle, Balanced, Firm).
+ * - Enforces a 900ms cooldown between swaps to prevent double-triggering.
  */
 class ShakeDetector(
     private val context: Context,
@@ -24,14 +37,13 @@ class ShakeDetector(
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
     private val accelerometer: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
 
+    var sensitivity: KnockSensitivity = KnockSensitivity.BALANCED
+
     private var lastX = 0f
     private var lastY = 0f
     private var lastZ = 0f
     private var hasPrevSample = false
-
-    private val peakTimestamps = mutableListOf<Long>()
-    private var lastPeakTime = 0L
-    private var lastShakeTime = 0L
+    private var lastKnockTime = 0L
 
     val isSupported: Boolean
         get() = accelerometer != null
@@ -39,14 +51,12 @@ class ShakeDetector(
     fun start(): Boolean {
         if (accelerometer == null || sensorManager == null) return false
         hasPrevSample = false
-        peakTimestamps.clear()
         return sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_UI)
     }
 
     fun stop() {
         sensorManager?.unregisterListener(this)
         hasPrevSample = false
-        peakTimestamps.clear()
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
@@ -54,8 +64,8 @@ class ShakeDetector(
 
         val now = System.currentTimeMillis()
 
-        // 1.2s cooldown after a shake
-        if (now - lastShakeTime < 1200L) {
+        // 900ms cooldown after a successful knock/shake
+        if (now - lastKnockTime < 900L) {
             lastX = event.values[0]
             lastY = event.values[1]
             lastZ = event.values[2]
@@ -81,25 +91,14 @@ class ShakeDetector(
         lastY = y
         lastZ = z
 
-        val deltaMagnitude = sqrt((dx * dx + dy * dy + dz * dz).toDouble())
+        val deltaX = abs(dx)
+        val netDelta = sqrt((dx * dx + dy * dy + dz * dz).toDouble()).toFloat()
 
-        // A change of 12 m/s² or more between samples is a peak
-        if (deltaMagnitude >= 12.0) {
-            // Peaks closer than 120 ms are ignored
-            if (now - lastPeakTime >= 120L) {
-                lastPeakTime = now
-                peakTimestamps.add(now)
-
-                // Purge peaks older than 800 ms
-                peakTimestamps.removeAll { now - it > 800L }
-
-                // Three peaks within 800 ms count as a shake
-                if (peakTimestamps.size >= 3) {
-                    peakTimestamps.clear()
-                    lastShakeTime = now
-                    onShake()
-                }
-            }
+        // Single knock on lateral X-axis or sharp net impulse
+        val threshold = sensitivity.threshold
+        if (deltaX >= threshold || netDelta >= (threshold * 1.15f)) {
+            lastKnockTime = now
+            onShake()
         }
     }
 

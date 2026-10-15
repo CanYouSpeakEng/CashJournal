@@ -32,7 +32,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -114,8 +120,27 @@ fun AccountsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .padding(bottom = 68.dp)
+            .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+            .drawWithContent {
+                drawContent()
+                val mistHeightPx = 64.dp.toPx()
+                val mistStartRatio = ((size.height - mistHeightPx) / size.height).coerceIn(0f, 1f)
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.0f to Color.Black,
+                            mistStartRatio to Color.Black,
+                            mistStartRatio + (1f - mistStartRatio) * 0.4f to Color.Black.copy(alpha = 0.6f),
+                            mistStartRatio + (1f - mistStartRatio) * 0.75f to Color.Black.copy(alpha = 0.15f),
+                            1.0f to Color.Transparent
+                        )
+                    ),
+                    blendMode = BlendMode.DstIn
+                )
+            }
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 120.dp),
+            .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Top Header Row with Actions
@@ -387,6 +412,23 @@ fun AccountsScreen(
                         .clickable(enabled = !state.isReorderMode) { onAccountClick(account) },
                     cornerRadius = 24.dp
                 ) {
+                    // Frosted Account Color Haze
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        account.accentKey.color.copy(alpha = 0.14f),
+                                        account.accentKey.color.copy(alpha = 0.03f),
+                                        Color.Transparent
+                                    ),
+                                    center = Offset(0f, 0f),
+                                    radius = 450f
+                                )
+                            )
+                    )
+
                     Row(modifier = Modifier.fillMaxWidth()) {
                         // 4dp left border in account color
                         Box(

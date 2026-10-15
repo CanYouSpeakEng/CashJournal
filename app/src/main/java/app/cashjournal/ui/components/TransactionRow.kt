@@ -2,6 +2,7 @@ package app.cashjournal.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -24,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cashjournal.domain.model.AccentKey
+import app.cashjournal.domain.model.Account
 import app.cashjournal.domain.model.Category
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.domain.model.TransactionType
@@ -42,6 +45,7 @@ fun TransactionRow(
     isMasked: Boolean,
     currencyCode: String = "IDR",
     dateText: String = "",
+    accounts: List<Account> = emptyList(),
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -49,6 +53,37 @@ fun TransactionRow(
         TransactionType.TRANSFER -> Category.transferIcon
         TransactionType.INCOME -> PhosphorIcons.Regular.ArrowDownLeft
         TransactionType.EXPENSE -> transaction.category.icon
+    }
+
+    val srcAccount = accounts.find { it.id == transaction.sourceAccountId }
+    val dstAccount = accounts.find { it.id == transaction.destinationAccountId }
+
+    val accountLabel: String?
+    val accountColor: Color?
+    when (transaction.type) {
+        TransactionType.TRANSFER -> {
+            if (srcAccount != null && dstAccount != null) {
+                accountLabel = "${srcAccount.name} \u2192 ${dstAccount.name}"
+                accountColor = srcAccount.accentKey.color
+            } else if (srcAccount != null) {
+                accountLabel = srcAccount.name
+                accountColor = srcAccount.accentKey.color
+            } else if (dstAccount != null) {
+                accountLabel = dstAccount.name
+                accountColor = dstAccount.accentKey.color
+            } else {
+                accountLabel = null
+                accountColor = null
+            }
+        }
+        TransactionType.EXPENSE -> {
+            accountLabel = srcAccount?.name
+            accountColor = srcAccount?.accentKey?.color
+        }
+        TransactionType.INCOME -> {
+            accountLabel = dstAccount?.name
+            accountColor = dstAccount?.accentKey?.color
+        }
     }
 
     TransactionRow(
@@ -60,6 +95,8 @@ fun TransactionRow(
         amountMinor = transaction.amount,
         currencyCode = currencyCode,
         dateText = dateText,
+        accountLabel = accountLabel,
+        accountColor = accountColor,
         balancesVisible = !isMasked,
         onClick = onClick,
         modifier = modifier
@@ -67,7 +104,6 @@ fun TransactionRow(
 }
 
 @Composable
-
 fun TransactionRow(
     title: String,
     categoryName: String,
@@ -77,6 +113,8 @@ fun TransactionRow(
     amountMinor: Long,
     currencyCode: String = "IDR",
     dateText: String = "",
+    accountLabel: String? = null,
+    accountColor: Color? = null,
     balancesVisible: Boolean = true,
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -113,7 +151,7 @@ fun TransactionRow(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        // Title and Category/Date
+        // Title and Category/Account/Date
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
@@ -125,16 +163,41 @@ fun TransactionRow(
                 overflow = TextOverflow.Ellipsis
             )
 
-            val subtitle = if (dateText.isNotEmpty()) "$categoryName · $dateText" else categoryName
-            Text(
-                text = subtitle,
-                fontFamily = PlusJakartaSansFamily,
-                fontWeight = FontWeight.Medium,
-                fontSize = 10.sp,
-                color = Slate500,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                if (accountColor != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(accountColor)
+                    )
+                }
+
+                val subtitle = buildString {
+                    if (!accountLabel.isNullOrEmpty()) {
+                        append(accountLabel)
+                        append(" \u00B7 ")
+                    }
+                    append(categoryName)
+                    if (dateText.isNotEmpty()) {
+                        append(" \u00B7 ")
+                        append(dateText)
+                    }
+                }
+
+                Text(
+                    text = subtitle,
+                    fontFamily = PlusJakartaSansFamily,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 10.sp,
+                    color = Slate500,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
 
         Spacer(modifier = Modifier.width(8.dp))

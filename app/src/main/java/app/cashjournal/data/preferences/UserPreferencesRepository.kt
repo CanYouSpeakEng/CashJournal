@@ -25,9 +25,11 @@ data class UserPreferences(
     val userName: String = "",
     val railOnRight: Boolean = true,
     val shakeToSwap: Boolean = false,
+    val knockSensitivity: String = "balanced", // "gentle", "balanced", "firm"
     val onboardingComplete: Boolean = false,
-    val pinEnabled: Boolean = true,
-    val biometricsEnabled: Boolean = true,
+    val pinEnabled: Boolean = false,
+    val pinHash: String = "",
+    val biometricsEnabled: Boolean = false,
     val screenPrivacyEnabled: Boolean = false,
     val soundEffectsEnabled: Boolean = true,
     val tactileHapticsEnabled: Boolean = true,
@@ -50,8 +52,10 @@ class UserPreferencesRepository(private val context: Context) {
         val USER_NAME = stringPreferencesKey("user_name")
         val RAIL_ON_RIGHT = booleanPreferencesKey("rail_on_right")
         val SHAKE_TO_SWAP = booleanPreferencesKey("shake_to_swap")
+        val KNOCK_SENSITIVITY = stringPreferencesKey("knock_sensitivity")
         val ONBOARDING_COMPLETE = booleanPreferencesKey("onboarding_complete")
         val PIN_ENABLED = booleanPreferencesKey("pin_enabled")
+        val PIN_HASH = stringPreferencesKey("pin_hash")
         val BIOMETRICS_ENABLED = booleanPreferencesKey("biometrics_enabled")
         val SCREEN_PRIVACY_ENABLED = booleanPreferencesKey("screen_privacy_enabled")
         val SOUND_EFFECTS_ENABLED = booleanPreferencesKey("sound_effects_enabled")
@@ -82,15 +86,23 @@ class UserPreferencesRepository(private val context: Context) {
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
         .map { preferences ->
+            val pinHash = preferences[PreferencesKeys.PIN_HASH] ?: ""
+            val rawPinEnabled = preferences[PreferencesKeys.PIN_ENABLED] ?: false
+            val pinEnabled = rawPinEnabled && pinHash.isNotEmpty()
+            val rawBiometrics = preferences[PreferencesKeys.BIOMETRICS_ENABLED] ?: false
+            val biometricsEnabled = rawBiometrics && pinEnabled
+
             UserPreferences(
                 language = preferences[PreferencesKeys.LANGUAGE] ?: "en",
                 currencyCode = preferences[PreferencesKeys.CURRENCY_CODE] ?: "IDR",
                 userName = preferences[PreferencesKeys.USER_NAME] ?: "",
                 railOnRight = preferences[PreferencesKeys.RAIL_ON_RIGHT] ?: true,
                 shakeToSwap = preferences[PreferencesKeys.SHAKE_TO_SWAP] ?: false,
+                knockSensitivity = preferences[PreferencesKeys.KNOCK_SENSITIVITY] ?: "balanced",
                 onboardingComplete = preferences[PreferencesKeys.ONBOARDING_COMPLETE] ?: false,
-                pinEnabled = preferences[PreferencesKeys.PIN_ENABLED] ?: true,
-                biometricsEnabled = preferences[PreferencesKeys.BIOMETRICS_ENABLED] ?: true,
+                pinEnabled = pinEnabled,
+                pinHash = pinHash,
+                biometricsEnabled = biometricsEnabled,
                 screenPrivacyEnabled = preferences[PreferencesKeys.SCREEN_PRIVACY_ENABLED] ?: false,
                 soundEffectsEnabled = preferences[PreferencesKeys.SOUND_EFFECTS_ENABLED] ?: true,
                 tactileHapticsEnabled = preferences[PreferencesKeys.TACTILE_HAPTICS_ENABLED] ?: true,
@@ -165,8 +177,28 @@ class UserPreferencesRepository(private val context: Context) {
         context.dataStore.edit { it[PreferencesKeys.SHAKE_TO_SWAP] = enabled }
     }
 
+    suspend fun updateKnockSensitivity(sensitivity: String) {
+        context.dataStore.edit { it[PreferencesKeys.KNOCK_SENSITIVITY] = sensitivity }
+    }
+
     suspend fun updateOnboardingComplete(completed: Boolean) {
         context.dataStore.edit { it[PreferencesKeys.ONBOARDING_COMPLETE] = completed }
+    }
+
+    suspend fun setPin(pin: String) {
+        val hash = hashPin(pin)
+        context.dataStore.edit {
+            it[PreferencesKeys.PIN_HASH] = hash
+            it[PreferencesKeys.PIN_ENABLED] = true
+        }
+    }
+
+    suspend fun removePin() {
+        context.dataStore.edit {
+            it[PreferencesKeys.PIN_HASH] = ""
+            it[PreferencesKeys.PIN_ENABLED] = false
+            it[PreferencesKeys.BIOMETRICS_ENABLED] = false
+        }
     }
 
     suspend fun updatePinEnabled(enabled: Boolean) {
@@ -229,6 +261,17 @@ class UserPreferencesRepository(private val context: Context) {
             it[PreferencesKeys.CACHED_RATES_JSON] = ratesJson
             it[PreferencesKeys.CACHED_RATES_UPDATE_UTC] = rates.timeLastUpdateUtc
             it[PreferencesKeys.CACHED_RATES_FETCHED_AT] = rates.fetchedAt
+        }
+    }
+
+    companion object {
+        fun hashPin(pin: String): String {
+            val bytes = java.security.MessageDigest.getInstance("SHA-256").digest(pin.toByteArray())
+            return bytes.joinToString("") { "%02x".format(it) }
+        }
+
+        fun verifyPin(enteredPin: String, storedHash: String): Boolean {
+            return storedHash.isNotEmpty() && hashPin(enteredPin) == storedHash
         }
     }
 }

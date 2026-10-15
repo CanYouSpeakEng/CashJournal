@@ -38,6 +38,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import app.cashjournal.data.weather.TemperatureConverter
 import app.cashjournal.data.weather.WeatherIconMapper
 import app.cashjournal.ui.components.AmbientField
 import app.cashjournal.ui.components.GreetingBar
@@ -50,6 +51,7 @@ import app.cashjournal.ui.screens.AnalyticsScreen
 import app.cashjournal.ui.screens.DashboardScreen
 import app.cashjournal.ui.screens.LedgerScreen
 import app.cashjournal.ui.screens.SettingsScreen
+import app.cashjournal.ui.sensory.KnockSensitivity
 import app.cashjournal.ui.sensory.ShakeDetector
 import app.cashjournal.ui.sheets.LogTransactionSheet
 import app.cashjournal.ui.sheets.MainCurrencySheet
@@ -66,7 +68,8 @@ import kotlin.math.roundToInt
 @Composable
 fun MainAppScaffold(
     viewModel: MainViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLockApp: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val railOnRight = state.userPreferences.railOnRight
@@ -74,11 +77,15 @@ fun MainAppScaffold(
     val context = LocalContext.current
     val view = LocalView.current
 
-    // Shake Detector per Build Brief v2 Section 15
+    // Shake & Knock Detector
     val shakeDetector = remember {
         ShakeDetector(context) {
             viewModel.toggleRailSide()
         }
+    }
+
+    LaunchedEffect(state.userPreferences.knockSensitivity) {
+        shakeDetector.sensitivity = KnockSensitivity.fromString(state.userPreferences.knockSensitivity)
     }
 
     DisposableEffect(state.userPreferences.shakeToSwap) {
@@ -148,9 +155,9 @@ fun MainAppScaffold(
         PhosphorIcons.Regular.Sun
     }
     val tempText = if (weather != null && state.userPreferences.weatherOption != "not_now") {
-        "${weather.temperature.roundToInt()}\u00B0${state.userPreferences.temperatureUnit}"
+        TemperatureConverter.format(weather.temperature, state.userPreferences.temperatureUnit)
     } else {
-        "24\u00B0C"
+        TemperatureConverter.format(24.0, state.userPreferences.temperatureUnit)
     }
 
     Box(
@@ -254,7 +261,7 @@ fun MainAppScaffold(
                         onLanguageChange = { viewModel.updatePreferences { prefs -> prefs.updateLanguage(it) } },
                         onOpenMainCurrency = { viewModel.openSheet(ActiveSheet.MAIN_CURRENCY) },
                         onPinChange = { viewModel.updatePreferences { prefs -> prefs.updatePinEnabled(it) } },
-                        onBiometricsChange = { viewModel.updatePreferences { prefs -> prefs.updateBiometricsEnabled(it) } },
+                        onBiometricsChange = { viewModel.updateBiometrics(it) },
                         onScreenPrivacyChange = { viewModel.updatePreferences { prefs -> prefs.updateScreenPrivacyEnabled(it) } },
                         onSoundEffectsChange = { viewModel.updatePreferences { prefs -> prefs.updateSoundEffectsEnabled(it) } },
                         onTactileHapticsChange = { viewModel.updatePreferences { prefs -> prefs.updateTactileHapticsEnabled(it) } },
@@ -270,10 +277,14 @@ fun MainAppScaffold(
                                 viewModel.showToast(if (enabled) "Shake sensor activated" else "Shake sensor disabled")
                             }
                         },
+                        onKnockSensitivityChange = { viewModel.updatePreferences { prefs -> prefs.updateKnockSensitivity(it) } },
                         onOpenWeatherDetail = { viewModel.openSheet(ActiveSheet.WEATHER_DETAIL) },
                         onTemperatureUnitChange = { viewModel.updatePreferences { prefs -> prefs.updateTemperatureUnit(it) } },
                         onToast = { viewModel.showToast(it) },
-                        onClearAllData = { viewModel.clearAllData() }
+                        onClearAllData = { viewModel.clearAllData() },
+                        onSetPin = { pin -> viewModel.setPin(pin) },
+                        onRemovePin = { viewModel.removePin() },
+                        onLockAppNow = onLockApp
                     )
                 }
             }

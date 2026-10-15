@@ -41,7 +41,12 @@ import app.cashjournal.ui.components.ScrollForMorePill
 import app.cashjournal.ui.components.SubtleGlassCard
 import app.cashjournal.ui.components.TransactionRow
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.launch
 import app.cashjournal.ui.theme.CashColors
 import app.cashjournal.ui.theme.CashTypography
@@ -80,8 +85,27 @@ fun DashboardScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(bottom = 68.dp)
+                .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                .drawWithContent {
+                    drawContent()
+                    val mistHeightPx = 64.dp.toPx()
+                    val mistStartRatio = ((size.height - mistHeightPx) / size.height).coerceIn(0f, 1f)
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.0f to Color.Black,
+                                mistStartRatio to Color.Black,
+                                mistStartRatio + (1f - mistStartRatio) * 0.4f to Color.Black.copy(alpha = 0.6f),
+                                mistStartRatio + (1f - mistStartRatio) * 0.75f to Color.Black.copy(alpha = 0.15f),
+                                1.0f to Color.Transparent
+                            )
+                        ),
+                        blendMode = BlendMode.DstIn
+                    )
+                }
                 .verticalScroll(scrollState)
-                .padding(bottom = 120.dp),
+                .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
         // 1. Total Net Worth Header
@@ -338,6 +362,23 @@ fun DashboardScreen(
                                 .clickable { onAccountClick(account) },
                             cornerRadius = 22.dp
                         ) {
+                            // Frosted Account Color Haze
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(
+                                                account.accentKey.color.copy(alpha = 0.16f),
+                                                account.accentKey.color.copy(alpha = 0.04f),
+                                                Color.Transparent
+                                            ),
+                                            center = Offset(0f, 0f),
+                                            radius = 280f
+                                        )
+                                    )
+                            )
+
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -433,7 +474,8 @@ fun DashboardScreen(
                         TransactionRow(
                             transaction = tx,
                             isMasked = state.hideBalances,
-                            currencyCode = state.userPreferences.currencyCode
+                            currencyCode = state.userPreferences.currencyCode,
+                            accounts = state.accounts
                         )
                     }
                 }
@@ -456,19 +498,20 @@ fun DashboardScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Monthly Budget Runway",
-                        fontFamily = PlusJakartaSansFamily,
+                        text = "MONTHLY BUDGET RUNWAY",
+                        fontFamily = SpaceGroteskFamily,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = Charcoal
+                        fontSize = 10.sp,
+                        letterSpacing = 0.8.sp,
+                        color = Slate500
                     )
 
                     Text(
                         text = "Budget ${Currency.formatMinor(safe.budget, state.userPreferences.currencyCode)}",
                         fontFamily = SpaceGroteskFamily,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        color = Cobalt
+                        fontSize = 11.sp,
+                        color = Charcoal
                     )
                 }
 
@@ -523,7 +566,7 @@ fun DashboardScreen(
             },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 24.dp)
+                .padding(bottom = 12.dp)
         )
     }
 }

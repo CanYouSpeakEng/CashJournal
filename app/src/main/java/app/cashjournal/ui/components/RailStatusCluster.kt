@@ -224,26 +224,30 @@ private fun StatusRingCanvas(
 
         // Battery Arc geometry:
         // Starts at 135° (bottom-left) and sweeps clockwise across 270° to 45° (bottom-right).
+        // The drain runs from left to right:
+        // - Black (used space) expands from 135° clockwise as battery drains.
+        // - Battery color (remaining charge) covers the remaining arc to 45°.
         val arcStartAngle = 135f
         val arcTotalSpan = 270f
         val fraction = (batteryPercent.coerceIn(0, 100)) / 100f
-        val chargedSpan = arcTotalSpan * fraction
-        val remainingSpan = arcTotalSpan * (1f - fraction)
+        val usedFraction = 1f - fraction
+        val usedSpan = arcTotalSpan * usedFraction
+        val remainingSpan = arcTotalSpan * fraction
 
-        // Dynamic battery color
+        // Dynamic battery color for remaining charge
         val batteryColor = when {
-            batteryPercent <= 10 -> Color(0xFFE53935) // Red
+            batteryPercent <= 10 -> Color(0xFFE53935) // Red Alert
             batteryPercent <= 30 -> Color(0xFFF5B301) // Saffron / Amber
             else -> Color(0xFF00B26B)                 // Emerald Green
         }
-        val unchargedColor = Color(0xFF1E293B)        // Deep Charcoal Black
+        val usedColor = Color(0xFF1E293B)             // Deep Charcoal Black (used space)
 
-        // 1. Charged Battery Arc (Green)
-        if (fraction > 0f) {
+        // 1. Used Battery Space (Black - runs left to right)
+        if (usedSpan > 0f) {
             drawArc(
-                color = batteryColor,
+                color = usedColor,
                 startAngle = arcStartAngle,
-                sweepAngle = chargedSpan,
+                sweepAngle = usedSpan,
                 useCenter = false,
                 topLeft = arcTopLeft,
                 size = arcSize,
@@ -251,11 +255,11 @@ private fun StatusRingCanvas(
             )
         }
 
-        // 2. Remaining Uncharged Arc (Dark)
-        if (fraction < 1f) {
+        // 2. Remaining Battery Arc (Green/Amber/Red)
+        if (remainingSpan > 0f) {
             drawArc(
-                color = unchargedColor,
-                startAngle = arcStartAngle + chargedSpan,
+                color = batteryColor,
+                startAngle = arcStartAngle + usedSpan,
                 sweepAngle = remainingSpan,
                 useCenter = false,
                 topLeft = arcTopLeft,

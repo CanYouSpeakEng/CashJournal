@@ -14,6 +14,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,12 +31,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,6 +51,7 @@ import app.cashjournal.domain.model.Transaction
 import app.cashjournal.domain.model.TransactionType
 import app.cashjournal.ui.MainUiState
 import app.cashjournal.ui.components.GlassCard
+import app.cashjournal.ui.components.ScrollForMorePill
 import app.cashjournal.ui.components.SubtleGlassCard
 import app.cashjournal.ui.components.TransactionRow
 import app.cashjournal.ui.theme.Charcoal
@@ -130,190 +142,243 @@ fun LedgerScreen(
         }
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(bottom = 120.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Title & Subtitle
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = "Activity Ledger",
-                fontFamily = PlusJakartaSansFamily,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 24.sp,
-                color = Charcoal
-            )
-            Text(
-                text = "$allCount transactions logged",
-                fontFamily = PlusJakartaSansFamily,
-                fontSize = 13.sp,
-                color = Slate500
-            )
-        }
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
 
-        // Filter Pills
-        Row(
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
             modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .fillMaxSize()
+                .padding(bottom = 68.dp)
+                .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                .drawWithContent {
+                    drawContent()
+                    val mistHeightPx = 64.dp.toPx()
+                    val mistStartRatio = ((size.height - mistHeightPx) / size.height).coerceIn(0f, 1f)
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.0f to Color.Black,
+                                mistStartRatio to Color.Black,
+                                mistStartRatio + (1f - mistStartRatio) * 0.4f to Color.Black.copy(alpha = 0.6f),
+                                mistStartRatio + (1f - mistStartRatio) * 0.75f to Color.Black.copy(alpha = 0.15f),
+                                1.0f to Color.Transparent
+                            )
+                        ),
+                        blendMode = BlendMode.DstIn
+                    )
+                },
+            contentPadding = PaddingValues(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            FilterPill(
-                label = "All",
-                count = allCount,
-                isSelected = selectedFilter == LedgerFilter.ALL,
-                onClick = { selectedFilter = LedgerFilter.ALL }
-            )
-            FilterPill(
-                label = "Expense",
-                count = expenseCount,
-                isSelected = selectedFilter == LedgerFilter.EXPENSE,
-                onClick = { selectedFilter = LedgerFilter.EXPENSE }
-            )
-            FilterPill(
-                label = "Income",
-                count = incomeCount,
-                isSelected = selectedFilter == LedgerFilter.INCOME,
-                onClick = { selectedFilter = LedgerFilter.INCOME }
-            )
-            FilterPill(
-                label = "Transfer",
-                count = transferCount,
-                isSelected = selectedFilter == LedgerFilter.TRANSFER,
-                onClick = { selectedFilter = LedgerFilter.TRANSFER }
-            )
-        }
-
-        // Search Bar
-        SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = PhosphorIcons.Regular.MagnifyingGlass,
-                    contentDescription = "Search",
-                    tint = Slate500,
-                    modifier = Modifier.size(18.dp)
-                )
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                BasicTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    textStyle = androidx.compose.ui.text.TextStyle(
+            // Title & Subtitle
+            item(key = "header", contentType = "header") {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "Activity Ledger",
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 24.sp,
+                        color = Charcoal
+                    )
+                    Text(
+                        text = "$allCount transactions logged",
                         fontFamily = PlusJakartaSansFamily,
                         fontSize = 13.sp,
-                        color = Charcoal
-                    ),
-                    cursorBrush = SolidColor(Cobalt),
-                    decorationBox = { innerTextField ->
-                        if (searchQuery.isEmpty()) {
-                            Text(
-                                text = "Search notes, categories, amounts...",
-                                fontFamily = PlusJakartaSansFamily,
-                                fontSize = 13.sp,
-                                color = Slate400
-                            )
-                        }
-                        innerTextField()
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-
-        // List Content or Empty States
-        if (state.transactions.isEmpty()) {
-            // Entire ledger empty
-            GlassCard(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    Icon(
-                        imageVector = PhosphorIcons.Regular.Receipt,
-                        contentDescription = "No transactions",
-                        tint = Slate400,
-                        modifier = Modifier.size(40.dp)
-                    )
-                    Text(
-                        text = "No transactions yet",
-                        fontFamily = PlusJakartaSansFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = Charcoal
-                    )
-                    Button(
-                        onClick = onLogTransactionClick,
-                        colors = ButtonDefaults.buttonColors(containerColor = Cobalt),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = "Log transaction",
-                            fontFamily = PlusJakartaSansFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                            color = Color.White
-                        )
-                    }
-                }
-            }
-        } else if (filteredTransactions.isEmpty()) {
-            // Filter / search query has no matches
-            GlassCard(modifier = Modifier.fillMaxWidth()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No matching transactions.",
-                        fontFamily = PlusJakartaSansFamily,
-                        fontSize = 14.sp,
                         color = Slate500
                     )
                 }
             }
-        } else {
-            // Grouped Transactions
-            groupedTransactions.forEach { (dayLabel, txList) ->
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = dayLabel,
-                        fontFamily = SpaceGroteskFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        letterSpacing = 0.8.sp,
-                        color = Slate500,
-                        modifier = Modifier.padding(start = 4.dp, top = 8.dp)
-                    )
 
+            // Filter Pills
+            item(key = "filter_pills", contentType = "filters") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterPill(
+                        label = "All",
+                        count = allCount,
+                        isSelected = selectedFilter == LedgerFilter.ALL,
+                        onClick = { selectedFilter = LedgerFilter.ALL }
+                    )
+                    FilterPill(
+                        label = "Expense",
+                        count = expenseCount,
+                        isSelected = selectedFilter == LedgerFilter.EXPENSE,
+                        onClick = { selectedFilter = LedgerFilter.EXPENSE }
+                    )
+                    FilterPill(
+                        label = "Income",
+                        count = incomeCount,
+                        isSelected = selectedFilter == LedgerFilter.INCOME,
+                        onClick = { selectedFilter = LedgerFilter.INCOME }
+                    )
+                    FilterPill(
+                        label = "Transfer",
+                        count = transferCount,
+                        isSelected = selectedFilter == LedgerFilter.TRANSFER,
+                        onClick = { selectedFilter = LedgerFilter.TRANSFER }
+                    )
+                }
+            }
+
+            // Search Bar
+            item(key = "search_bar", contentType = "search") {
+                SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = PhosphorIcons.Regular.MagnifyingGlass,
+                            contentDescription = "Search",
+                            tint = Slate500,
+                            modifier = Modifier.size(18.dp)
+                        )
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        BasicTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            textStyle = androidx.compose.ui.text.TextStyle(
+                                fontFamily = PlusJakartaSansFamily,
+                                fontSize = 13.sp,
+                                color = Charcoal
+                            ),
+                            cursorBrush = SolidColor(Cobalt),
+                            decorationBox = { innerTextField ->
+                                if (searchQuery.isEmpty()) {
+                                    Text(
+                                        text = "Search notes, categories, amounts...",
+                                        fontFamily = PlusJakartaSansFamily,
+                                        fontSize = 13.sp,
+                                        color = Slate400
+                                    )
+                                }
+                                innerTextField()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+
+            // List Content or Empty States
+            if (state.transactions.isEmpty()) {
+                // Entire ledger empty
+                item(key = "empty_ledger", contentType = "empty") {
                     GlassCard(modifier = Modifier.fillMaxWidth()) {
                         Column(
-                            modifier = Modifier.padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
-                            txList.forEach { tx ->
-                                TransactionRow(
-                                    transaction = tx,
-                                    isMasked = state.hideBalances,
-                                    currencyCode = state.userPreferences.currencyCode
+                            Icon(
+                                imageVector = PhosphorIcons.Regular.Receipt,
+                                contentDescription = "No transactions",
+                                tint = Slate400,
+                                modifier = Modifier.size(40.dp)
+                            )
+                            Text(
+                                text = "No transactions yet",
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = Charcoal
+                            )
+                            Button(
+                                onClick = onLogTransactionClick,
+                                colors = ButtonDefaults.buttonColors(containerColor = Cobalt),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(
+                                    text = "Log transaction",
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = Color.White
                                 )
+                            }
+                        }
+                    }
+                }
+            } else if (filteredTransactions.isEmpty()) {
+                // Filter / search query has no matches
+                item(key = "empty_filtered", contentType = "empty") {
+                    GlassCard(modifier = Modifier.fillMaxWidth()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No matching transactions.",
+                                fontFamily = PlusJakartaSansFamily,
+                                fontSize = 14.sp,
+                                color = Slate500
+                            )
+                        }
+                    }
+                }
+            } else {
+                // Grouped Transactions
+                items(
+                    items = groupedTransactions.entries.toList(),
+                    key = { (dayLabel, _) -> "group_$dayLabel" },
+                    contentType = { "dayGroup" }
+                ) { (dayLabel, txList) ->
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = dayLabel,
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            letterSpacing = 0.8.sp,
+                            color = Slate500,
+                            modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                        )
+
+                        GlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                txList.forEach { tx ->
+                                    TransactionRow(
+                                        transaction = tx,
+                                        isMasked = state.hideBalances,
+                                        currencyCode = state.userPreferences.currencyCode,
+                                        accounts = state.accounts
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
         }
+
+        ScrollForMorePill(
+            visible = listState.canScrollForward,
+            onClick = {
+                coroutineScope.launch {
+                    val first = listState.firstVisibleItemIndex
+                    val target = (first + 3).coerceAtMost(groupedTransactions.size + 3)
+                    listState.animateScrollToItem(target)
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 12.dp)
+        )
     }
 }
 

@@ -30,8 +30,8 @@ class WeatherService {
             val roundedLat = (latitude * 100.0).roundToInt() / 100.0
             val roundedLon = (longitude * 100.0).roundToInt() / 100.0
 
-            val unitParam = if (isFahrenheit) "&temperature_unit=fahrenheit" else ""
-            val url = "https://api.open-meteo.com/v1/forecast?latitude=$roundedLat&longitude=$roundedLon&current=temperature_2m,weather_code,is_day&timezone=auto$unitParam"
+            // Canonical Celsius fetch from Open-Meteo; UI converts to preferred unit on the fly
+            val url = "https://api.open-meteo.com/v1/forecast?latitude=$roundedLat&longitude=$roundedLon&current=temperature_2m,weather_code,is_day&timezone=auto"
 
             val request = Request.Builder()
                 .url(url)

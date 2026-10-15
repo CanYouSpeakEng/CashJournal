@@ -1,5 +1,6 @@
 package app.cashjournal.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,10 +28,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import androidx.fragment.app.FragmentActivity
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.ui.MainUiState
 import app.cashjournal.ui.components.GlassCard
@@ -38,11 +47,15 @@ import app.cashjournal.ui.components.SegmentItem
 import app.cashjournal.ui.components.SegmentedControl
 import app.cashjournal.ui.components.ToggleSwitch
 import app.cashjournal.ui.onboarding.AppLanguage
+import app.cashjournal.ui.security.BiometricAuthHelper
+import app.cashjournal.ui.sheets.PinSetupSheet
+import app.cashjournal.ui.sheets.PinVerifyOrRemoveSheet
 import app.cashjournal.ui.theme.Berry
 import app.cashjournal.ui.theme.CashColors
 import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Cobalt
 import app.cashjournal.ui.theme.PlusJakartaSansFamily
+import app.cashjournal.ui.theme.Slate100
 import app.cashjournal.ui.theme.Slate400
 import app.cashjournal.ui.theme.Slate500
 import app.cashjournal.ui.theme.Slate600
@@ -50,6 +63,7 @@ import app.cashjournal.ui.theme.SpaceGroteskFamily
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.CaretRight
+import com.adamglin.phosphoricons.regular.Lock
 
 @Composable
 fun SettingsScreen(
@@ -64,14 +78,22 @@ fun SettingsScreen(
     onDailyReminderChange: (Boolean) -> Unit,
     onRailSideChange: (Boolean) -> Unit,
     onShakeToSwapChange: (Boolean) -> Unit,
+    onKnockSensitivityChange: (String) -> Unit = {},
     onOpenWeatherDetail: () -> Unit,
     onTemperatureUnitChange: (String) -> Unit,
     onToast: (String) -> Unit,
     onClearAllData: () -> Unit,
+    onSetPin: (String) -> Unit = {},
+    onRemovePin: () -> Unit = {},
+    onLockAppNow: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showPinSetupSheet by remember { mutableStateOf(false) }
+    var showPinRemoveSheet by remember { mutableStateOf(false) }
     val currency = Currency.findByCode(state.userPreferences.currencyCode)
+    val context = LocalContext.current
+    val activity = context as? FragmentActivity
 
     if (showDeleteDialog) {
         AlertDialog(
@@ -128,8 +150,27 @@ fun SettingsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .padding(bottom = 68.dp)
+            .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+            .drawWithContent {
+                drawContent()
+                val mistHeightPx = 64.dp.toPx()
+                val mistStartRatio = ((size.height - mistHeightPx) / size.height).coerceIn(0f, 1f)
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0.0f to Color.Black,
+                            mistStartRatio to Color.Black,
+                            mistStartRatio + (1f - mistStartRatio) * 0.4f to Color.Black.copy(alpha = 0.6f),
+                            mistStartRatio + (1f - mistStartRatio) * 0.75f to Color.Black.copy(alpha = 0.15f),
+                            1.0f to Color.Transparent
+                        )
+                    ),
+                    blendMode = BlendMode.DstIn
+                )
+            }
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 120.dp),
+            .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Title & Subtitle
@@ -234,14 +275,49 @@ fun SettingsScreen(
 
                 SettingToggleRow(
                     title = "PIN Code",
+                    subtitle = if (state.userPreferences.pinEnabled) "App locked after 15s in background" else "Protect app with 4-digit code",
                     checked = state.userPreferences.pinEnabled,
-                    onCheckedChange = onPinChange
+                    onCheckedChange = { targetChecked ->
+                        if (targetChecked) {
+                            showPinSetupSheet = true
+                        } else {
+                            showPinRemoveSheet = true
+                        }
+                    }
                 )
 
                 SettingToggleRow(
                     title = "Biometrics",
+                    subtitle = if (state.userPreferences.biometricsEnabled) "Fingerprint / Face unlock active" else "Unlock with fingerprint or face",
                     checked = state.userPreferences.biometricsEnabled,
-                    onCheckedChange = onBiometricsChange
+                    onCheckedChange = { targetChecked ->
+                        if (targetChecked) {
+                            if (!state.userPreferences.pinEnabled || state.userPreferences.pinHash.isEmpty()) {
+                                onToast("Please set up a PIN code first")
+                                showPinSetupSheet = true
+                            } else {
+                                if (activity != null) {
+                                    BiometricAuthHelper.promptBiometric(
+                                        activity = activity,
+                                        title = "Enable Biometrics",
+                                        subtitle = "Confirm biometric identity to enable",
+                                        onSuccess = {
+                                            onBiometricsChange(true)
+                                            onToast("Biometrics enabled")
+                                        },
+                                        onError = {
+                                            onToast("Biometric verification cancelled or failed")
+                                        }
+                                    )
+                                } else {
+                                    onBiometricsChange(true)
+                                }
+                            }
+                        } else {
+                            onBiometricsChange(false)
+                            onToast("Biometrics disabled")
+                        }
+                    }
                 )
 
                 SettingToggleRow(
@@ -250,6 +326,44 @@ fun SettingsScreen(
                     checked = state.userPreferences.screenPrivacyEnabled,
                     onCheckedChange = onScreenPrivacyChange
                 )
+
+                if (state.userPreferences.pinEnabled) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Slate100)
+                            .clickable {
+                                onLockAppNow()
+                            }
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = "Lock App Now",
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Charcoal
+                            )
+                            Text(
+                                text = "Immediately lock screen with PIN",
+                                fontFamily = PlusJakartaSansFamily,
+                                fontSize = 12.sp,
+                                color = Slate500
+                            )
+                        }
+
+                        Icon(
+                            imageVector = PhosphorIcons.Regular.Lock,
+                            contentDescription = "Lock",
+                            tint = Cobalt,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
         }
 
@@ -316,10 +430,38 @@ fun SettingsScreen(
 
                 SettingToggleRow(
                     title = "Shake to Swap Sides",
-                    subtitle = "Optional, uses motion sensor",
+                    subtitle = "Knock device or shake to swap",
                     checked = state.userPreferences.shakeToSwap,
                     onCheckedChange = onShakeToSwapChange
                 )
+
+                if (state.userPreferences.shakeToSwap) {
+                    Column(
+                        modifier = Modifier.padding(top = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "KNOCK SENSITIVITY",
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            letterSpacing = 0.8.sp,
+                            color = Slate500
+                        )
+
+                        val sensitivityItems = listOf(
+                            SegmentItem("gentle", "Gentle", Cobalt),
+                            SegmentItem("balanced", "Balanced", Cobalt),
+                            SegmentItem("firm", "Firm", Cobalt)
+                        )
+
+                        SegmentedControl(
+                            items = sensitivityItems,
+                            selectedValue = state.userPreferences.knockSensitivity,
+                            onValueSelected = onKnockSensitivityChange
+                        )
+                    }
+                }
             }
         }
 
@@ -508,6 +650,29 @@ fun SettingsScreen(
             }
         }
     }
+
+    if (showPinSetupSheet) {
+        PinSetupSheet(
+            onDismiss = { showPinSetupSheet = false },
+            onPinCreated = { pin ->
+                onSetPin(pin)
+                showPinSetupSheet = false
+                onToast("PIN code enabled")
+            }
+        )
+    }
+
+    if (showPinRemoveSheet) {
+        PinVerifyOrRemoveSheet(
+            storedHash = state.userPreferences.pinHash,
+            onDismiss = { showPinRemoveSheet = false },
+            onSuccess = {
+                onRemovePin()
+                showPinRemoveSheet = false
+                onToast("PIN code removed")
+            }
+        )
+    }
 }
 
 @Composable
@@ -518,7 +683,9 @@ private fun SettingToggleRow(
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) },
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {

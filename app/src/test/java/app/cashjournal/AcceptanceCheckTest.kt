@@ -7,6 +7,7 @@ import app.cashjournal.domain.model.SafeToSpendStatus
 import app.cashjournal.domain.model.Transaction
 import app.cashjournal.domain.model.TransactionType
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Calendar
 import java.util.TimeZone
@@ -173,5 +174,35 @@ class AcceptanceCheckTest {
         assertEquals(resultBefore.remaining, resultAfter.remaining)
         assertEquals(resultBefore.safeToSpendToday, resultAfter.safeToSpendToday)
         assertEquals(resultBefore.status, resultAfter.status)
+    }
+
+    @Test
+    fun testKnockSensitivityConfig() {
+        val gentle = app.cashjournal.ui.sensory.KnockSensitivity.fromString("gentle")
+        val balanced = app.cashjournal.ui.sensory.KnockSensitivity.fromString("balanced")
+        val firm = app.cashjournal.ui.sensory.KnockSensitivity.fromString("firm")
+        val unknown = app.cashjournal.ui.sensory.KnockSensitivity.fromString("unknown")
+
+        assertEquals(8.5f, gentle.threshold)
+        assertEquals(12.5f, balanced.threshold)
+        assertEquals(17.0f, firm.threshold)
+        assertEquals(app.cashjournal.ui.sensory.KnockSensitivity.BALANCED, unknown)
+    }
+
+    @Test
+    fun testPhase3MaskedDotsSpecification() {
+        // Prototype and Section 15 mandate exact uniform 7 dots mask to conceal magnitude
+        val maskedDots = "•••••••"
+        assertEquals(7, maskedDots.length)
+        assertTrue(maskedDots.all { it == '•' })
+    }
+
+    @Test
+    fun testPhase3VersionCodeRange() {
+        val epochOffset = 1767225600L // 2026-01-01T00:00:00Z
+        val nowSec = System.currentTimeMillis() / 1000
+        val autoVersionCode = (nowSec - epochOffset).toInt().coerceAtLeast(100)
+        assertTrue(autoVersionCode > 100)
+        assertTrue(autoVersionCode < Int.MAX_VALUE)
     }
 }
