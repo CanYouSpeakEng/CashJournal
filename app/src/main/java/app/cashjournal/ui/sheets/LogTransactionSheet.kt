@@ -279,7 +279,7 @@ fun LogTransactionSheet(
         CustomNumericKeypad(
             currencyCode = currencyCode,
             onKeyPressed = { key ->
-                if (key == "⌫") {
+                if (key == "BACKSPACE") {
                     rawDigits = if (rawDigits.length > 1) {
                         rawDigits.dropLast(1)
                     } else {

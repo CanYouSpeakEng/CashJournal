@@ -46,7 +46,7 @@ fun CustomNumericKeypad(
     val currency = Currency.findByCode(currencyCode)
     CustomNumericKeypad(
         onDigitPress = onKeyPressed,
-        onBackspacePress = { onKeyPressed("⌫") },
+        onBackspacePress = { onKeyPressed("BACKSPACE") },
         modifier = modifier,
         isZeroDecimal = currency.isZeroDecimal,
         hapticsEnabled = hapticsEnabled
