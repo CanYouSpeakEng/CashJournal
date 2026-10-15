@@ -1,13 +1,16 @@
 package app.cashjournal.ui
 
+import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -21,15 +24,22 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.dp
 import app.cashjournal.data.weather.WeatherIconMapper
-import app.cashjournal.domain.model.Currency
+import app.cashjournal.ui.components.AmbientField
 import app.cashjournal.ui.components.GreetingBar
 import app.cashjournal.ui.components.NavTab
 import app.cashjournal.ui.components.SideRail
@@ -40,6 +50,7 @@ import app.cashjournal.ui.screens.AnalyticsScreen
 import app.cashjournal.ui.screens.DashboardScreen
 import app.cashjournal.ui.screens.LedgerScreen
 import app.cashjournal.ui.screens.SettingsScreen
+import app.cashjournal.ui.sensory.ShakeDetector
 import app.cashjournal.ui.sheets.LogTransactionSheet
 import app.cashjournal.ui.sheets.MainCurrencySheet
 import app.cashjournal.ui.sheets.NewAccountSheet
@@ -60,6 +71,63 @@ fun MainAppScaffold(
     val state by viewModel.uiState.collectAsState()
     val railOnRight = state.userPreferences.railOnRight
     val isAccountDetail = state.currentScreen == AppScreen.ACCOUNT_DETAIL
+    val context = LocalContext.current
+    val view = LocalView.current
+
+    // Shake Detector per Build Brief v2 Section 15
+    val shakeDetector = remember {
+        ShakeDetector(context) {
+            viewModel.toggleRailSide()
+        }
+    }
+
+    DisposableEffect(state.userPreferences.shakeToSwap) {
+        if (state.userPreferences.shakeToSwap) {
+            val started = shakeDetector.start()
+            if (!started) {
+                viewModel.showToast("Shake sensor not available on this device")
+                viewModel.updatePreferences { prefs -> prefs.updateShakeToSwap(false) }
+            }
+        } else {
+            shakeDetector.stop()
+        }
+        onDispose {
+            shakeDetector.stop()
+        }
+    }
+
+    // Rail Move Spring physics per Build Brief v2 Section 15:
+    // Leading edge stiffness 320, damping 23. Pill stretches and tilts up to 18°.
+    val railBias by animateFloatAsState(
+        targetValue = if (railOnRight) 1f else -1f,
+        animationSpec = spring(stiffness = 320f, dampingRatio = 0.65f),
+        label = "rail_bias"
+    )
+
+    val contentStartPadding by animateDpAsState(
+        targetValue = if (railOnRight) 20.dp else 78.dp,
+        animationSpec = spring(stiffness = 320f, dampingRatio = 0.65f),
+        label = "content_start_pad"
+    )
+
+    val contentEndPadding by animateDpAsState(
+        targetValue = if (railOnRight) 78.dp else 20.dp,
+        animationSpec = spring(stiffness = 320f, dampingRatio = 0.65f),
+        label = "content_end_pad"
+    )
+
+    val tiltAngle = remember { Animatable(0f) }
+    LaunchedEffect(railOnRight) {
+        if (state.userPreferences.tactileHapticsEnabled) {
+            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        }
+        val targetTilt = if (railOnRight) -18f else 18f
+        tiltAngle.snapTo(targetTilt)
+        tiltAngle.animateTo(
+            targetValue = 0f,
+            animationSpec = spring(stiffness = 320f, dampingRatio = 0.65f)
+        )
+    }
 
     // Map screen to NavTab
     val currentNavTab = when (state.currentScreen) {
@@ -90,13 +158,19 @@ fun MainAppScaffold(
             .fillMaxSize()
             .background(Slate100)
     ) {
+        // Dynamic Ambient Field Background per Build Brief v2 Section 15
+        AmbientField(
+            accounts = state.accounts,
+            railSideRight = railOnRight
+        )
+
         // Main Content Container
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
-                    start = if (railOnRight) 20.dp else 78.dp,
-                    end = if (railOnRight) 78.dp else 20.dp,
+                    start = contentStartPadding,
+                    end = contentEndPadding,
                     top = 44.dp
                 )
         ) {
@@ -120,12 +194,18 @@ fun MainAppScaffold(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Screen Content with Animated Transition
+            // Screen Content with Section 15 Animation:
+            // "Screen switch: the new screen fades in from 0 to 100% and slides up 6dp over 350 ms,
+            // curve (0.16, 1, 0.3, 1). The old screen disappears at once."
+            val density = LocalDensity.current
+            val slideOffsetPx = with(density) { 6.dp.roundToPx() }
+            val screenCurve = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
             AnimatedContent(
                 targetState = state.currentScreen,
                 transitionSpec = {
-                    (fadeIn() + slideInHorizontally { width -> if (targetState.ordinal > initialState.ordinal) width / 4 else -width / 4 })
-                        .togetherWith(fadeOut() + slideOutHorizontally { width -> if (targetState.ordinal > initialState.ordinal) -width / 4 else width / 4 })
+                    (fadeIn(animationSpec = tween(durationMillis = 350, easing = screenCurve)) +
+                            slideInVertically(animationSpec = tween(durationMillis = 350, easing = screenCurve)) { slideOffsetPx })
+                        .togetherWith(fadeOut(animationSpec = tween(durationMillis = 0)))
                 },
                 label = "screenTransition",
                 modifier = Modifier.fillMaxSize()
@@ -180,7 +260,16 @@ fun MainAppScaffold(
                         onTactileHapticsChange = { viewModel.updatePreferences { prefs -> prefs.updateTactileHapticsEnabled(it) } },
                         onDailyReminderChange = { viewModel.updatePreferences { prefs -> prefs.updateDailyReminderEnabled(it) } },
                         onRailSideChange = { viewModel.updatePreferences { prefs -> prefs.updateRailOnRight(it) } },
-                        onShakeToSwapChange = { viewModel.updatePreferences { prefs -> prefs.updateShakeToSwap(it) } },
+                        onShakeToSwapChange = { enabled ->
+                            val supported = shakeDetector.isSupported
+                            if (enabled && !supported) {
+                                viewModel.showToast("Shake sensor not available on this device")
+                                viewModel.updatePreferences { prefs -> prefs.updateShakeToSwap(false) }
+                            } else {
+                                viewModel.updatePreferences { prefs -> prefs.updateShakeToSwap(enabled) }
+                                viewModel.showToast(if (enabled) "Shake sensor activated" else "Shake sensor disabled")
+                            }
+                        },
                         onOpenWeatherDetail = { viewModel.openSheet(ActiveSheet.WEATHER_DETAIL) },
                         onTemperatureUnitChange = { viewModel.updatePreferences { prefs -> prefs.updateTemperatureUnit(it) } },
                         onToast = { viewModel.showToast(it) },
@@ -190,15 +279,12 @@ fun MainAppScaffold(
             }
         }
 
-        // Side Rail (Floating, 12dp from screen edge, vertically centered)
+        // Side Rail (Floating, 12dp from screen edge, spring transition across sides)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(
-                    start = if (!railOnRight) 12.dp else 0.dp,
-                    end = if (railOnRight) 12.dp else 0.dp
-                ),
-            contentAlignment = if (railOnRight) Alignment.CenterEnd else Alignment.CenterStart
+                .padding(horizontal = 12.dp),
+            contentAlignment = BiasAlignment(railBias, 0f)
         ) {
             SideRail(
                 currentTab = currentNavTab,
@@ -215,7 +301,9 @@ fun MainAppScaffold(
                 balancesVisible = !state.hideBalances,
                 onToggleBalances = { viewModel.toggleHideBalances() },
                 isNestedScreen = isAccountDetail,
-                onBackClick = if (isAccountDetail) { { viewModel.setScreen(AppScreen.ACCOUNTS) } } else null
+                onBackClick = if (isAccountDetail) { { viewModel.setScreen(AppScreen.ACCOUNTS) } } else null,
+                hapticsEnabled = state.userPreferences.tactileHapticsEnabled,
+                modifier = Modifier.rotate(tiltAngle.value)
             )
         }
 
@@ -245,7 +333,8 @@ fun MainAppScaffold(
                         onSaveTransaction = { type, src, dst, note, amount ->
                             viewModel.logTransaction(type, src, dst, note, amount)
                         },
-                        onDismiss = { viewModel.dismissSheet() }
+                        onDismiss = { viewModel.dismissSheet() },
+                        soundEffectsEnabled = state.userPreferences.soundEffectsEnabled
                     )
 
                     ActiveSheet.NEW_ACCOUNT -> NewAccountSheet(

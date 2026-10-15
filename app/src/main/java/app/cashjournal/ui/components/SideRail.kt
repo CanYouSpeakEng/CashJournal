@@ -1,19 +1,24 @@
 package app.cashjournal.ui.components
 
 import android.view.HapticFeedbackConstants
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,17 +30,25 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cashjournal.ui.theme.Charcoal
@@ -58,6 +71,9 @@ import com.adamglin.phosphoricons.regular.Wallet
 import kotlinx.coroutines.delay
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.sin
 
 enum class NavTab {
     DASHBOARD,
@@ -67,6 +83,15 @@ enum class NavTab {
     SETTINGS
 }
 
+/**
+ * Side Rail with liquid Tab Drip and Clock Arc animations per Build Brief v2 Section 15:
+ * - "Rail drip: on tab change, a blue blob leaves the old button, stretches along the rail,
+ *   and lands on the new button over 420 ms. The old button loses its fill at the start,
+ *   the new one gains it at the end. An approximation is allowed, but it must read as a drip."
+ * - "Clock arc: when a nested screen opens, the five characters move from the top arc to the
+ *   bottom arc, rotating 180°, with an overshoot ease over 900 ms each. Start delays 270, 180,
+ *   150, 90, and 0 ms. The back button scales in from 40% at the top. Reverse on leaving."
+ */
 @Composable
 fun SideRail(
     currentTab: NavTab,
@@ -81,7 +106,7 @@ fun SideRail(
 ) {
     val view = LocalView.current
 
-    // Clock state updated every 30 seconds
+    // Clock state updated periodically
     var timeString by remember { mutableStateOf(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -90,7 +115,44 @@ fun SideRail(
         }
     }
 
-    // Side rail: 42dp pill, translucent white at 88%
+    // Tab drip animation setup
+    val dripAnim = remember { Animatable(currentTab.ordinal.toFloat()) }
+    var previousTabOrdinal by remember { mutableIntStateOf(currentTab.ordinal) }
+    var stretchFraction by remember { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(currentTab) {
+        val target = currentTab.ordinal.toFloat()
+        if (dripAnim.value != target) {
+            val start = dripAnim.value
+            previousTabOrdinal = start.toInt()
+            val diff = abs(target - start)
+
+            // Animate over 420 ms with (0.16, 1, 0.3, 1) curve
+            dripAnim.animateTo(
+                targetValue = target,
+                animationSpec = tween(
+                    durationMillis = 420,
+                    easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
+                )
+            ) {
+                // Liquid stretch calculation: peaks mid-transit
+                val totalDist = abs(target - start)
+                val currentDist = abs(value - start)
+                val normalized = if (totalDist > 0f) (currentDist / totalDist).coerceIn(0f, 1f) else 0f
+                stretchFraction = (sin(normalized * PI).toFloat() * diff.coerceAtMost(2.5f))
+            }
+            stretchFraction = 0f
+        }
+    }
+
+    // Back button scale animation from 40% per Section 15
+    val backButtonScale by animateFloatAsState(
+        targetValue = if (isNestedScreen) 1f else 0.4f,
+        animationSpec = tween(durationMillis = 350, easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)),
+        label = "backButtonScale"
+    )
+
+    // Side rail container: 42dp pill, translucent white at 88%
     Surface(
         modifier = modifier
             .width(42.dp)
@@ -109,11 +171,12 @@ fun SideRail(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Top Zone: Clock (or Back button when nested)
+            // Top Zone: Clock Arc or Back Button
             if (isNestedScreen) {
                 Box(
                     modifier = Modifier
                         .size(36.dp)
+                        .scale(backButtonScale)
                         .clip(CircleShape)
                         .clickable {
                             if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
@@ -129,21 +192,11 @@ fun SideRail(
                     )
                 }
             } else {
-                // Clock Zone: 5 characters HH:MM
-                Box(
-                    modifier = Modifier
-                        .width(42.dp)
-                        .height(28.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = timeString,
-                        fontFamily = SpaceGroteskFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp,
-                        color = Slate500
-                    )
-                }
+                // Clock Zone with animated characters
+                ClockArcDisplay(
+                    timeString = timeString,
+                    isNested = false
+                )
 
                 // Privacy Vault Toggle (Lock when visible, EyeSlash when hidden)
                 Box(
@@ -167,56 +220,90 @@ fun SideRail(
 
             Spacer(modifier = Modifier.height(2.dp))
 
-            // Navigation Buttons (Dashboard, Ledger, Accounts, Analytics, Settings)
-            RailNavButton(
-                icon = PhosphorIcons.Regular.SquaresFour,
-                contentDescription = "Dashboard",
-                isSelected = currentTab == NavTab.DASHBOARD,
-                onClick = {
-                    if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    onTabSelected(NavTab.DASHBOARD)
-                }
-            )
+            // Navigation Area with Liquid Drip Canvas
+            Box(
+                modifier = Modifier
+                    .width(36.dp)
+                    .height(212.dp) // 5 buttons (36dp) + 4 gaps (8dp) = 212dp
+            ) {
+                // Liquid Tab Drip Canvas
+                Canvas(modifier = Modifier.matchParentSize()) {
+                    val stepPx = 44.dp.toPx() // 36dp + 8dp spacing
+                    val buttonRadius = 18.dp.toPx()
+                    val buttonDiameter = 36.dp.toPx()
 
-            RailNavButton(
-                icon = PhosphorIcons.Regular.Receipt,
-                contentDescription = "Ledger",
-                isSelected = currentTab == NavTab.LEDGER,
-                onClick = {
-                    if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    onTabSelected(NavTab.LEDGER)
-                }
-            )
+                    val currentCenterY = buttonRadius + dripAnim.value * stepPx
+                    val stretchExtraPx = stretchFraction * 14.dp.toPx()
+                    val blobHeight = buttonDiameter + stretchExtraPx
+                    val blobWidth = (buttonDiameter - stretchFraction * 6.dp.toPx()).coerceAtLeast(24.dp.toPx())
 
-            RailNavButton(
-                icon = PhosphorIcons.Regular.Wallet,
-                contentDescription = "Accounts",
-                isSelected = currentTab == NavTab.ACCOUNTS,
-                onClick = {
-                    if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    onTabSelected(NavTab.ACCOUNTS)
-                }
-            )
+                    val top = currentCenterY - blobHeight / 2f
+                    val left = (size.width - blobWidth) / 2f
 
-            RailNavButton(
-                icon = PhosphorIcons.Regular.ChartBar,
-                contentDescription = "Analytics",
-                isSelected = currentTab == NavTab.ANALYTICS,
-                onClick = {
-                    if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    onTabSelected(NavTab.ANALYTICS)
+                    drawRoundRect(
+                        color = Cobalt,
+                        topLeft = Offset(left, top),
+                        size = Size(blobWidth, blobHeight),
+                        cornerRadius = CornerRadius(blobWidth / 2f, blobWidth / 2f)
+                    )
                 }
-            )
 
-            RailNavButton(
-                icon = PhosphorIcons.Regular.GearSix,
-                contentDescription = "Settings",
-                isSelected = currentTab == NavTab.SETTINGS,
-                onClick = {
-                    if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    onTabSelected(NavTab.SETTINGS)
+                // The 5 Nav Buttons rendered on top
+                Column(
+                    modifier = Modifier.matchParentSize(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    RailNavButton(
+                        icon = PhosphorIcons.Regular.SquaresFour,
+                        contentDescription = "Dashboard",
+                        isSelected = currentTab == NavTab.DASHBOARD,
+                        onClick = {
+                            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                            onTabSelected(NavTab.DASHBOARD)
+                        }
+                    )
+
+                    RailNavButton(
+                        icon = PhosphorIcons.Regular.Receipt,
+                        contentDescription = "Ledger",
+                        isSelected = currentTab == NavTab.LEDGER,
+                        onClick = {
+                            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                            onTabSelected(NavTab.LEDGER)
+                        }
+                    )
+
+                    RailNavButton(
+                        icon = PhosphorIcons.Regular.Wallet,
+                        contentDescription = "Accounts",
+                        isSelected = currentTab == NavTab.ACCOUNTS,
+                        onClick = {
+                            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                            onTabSelected(NavTab.ACCOUNTS)
+                        }
+                    )
+
+                    RailNavButton(
+                        icon = PhosphorIcons.Regular.ChartBar,
+                        contentDescription = "Analytics",
+                        isSelected = currentTab == NavTab.ANALYTICS,
+                        onClick = {
+                            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                            onTabSelected(NavTab.ANALYTICS)
+                        }
+                    )
+
+                    RailNavButton(
+                        icon = PhosphorIcons.Regular.GearSix,
+                        contentDescription = "Settings",
+                        isSelected = currentTab == NavTab.SETTINGS,
+                        onClick = {
+                            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                            onTabSelected(NavTab.SETTINGS)
+                        }
+                    )
                 }
-            )
+            }
 
             // Divider before Quick Add
             Box(
@@ -249,6 +336,55 @@ fun SideRail(
     }
 }
 
+/**
+ * Clock Arc Display with staggered character rotations per Build Brief v2 Section 15:
+ * "The five characters move from the top arc to the bottom arc, rotating 180°,
+ * with an overshoot ease over 900 ms each. Start delays 270, 180, 150, 90, and 0 ms."
+ */
+@Composable
+private fun ClockArcDisplay(
+    timeString: String,
+    isNested: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val delays = listOf(270, 180, 150, 90, 0)
+    val overshootEasing = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)
+
+    Box(
+        modifier = modifier
+            .width(42.dp)
+            .height(28.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            timeString.forEachIndexed { index, char ->
+                val delayMs = delays.getOrElse(index) { 0 }
+                val rotation by animateFloatAsState(
+                    targetValue = if (isNested) 180f else 0f,
+                    animationSpec = tween(
+                        durationMillis = 900,
+                        delayMillis = delayMs,
+                        easing = overshootEasing
+                    ),
+                    label = "char_rotation_$index"
+                )
+
+                Text(
+                    text = char.toString(),
+                    fontFamily = SpaceGroteskFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 10.sp,
+                    color = Slate500,
+                    modifier = Modifier.rotate(rotation)
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun RailNavButton(
     icon: ImageVector,
@@ -256,29 +392,12 @@ private fun RailNavButton(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected) Cobalt else Color.Transparent,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-        label = "navButtonBg"
-    )
-    val iconColor by animateColorAsState(
-        targetValue = if (isSelected) Color.White else Slate500,
-        label = "navButtonIcon"
-    )
-
-    val shadowElevation = if (isSelected) 4.dp else 0.dp
+    val iconColor = if (isSelected) Color.White else Slate500
 
     Box(
         modifier = Modifier
             .size(36.dp)
-            .shadow(
-                elevation = shadowElevation,
-                shape = CircleShape,
-                ambientColor = Cobalt.copy(alpha = 0.3f),
-                spotColor = Cobalt.copy(alpha = 0.4f)
-            )
             .clip(CircleShape)
-            .background(backgroundColor)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,

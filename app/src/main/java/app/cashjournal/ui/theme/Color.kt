@@ -46,6 +46,7 @@ object CashColors {
     val Slate400 = Color(0xFF94A3B8)
     val Slate500 = Color(0xFF64748B)
     val Slate600 = Color(0xFF475569)
+    val Slate700 = Color(0xFF334155)
     val Slate800 = Color(0xFF1E293B)
 
     // Status
@@ -121,6 +122,7 @@ val Slate300 = CashColors.Slate300
 val Slate400 = CashColors.Slate400
 val Slate500 = CashColors.Slate500
 val Slate600 = CashColors.Slate600
+val Slate700 = CashColors.Slate700
 val Slate800 = CashColors.Slate800
 val Recalibrate = CashColors.Recalibrate
 val GlassCardBackground = CashColors.GlassCardBg

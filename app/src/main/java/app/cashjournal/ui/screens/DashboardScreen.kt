@@ -37,8 +37,12 @@ import app.cashjournal.ui.MainUiState
 import app.cashjournal.ui.SafeToSpendStatus
 import app.cashjournal.ui.components.GlassCard
 import app.cashjournal.ui.components.MaskedAmount
+import app.cashjournal.ui.components.ScrollForMorePill
 import app.cashjournal.ui.components.SubtleGlassCard
 import app.cashjournal.ui.components.TransactionRow
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.Brush
+import kotlinx.coroutines.launch
 import app.cashjournal.ui.theme.CashColors
 import app.cashjournal.ui.theme.CashTypography
 import app.cashjournal.ui.theme.Charcoal
@@ -70,14 +74,16 @@ fun DashboardScreen(
 ) {
     val currency = Currency.findByCode(state.userPreferences.currencyCode)
     val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(bottom = 120.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(bottom = 120.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
         // 1. Total Net Worth Header
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
@@ -317,55 +323,70 @@ fun DashboardScreen(
                 }
             }
         } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                state.accounts.forEach { account ->
-                    GlassCard(
-                        modifier = Modifier
-                            .width(130.dp)
-                            .height(96.dp)
-                            .clickable { onAccountClick(account) },
-                        cornerRadius = 22.dp
-                    ) {
-                        Column(
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    state.accounts.forEach { account ->
+                        GlassCard(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(12.dp),
-                            verticalArrangement = Arrangement.SpaceBetween
+                                .width(130.dp)
+                                .height(96.dp)
+                                .clickable { onAccountClick(account) },
+                            cornerRadius = 22.dp
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(12.dp),
+                                verticalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .clip(CircleShape)
-                                        .background(account.accentKey.color)
-                                )
-                                Text(
-                                    text = account.name,
-                                    fontFamily = PlusJakartaSansFamily,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 12.sp,
-                                    color = Charcoal,
-                                    maxLines = 1
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(account.accentKey.color)
+                                    )
+                                    Text(
+                                        text = account.name,
+                                        fontFamily = PlusJakartaSansFamily,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 12.sp,
+                                        color = Charcoal,
+                                        maxLines = 1
+                                    )
+                                }
+
+                                MaskedAmount(
+                                    amountMinor = account.balance,
+                                    currencyCode = state.userPreferences.currencyCode,
+                                    isMasked = state.hideBalances,
+                                    textStyle = CashTypography.Mono12.copy(fontSize = 13.sp)
                                 )
                             }
-
-                            MaskedAmount(
-                                amountMinor = account.balance,
-                                currencyCode = state.userPreferences.currencyCode,
-                                isMasked = state.hideBalances,
-                                textStyle = CashTypography.Mono12.copy(fontSize = 13.sp)
-                            )
                         }
                     }
                 }
+
+                // 48dp right edge fade per Build Brief v2 Section 15
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .width(48.dp)
+                        .height(96.dp)
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(Color.Transparent, Slate100.copy(alpha = 0.88f))
+                            )
+                        )
+                )
             }
         }
 
@@ -491,4 +512,19 @@ fun DashboardScreen(
             }
         }
     }
+
+        ScrollForMorePill(
+            visible = scrollState.canScrollForward,
+            onClick = {
+                coroutineScope.launch {
+                    val step = (scrollState.viewportSize * 0.65f).toInt().coerceAtLeast(100)
+                    scrollState.animateScrollTo((scrollState.value + step).coerceAtMost(scrollState.maxValue))
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 24.dp)
+        )
+    }
 }
+

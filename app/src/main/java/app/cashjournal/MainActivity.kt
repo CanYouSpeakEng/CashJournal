@@ -1,5 +1,6 @@
 package app.cashjournal
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -22,6 +23,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        if (intent?.getBooleanExtra("seed", false) == true) {
+            viewModel.seedExampleData()
+        }
 
         setContent {
             CashJournalTheme {
@@ -60,4 +65,14 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra("seed", false)) {
+            viewModel.seedExampleData()
+        }
+    }
 }
+
+

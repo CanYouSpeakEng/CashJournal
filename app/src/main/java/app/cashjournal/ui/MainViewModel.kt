@@ -28,6 +28,7 @@ import app.cashjournal.domain.model.SafeToSpendState
 import app.cashjournal.domain.model.SafeToSpendStatus
 import app.cashjournal.domain.model.Transaction
 import app.cashjournal.domain.model.TransactionType
+import app.cashjournal.ui.sensory.ChimeGenerator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -318,6 +319,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             database.transactionDao().insert(tx)
+            ChimeGenerator.playChime(uiState.value.userPreferences.soundEffectsEnabled, viewModelScope)
             dismissSheet()
             showToast("Transaction logged")
         }
@@ -361,6 +363,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateBudget(newBudget: Long) {
         viewModelScope.launch {
+            ChimeGenerator.playChime(uiState.value.userPreferences.soundEffectsEnabled, viewModelScope)
             val current = uiState.value.monthlyPlan
             val monthKey = SimpleDateFormat("yyyy-MM", Locale.US).format(Date())
             database.monthlyPlanDao().upsert(
@@ -376,7 +379,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updatePreferences(transform: suspend (UserPreferencesRepository) -> Unit) {
         viewModelScope.launch {
+            ChimeGenerator.playChime(uiState.value.userPreferences.soundEffectsEnabled, viewModelScope)
             transform(preferencesRepository)
+        }
+    }
+
+    fun toggleRailSide() {
+        viewModelScope.launch {
+            val current = uiState.value.userPreferences.railOnRight
+            preferencesRepository.updateRailOnRight(!current)
         }
     }
 

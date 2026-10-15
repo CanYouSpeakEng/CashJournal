@@ -39,9 +39,14 @@ import app.cashjournal.domain.model.Category
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.domain.model.TransactionType
 import app.cashjournal.ui.components.CustomNumericKeypad
+import app.cashjournal.ui.components.SaveSplash
 import app.cashjournal.ui.components.SegmentItem
 import app.cashjournal.ui.components.SegmentedControl
 import app.cashjournal.ui.components.SubtleGlassCard
+import app.cashjournal.ui.sensory.ChimeGenerator
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Cobalt
 import app.cashjournal.ui.theme.Emerald
@@ -65,8 +70,11 @@ fun LogTransactionSheet(
         amount: Long
     ) -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    soundEffectsEnabled: Boolean = true
 ) {
+    val scope = rememberCoroutineScope()
+    var triggerSplash by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf(TransactionType.EXPENSE) }
     var selectedSourceAccountId by remember { mutableStateOf(accounts.firstOrNull()?.id) }
     var selectedDestAccountId by remember {
@@ -115,7 +123,12 @@ fun LogTransactionSheet(
         SegmentedControl(
             items = segmentItems,
             selectedValue = selectedType,
-            onValueSelected = { selectedType = it }
+            onValueSelected = { type ->
+                if (type != selectedType) {
+                    ChimeGenerator.playChime(soundEffectsEnabled, scope)
+                    selectedType = type
+                }
+            }
         )
 
         // Account Chips Row
@@ -285,30 +298,48 @@ fun LogTransactionSheet(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Save Transaction Button (Cobalt, full-width)
-        Button(
-            onClick = {
-                onSaveTransaction(
-                    selectedType,
-                    selectedSourceAccountId,
-                    selectedDestAccountId,
-                    note,
-                    parsedAmount
-                )
-            },
-            colors = ButtonDefaults.buttonColors(containerColor = Cobalt),
-            shape = RoundedCornerShape(16.dp),
+        // Save Transaction Button with Droplet Particle Splash Effect
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(54.dp)
+                .height(54.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "SAVE TRANSACTION",
-                fontFamily = SpaceGroteskFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                letterSpacing = 0.5.sp,
-                color = Color.White
+            Button(
+                onClick = {
+                    triggerSplash = true
+                    scope.launch {
+                        delay(900L)
+                        onSaveTransaction(
+                            selectedType,
+                            selectedSourceAccountId,
+                            selectedDestAccountId,
+                            note,
+                            parsedAmount
+                        )
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Cobalt),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
+            ) {
+                Text(
+                    text = "SAVE TRANSACTION",
+                    fontFamily = SpaceGroteskFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    letterSpacing = 0.5.sp,
+                    color = Color.White
+                )
+            }
+
+            SaveSplash(
+                trigger = triggerSplash,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
             )
         }
     }
