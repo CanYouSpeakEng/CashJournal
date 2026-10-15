@@ -1,5 +1,6 @@
 package app.cashjournal.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -39,7 +40,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.fragment.app.FragmentActivity
+import app.cashjournal.R
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.ui.MainUiState
 import app.cashjournal.ui.components.GlassCard
@@ -617,36 +620,51 @@ fun SettingsScreen(
 
         // 8. About Card
         GlassCard(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "ABOUT",
-                    fontFamily = SpaceGroteskFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 11.sp,
-                    letterSpacing = 0.8.sp,
-                    color = Slate500
+                Image(
+                    painter = painterResource(R.drawable.ic_cashjournal_logo),
+                    contentDescription = "CashJournal Logo",
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
                 )
-                Text(
-                    text = "Weather data by Open-Meteo.com",
-                    fontFamily = PlusJakartaSansFamily,
-                    fontSize = 12.sp,
-                    color = Slate600
-                )
-                Text(
-                    text = "Rates by Exchange Rate API",
-                    fontFamily = PlusJakartaSansFamily,
-                    fontSize = 12.sp,
-                    color = Slate600
-                )
-                Text(
-                    text = "CashJournal v1.0.0 (Native Android Build)",
-                    fontFamily = SpaceGroteskFamily,
-                    fontSize = 11.sp,
-                    color = Slate500
-                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "ABOUT",
+                        fontFamily = SpaceGroteskFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.8.sp,
+                        color = Slate500
+                    )
+                    Text(
+                        text = "Weather data by Open-Meteo.com",
+                        fontFamily = PlusJakartaSansFamily,
+                        fontSize = 12.sp,
+                        color = Slate600
+                    )
+                    Text(
+                        text = "Rates by Exchange Rate API",
+                        fontFamily = PlusJakartaSansFamily,
+                        fontSize = 12.sp,
+                        color = Slate600
+                    )
+                    Text(
+                        text = "CashJournal v1.0.10 (Native Android Build)",
+                        fontFamily = SpaceGroteskFamily,
+                        fontSize = 11.sp,
+                        color = Slate500
+                    )
+                }
             }
         }
     }

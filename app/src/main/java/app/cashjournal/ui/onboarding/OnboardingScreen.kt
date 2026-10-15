@@ -15,6 +15,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -55,9 +56,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.cashjournal.R
 import app.cashjournal.domain.model.Country
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.ui.components.GlassCard
@@ -393,6 +396,14 @@ fun OnboardingScreen(
 @Composable
 private fun Step1Welcome(texts: OnboardingTexts) {
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Image(
+            painter = painterResource(R.drawable.ic_cashjournal_logo),
+            contentDescription = "CashJournal Logo",
+            modifier = Modifier
+                .size(72.dp)
+                .clip(RoundedCornerShape(18.dp))
+        )
+
         Text(
             text = texts.welcomeTitle,
             fontFamily = PlusJakartaSansFamily,
