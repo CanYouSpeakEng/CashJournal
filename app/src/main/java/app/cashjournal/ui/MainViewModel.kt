@@ -75,6 +75,7 @@ typealias SafeToSpendState = app.cashjournal.domain.model.SafeToSpendState
 
 
 data class MainUiState(
+    val isPreferencesLoaded: Boolean = false,
     val currentScreen: AppScreen = AppScreen.DASHBOARD,
     val selectedAccount: Account? = null,
     val activeSheet: ActiveSheet? = null,
@@ -173,6 +174,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val safeState = calculateSafeToSpend(plan, rawTransactions, totalWorth, rawAccounts.isNotEmpty(), prefs.cycleStartDay)
 
         MainUiState(
+            isPreferencesLoaded = true,
             currentScreen = screen,
             selectedAccount = account,
             activeSheet = sheet,

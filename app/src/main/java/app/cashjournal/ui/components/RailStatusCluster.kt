@@ -5,9 +5,14 @@ import android.os.BatteryManager
 import android.telephony.TelephonyManager
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -189,18 +194,42 @@ fun RailStatusCluster(
         ) {
             AnimatedContent(
                 targetState = isNestedScreen,
+                contentAlignment = Alignment.Center,
                 transitionSpec = {
-                    fadeIn(animationSpec = tween(200)) togetherWith fadeOut(animationSpec = tween(200))
+                    val enter = scaleIn(
+                        initialScale = 0.15f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    ) + fadeIn(
+                        animationSpec = tween(durationMillis = 180, delayMillis = 30)
+                    )
+                    val exit = scaleOut(
+                        targetScale = 0.15f,
+                        animationSpec = tween(
+                            durationMillis = 130,
+                            easing = FastOutLinearInEasing
+                        )
+                    ) + fadeOut(
+                        animationSpec = tween(durationMillis = 130)
+                    )
+                    enter togetherWith exit
                 },
                 label = "status_back_transition"
             ) { nested ->
                 if (nested) {
-                    Icon(
-                        imageVector = PhosphorIcons.Regular.CaretLeft,
-                        contentDescription = "Back",
-                        tint = CashColors.Charcoal,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    Box(
+                        modifier = Modifier.size(42.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = PhosphorIcons.Regular.CaretLeft,
+                            contentDescription = "Back",
+                            tint = CashColors.Charcoal,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 } else {
                     Box(
                         modifier = Modifier.size(42.dp),

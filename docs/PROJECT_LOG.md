@@ -157,8 +157,8 @@ This log is kept up to date after every step. Any AI assistant or developer read
   - Tag: `v1.0.15-dev`
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.15-dev
   - Artifacts: `app-debug.apk` (17.3 MB), `app-release.apk` (12.2 MB).
-- [ ] **Phase 13: Cold-Start Initialization Gating & Status-to-Back Morph Transition Polish**
-  - [ ] **Item 65: Cold-Start / Post-Update Onboarding Flash Elimination**: Add `isPreferencesLoaded` gate to `MainUiState` to prevent `OnboardingScreen` from rendering on Frame 0 before DataStore disk read finishes.
-  - [ ] **Item 66: Side Rail Status Cluster <-> Back Button Centered Shrink & Pop Animation**: Add `contentAlignment = Alignment.Center` and equal 42dp x 42dp containers to `AnimatedContent` in `RailStatusCluster.kt`; replace default `TopStart` fade with synchronized bidirectional `scaleOut` (shrink down) and `scaleIn` (pop up spring) transition to eliminate diagonal bottom-right drift.
+- [x] **Phase 13: Cold-Start Initialization Gating & Status Ring-to-Back Morph Transition Polish**
+  - [x] **Item 65: Cold-Start / Post-Update Onboarding Flash Elimination**: Added `isPreferencesLoaded` gate to `MainUiState` in `MainViewModel.kt` and `MainActivity.kt` to prevent `OnboardingScreen` from rendering on Frame 0 before DataStore disk read finishes, rendering a seamless `Slate100` theme placeholder while loading.
+  - [x] **Item 66: Side Rail Status Ring <-> Back Button Centered Shrink & Pop Animation**: Added `contentAlignment = Alignment.Center` and equal 42dp x 42dp bounding cells to `AnimatedContent` in `RailStatusCluster.kt`; replaced default `TopStart` fade with synchronized bidirectional `scaleOut` (shrink down) and `scaleIn` (spring pop up) transition to eliminate diagonal bottom-right drift.
 
 

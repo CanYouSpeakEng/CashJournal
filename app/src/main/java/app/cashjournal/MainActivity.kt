@@ -6,6 +6,9 @@ import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -13,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -24,6 +28,7 @@ import app.cashjournal.ui.onboarding.WeatherOption
 import app.cashjournal.ui.screens.AppLockScreen
 import app.cashjournal.ui.security.BiometricAuthHelper
 import app.cashjournal.ui.theme.CashJournalTheme
+import app.cashjournal.ui.theme.Slate100
 
 class MainActivity : FragmentActivity() {
 
@@ -68,7 +73,13 @@ class MainActivity : FragmentActivity() {
                     }
                 }
 
-                if (!state.userPreferences.onboardingComplete) {
+                if (!state.isPreferencesLoaded) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Slate100)
+                    )
+                } else if (!state.userPreferences.onboardingComplete) {
                     OnboardingScreen(
                         onFinish = { language, currencyCode, name, railOnRight, shakeToSwap, loadExample, weatherOption, cityName, cityLat, cityLon ->
                             val weatherOptionKey = when (weatherOption) {
