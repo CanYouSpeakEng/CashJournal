@@ -139,6 +139,7 @@ class MainActivity : FragmentActivity() {
                             AppLockScreen(
                                 pinHash = state.userPreferences.pinHash,
                                 biometricsEnabled = state.userPreferences.biometricsEnabled,
+                                autoPromptBiometrics = isAppLocked && !isVeiled,
                                 onUnlock = { viewModel.unlockApp() },
                                 languageCode = state.userPreferences.language,
                                 hapticsEnabled = state.userPreferences.tactileHapticsEnabled,

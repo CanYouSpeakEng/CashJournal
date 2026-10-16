@@ -212,10 +212,18 @@ This log is kept up to date after every step. Any AI assistant or developer read
       7. Enhanced `SideRail.kt` with a breathing Cobalt blue halo and notification dot on the Settings rail button when an update is downloaded and ready to install.
       8. Added unknown sources permission detection and settings launch dialog via `Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES`.
     - **Verification**: Verified via `AppUpdateTest.kt`; all 70 unit tests passed (`./gradlew test`), and both release and debug APKs assembled cleanly (`./gradlew assembleRelease assembleDebug`).
+  - [x] **Item 79: Fix Backgrounding Biometric Prompt Pop-up on Going Home**:
+    - **Root Cause**: To veil the hardware window buffer on backgrounding (Item 76), `MainActivity.onPause()` immediately set `isVeiled = true`, which caused `(isAppLocked || isVeiled) && hasPin` to mount `AppLockScreen`. In `AppLockScreen.kt`, `LaunchedEffect(biometricsEnabled)` unconditionally executed `onBiometricRequest()` upon entering composition, causing the system fingerprint dialog to briefly flash on screen as the app was transitioning to the background.
+    - **Method**:
+      1. Added `autoPromptBiometrics: Boolean = true` parameter to `AppLockScreen.kt` and keyed `LaunchedEffect(biometricsEnabled, autoPromptBiometrics)` so that the automatic 300ms biometric request is gated behind `autoPromptBiometrics`.
+      2. In `MainActivity.kt`, passed `autoPromptBiometrics = isAppLocked && !isVeiled` to `AppLockScreen`. While veiled during backgrounding, the lock screen UI is drawn to mask the GPU frame buffer without triggering biometric authentication.
+      3. Added a lifecycle safety guard in `BiometricAuthHelper.promptBiometric` checking `activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)` and `!activity.isFinishing && !activity.isDestroyed` as defense-in-depth against background prompts.
+    - **Verification**: Verified via `./gradlew test` (70/70 unit tests passing) and clean `./gradlew assembleDebug`.
 - [x] **Release v1.0.19-dev (Phase 16: GitHub OTA In-App Updater, PIN Lock Screen Flash Fix, Account Categories/Edit & Balance Left-Alignment)**
   - Tag: `v1.0.19-dev`
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.19-dev
   - Artifacts: `app-debug.apk` (17.5 MB), `app-release.apk` (12.3 MB).
+
 
 
 

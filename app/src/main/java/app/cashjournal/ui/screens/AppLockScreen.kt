@@ -69,6 +69,7 @@ fun AppLockScreen(
     biometricsEnabled: Boolean,
     onUnlock: () -> Unit,
     onBiometricRequest: (() -> Unit)? = null,
+    autoPromptBiometrics: Boolean = true,
     languageCode: String = "en",
     hapticsEnabled: Boolean = true,
     modifier: Modifier = Modifier
@@ -120,9 +121,9 @@ fun AppLockScreen(
         if (enteredPin.isNotEmpty()) enteredPin = enteredPin.dropLast(1)
     }
 
-    // Auto-prompt biometrics on launch if enabled
-    LaunchedEffect(biometricsEnabled) {
-        if (biometricsEnabled && onBiometricRequest != null) {
+    // Auto-prompt biometrics on launch if enabled and permitted in the foreground
+    LaunchedEffect(biometricsEnabled, autoPromptBiometrics) {
+        if (biometricsEnabled && autoPromptBiometrics && onBiometricRequest != null) {
             delay(300)
             onBiometricRequest()
         }

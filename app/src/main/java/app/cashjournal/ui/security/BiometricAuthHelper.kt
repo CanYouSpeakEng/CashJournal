@@ -5,6 +5,7 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
 
 object BiometricAuthHelper {
 
@@ -22,6 +23,9 @@ object BiometricAuthHelper {
         onSuccess: () -> Unit,
         onError: (String) -> Unit = {}
     ) {
+        if (activity.isFinishing || activity.isDestroyed || !activity.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            return
+        }
         val executor = ContextCompat.getMainExecutor(activity)
         val prompt = BiometricPrompt(activity, executor, object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
