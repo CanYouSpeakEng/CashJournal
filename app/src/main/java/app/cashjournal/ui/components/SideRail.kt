@@ -4,7 +4,11 @@ import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -102,7 +106,8 @@ fun SideRail(
     onBackClick: (() -> Unit)? = null,
     hapticsEnabled: Boolean = true,
     railOnRight: Boolean = true,
-    languageCode: String = "en"
+    languageCode: String = "en",
+    isUpdateReady: Boolean = false
 ) {
     val view = LocalView.current
     val strings = AppStrings.get(languageCode)
@@ -365,7 +370,8 @@ fun SideRail(
                                 onRelease = {
                                     activeTooltip = null
                                 },
-                                hapticsEnabled = hapticsEnabled
+                                hapticsEnabled = hapticsEnabled,
+                                glowBlue = isUpdateReady
                             )
                         }
                     }
@@ -427,14 +433,47 @@ private fun RailNavButton(
     onClick: () -> Unit,
     onLongPress: (() -> Unit)? = null,
     onRelease: (() -> Unit)? = null,
-    hapticsEnabled: Boolean = true
+    hapticsEnabled: Boolean = true,
+    glowBlue: Boolean = false
 ) {
-    val iconColor = if (isSelected) Color.White else Slate500
+    val iconColor = when {
+        isSelected -> Color.White
+        glowBlue -> Cobalt
+        else -> Slate500
+    }
     val view = LocalView.current
     val currentOnClick by rememberUpdatedState(onClick)
     val currentOnLongPress by rememberUpdatedState(onLongPress)
     val currentOnRelease by rememberUpdatedState(onRelease)
     val currentHapticsEnabled by rememberUpdatedState(hapticsEnabled)
+
+    val infiniteTransition = rememberInfiniteTransition(label = "blueGlow")
+    val glowAlpha by if (glowBlue) {
+        infiniteTransition.animateFloat(
+            initialValue = 0.2f,
+            targetValue = 0.65f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1200, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "glowAlpha"
+        )
+    } else {
+        remember { mutableFloatStateOf(0f) }
+    }
+    val glowScale by if (glowBlue) {
+        infiniteTransition.animateFloat(
+            initialValue = 0.95f,
+            targetValue = 1.15f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1200, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "glowScale"
+        )
+    } else {
+        remember { mutableFloatStateOf(1f) }
+    }
 
     Box(
         modifier = Modifier
@@ -459,11 +498,32 @@ private fun RailNavButton(
             },
         contentAlignment = Alignment.Center
     ) {
+        if (glowBlue && !isSelected) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .scale(glowScale)
+                    .clip(CircleShape)
+                    .background(Cobalt.copy(alpha = glowAlpha))
+            )
+        }
+
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
             tint = iconColor,
             modifier = Modifier.size(20.dp)
         )
+
+        if (glowBlue) {
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .align(Alignment.TopEnd)
+                    .offset(x = (-4).dp, y = 4.dp)
+                    .clip(CircleShape)
+                    .background(Cobalt)
+            )
+        }
     }
 }

@@ -17,7 +17,10 @@ class HostAllowlistInterceptor : Interceptor {
         val ALLOWED_HOSTS = setOf(
             "api.open-meteo.com",
             "geocoding-api.open-meteo.com",
-            "open.er-api.com"
+            "open.er-api.com",
+            "api.github.com",
+            "github.com",
+            "objects.githubusercontent.com"
         )
     }
 

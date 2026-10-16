@@ -67,6 +67,7 @@ import app.cashjournal.ui.sheets.NewAccountSheet
 import app.cashjournal.ui.sheets.ReconcileBalanceSheet
 import app.cashjournal.ui.sheets.ReleaseNotesSheet
 import app.cashjournal.ui.sheets.TransactionEditSheet
+import app.cashjournal.ui.sheets.UpdateSheet
 import app.cashjournal.ui.sheets.WeatherDetailSheet
 import app.cashjournal.ui.sheets.WorldCurrenciesSheet
 import app.cashjournal.ui.theme.Slate100
@@ -350,7 +351,8 @@ fun MainAppScaffold(
                         onRestoreBackup = { uri -> viewModel.restoreBackup(uri) },
                         onCycleStartDayChange = { viewModel.updateCycleStartDay(it) },
                         onImmersiveModeChange = { viewModel.updatePreferences { prefs -> prefs.updateImmersiveMode(it) } },
-                        onOpenReleaseNotes = { viewModel.openSheet(ActiveSheet.RELEASE_NOTES) }
+                        onOpenReleaseNotes = { viewModel.openSheet(ActiveSheet.RELEASE_NOTES) },
+                        onCheckForUpdates = { viewModel.checkForUpdates(manual = true) }
                     )
                 }
             }
@@ -382,6 +384,7 @@ fun MainAppScaffold(
                 hapticsEnabled = state.userPreferences.tactileHapticsEnabled,
                 railOnRight = railOnRight,
                 languageCode = state.userPreferences.language,
+                isUpdateReady = state.isUpdateReadyToInstall,
                 modifier = Modifier.rotate(tiltAngle.value)
             )
         }
@@ -528,6 +531,16 @@ fun MainAppScaffold(
                         onDismiss = { viewModel.dismissReleaseNotes() },
                         languageCode = state.userPreferences.language,
                         hapticsEnabled = state.userPreferences.tactileHapticsEnabled
+                    )
+
+                    ActiveSheet.UPDATE_INFO -> UpdateSheet(
+                        updateState = state.updateState,
+                        onStartDownload = { viewModel.startUpdateDownload() },
+                        onDownloadInBackground = { viewModel.dismissUpdateSheetToBackground() },
+                        onInstallClick = { act -> viewModel.installDownloadedApk(act) },
+                        onCheckAgain = { viewModel.checkForUpdates(manual = true) },
+                        onDismiss = { viewModel.dismissSheet() },
+                        languageCode = state.userPreferences.language
                     )
                 }
             }

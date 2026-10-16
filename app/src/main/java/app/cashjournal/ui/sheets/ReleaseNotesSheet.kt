@@ -75,34 +75,34 @@ fun ReleaseNotesSheet(
 
     val highlights = listOf(
         ReleaseHighlight(
-            titleEn = "Back Navigation Fix",
-            titleIn = "Perbaikan Navigasi Kembali",
-            descEn = "Back button in account details now immediately navigates back to accounts without triggering privacy balance masking.",
-            descIn = "Tombol kembali di detail akun kini langsung kembali ke daftar akun tanpa memicu penyembunyian saldo.",
+            titleEn = "GitHub OTA In-App Updater",
+            titleIn = "Pembaruan Aplikasi Otomatis via GitHub",
+            descEn = "Check for updates from Settings, stream downloads in background with progress tracking, glowing blue rail indicator when ready, and install seamlessly.",
+            descIn = "Periksa pembaruan dari Pengaturan, unduh di latar belakang dengan indikator kemajuan, ikon pengaturan bercahaya biru saat siap, dan pasang langsung.",
             icon = PhosphorIcons.Regular.ArrowsClockwise,
             iconTint = Cobalt
         ),
         ReleaseHighlight(
-            titleEn = "Balance Card Layout & Auto-Scale",
-            titleIn = "Tata Letak Kartu Saldo & Auto-Scale",
-            descEn = "Clean two-row layout with dynamic single-line font scaling, ensuring large balances never wrap to a second line.",
-            descIn = "Tata letak dua baris dengan penyesuaian ukuran teks otomatis, memastikan nominal saldo besar tidak terpotong ke baris baru.",
+            titleEn = "Account Categories & Badges",
+            titleIn = "Kategori Akun & Lencana Khusus",
+            descEn = "Categorize accounts as Cash, Bank/Debit, E-Wallet, Credit Card, or Savings with dedicated icons and badges across all screens.",
+            descIn = "Kategorikan akun sebagai Tunai, Bank/Debit, E-Wallet, Kartu Kredit, atau Tabungan dengan ikon dan lencana khusus di seluruh layar.",
             icon = PhosphorIcons.Regular.DeviceMobile,
             iconTint = Emerald
         ),
         ReleaseHighlight(
-            titleEn = "Natural Copywriting Overhaul",
-            titleIn = "Bahasa Lebih Alami & Mudah Dipahami",
-            descEn = "Everyday, familiar phrasing across English and Indonesian (e.g. Edit Balance, Difference, Transactions, Monthly Budget).",
-            descIn = "Penyempurnaan istilah di seluruh menu dan dialog menjadi lebih akrab (cth. Ubah Saldo, Selisih, Riwayat Transaksi, Anggaran Bulanan).",
+            titleEn = "Edit Account Details Sheet",
+            titleIn = "Lembar Ubah Rincian Akun",
+            descEn = "Easily update account names, categories, and accent colors from Account Details, or safely delete unused accounts.",
+            descIn = "Ubah nama akun, tipe kategori, dan warna tema langsung dari Detail Akun, atau hapus akun yang sudah tidak digunakan.",
             icon = PhosphorIcons.Regular.CheckCircle,
             iconTint = Persimmon
         ),
         ReleaseHighlight(
-            titleEn = "Realistic Silhouette & Knock Sensitivity",
-            titleIn = "Siluet Ponsel Realistis & Sensitivitas Ketukan",
-            descEn = "Realistic 1:2 phone silhouette with upright idle rail physics, plus inline knock sensitivity selector during onboarding.",
-            descIn = "Siluet ponsel berproporsi 1:2 dengan bilah tegak lurus saat diam, serta pengaturan sensitivitas ketukan langsung di onboarding.",
+            titleEn = "Instant PIN Veil & Left-Aligned Balance",
+            titleIn = "Veil Kunci PIN Instan & Perataan Saldo Kiri",
+            descEn = "Eliminated stale screen buffer flash on phone wake with immediate veil overlay, and restored strict left-alignment on balance cards.",
+            descIn = "Menghilangkan kedipan layar sebelum kunci PIN saat layar menyala dengan veil instan, serta mengembalikan perataan kiri pada saldo utama.",
             icon = PhosphorIcons.Regular.SquaresFour,
             iconTint = Cobalt
         )

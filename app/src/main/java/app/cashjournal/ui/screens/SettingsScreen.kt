@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -80,6 +81,7 @@ import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
+import com.adamglin.phosphoricons.regular.ArrowClockwise
 import com.adamglin.phosphoricons.regular.ArrowCounterClockwise
 import com.adamglin.phosphoricons.regular.CaretRight
 import com.adamglin.phosphoricons.regular.Lock
@@ -110,6 +112,7 @@ fun SettingsScreen(
     onCycleStartDayChange: (Int) -> Unit = {},
     onImmersiveModeChange: (Boolean) -> Unit = {},
     onOpenReleaseNotes: () -> Unit = {},
+    onCheckForUpdates: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -1005,6 +1008,46 @@ fun SettingsScreen(
                             tint = Cobalt,
                             modifier = Modifier.size(16.dp)
                         )
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onCheckForUpdates() }
+                            .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                            Text(
+                                text = strings.checkForUpdatesTitle,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp,
+                                color = Cobalt
+                            )
+                            Text(
+                                text = if (state.isUpdateReadyToInstall) strings.updateReadyToInstall else strings.checkForUpdatesSubtitle,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontSize = 11.sp,
+                                color = if (state.isUpdateReadyToInstall) Cobalt else Slate500
+                            )
+                        }
+                        if (state.isUpdateReadyToInstall) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(Cobalt)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = PhosphorIcons.Regular.ArrowClockwise,
+                                contentDescription = "Check for Updates",
+                                tint = Cobalt,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
             }

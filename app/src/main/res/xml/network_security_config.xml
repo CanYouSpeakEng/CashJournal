@@ -5,5 +5,8 @@
         <domain includeSubdomains="true">api.open-meteo.com</domain>
         <domain includeSubdomains="true">geocoding-api.open-meteo.com</domain>
         <domain includeSubdomains="true">open.er-api.com</domain>
+        <domain includeSubdomains="true">api.github.com</domain>
+        <domain includeSubdomains="true">github.com</domain>
+        <domain includeSubdomains="true">objects.githubusercontent.com</domain>
     </domain-config>
 </network-security-config>

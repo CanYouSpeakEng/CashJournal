@@ -222,7 +222,24 @@ data class ScreenStrings(
     val deleteAccountConfirmMessage: String,
     val deleteAccountCannotDeleteLast: String,
     val accountUpdatedToast: String,
-    val accountDeletedToast: String
+    val accountDeletedToast: String,
+    val checkForUpdatesTitle: String,
+    val checkForUpdatesSubtitle: String,
+    val checkingForUpdates: String,
+    val updateAvailableFormat: String,
+    val appUpToDate: String,
+    val updateCheckFailed: String,
+    val updateDownloadingFormat: String,
+    val updateReadyToInstall: String,
+    val installNowAction: String,
+    val updateNowAction: String,
+    val updateLaterAction: String,
+    val downloadInBackgroundAction: String,
+    val downloadingInBackgroundToast: String,
+    val releaseNotesDialogTitle: String,
+    val permissionUnknownSourcesTitle: String,
+    val permissionUnknownSourcesMessage: String,
+    val openSettingsAction: String
 )
 
 object AppStrings {
@@ -440,7 +457,24 @@ object AppStrings {
         deleteAccountConfirmMessage = "Transactions linked to this account will remain in your history. This cannot be undone.",
         deleteAccountCannotDeleteLast = "You must keep at least one account.",
         accountUpdatedToast = "Account updated",
-        accountDeletedToast = "Account deleted"
+        accountDeletedToast = "Account deleted",
+        checkForUpdatesTitle = "Check for Updates",
+        checkForUpdatesSubtitle = "Check GitHub for the latest release",
+        checkingForUpdates = "Checking for updates...",
+        updateAvailableFormat = "Update available: %s",
+        appUpToDate = "You are using the latest version",
+        updateCheckFailed = "Failed to check for updates",
+        updateDownloadingFormat = "Downloading update (%d%%)...",
+        updateReadyToInstall = "Update ready to install",
+        installNowAction = "Install Now",
+        updateNowAction = "Update Now",
+        updateLaterAction = "Later",
+        downloadInBackgroundAction = "Download in Background",
+        downloadingInBackgroundToast = "Downloading update in background...",
+        releaseNotesDialogTitle = "What's New in %s",
+        permissionUnknownSourcesTitle = "Permission Required",
+        permissionUnknownSourcesMessage = "To install app updates outside of Google Play, Android requires permission to install unknown apps. Tap below to enable permission in Settings.",
+        openSettingsAction = "Open Settings"
     )
 
     val IN = ScreenStrings(
@@ -657,7 +691,24 @@ object AppStrings {
         deleteAccountConfirmMessage = "Transaksi yang terhubung ke akun ini akan tetap tersimpan di riwayat. Tindakan ini tidak dapat dibatalkan.",
         deleteAccountCannotDeleteLast = "Anda harus memiliki minimal satu akun.",
         accountUpdatedToast = "Akun berhasil diperbarui",
-        accountDeletedToast = "Akun berhasil dihapus"
+        accountDeletedToast = "Akun berhasil dihapus",
+        checkForUpdatesTitle = "Periksa Pembaruan",
+        checkForUpdatesSubtitle = "Periksa GitHub untuk rilis terbaru",
+        checkingForUpdates = "Memeriksa pembaruan...",
+        updateAvailableFormat = "Pembaruan tersedia: %s",
+        appUpToDate = "Anda menggunakan versi terbaru",
+        updateCheckFailed = "Gagal memeriksa pembaruan",
+        updateDownloadingFormat = "Mengunduh pembaruan (%d%%)...",
+        updateReadyToInstall = "Pembaruan siap dipasang",
+        installNowAction = "Pasang Sekarang",
+        updateNowAction = "Perbarui Sekarang",
+        updateLaterAction = "Nanti",
+        downloadInBackgroundAction = "Unduh di Latar Belakang",
+        downloadingInBackgroundToast = "Mengunduh pembaruan di latar belakang...",
+        releaseNotesDialogTitle = "Yang Baru di %s",
+        permissionUnknownSourcesTitle = "Izin Diperlukan",
+        permissionUnknownSourcesMessage = "Untuk memasang pembaruan aplikasi di luar Google Play, Android memerlukan izin memasang aplikasi yang tidak dikenal. Ketuk di bawah untuk mengaktifkan izin di Pengaturan.",
+        openSettingsAction = "Buka Pengaturan"
     )
 
     fun get(languageCode: String): ScreenStrings {

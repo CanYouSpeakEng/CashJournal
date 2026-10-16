@@ -1,11 +1,20 @@
 package app.cashjournal.ui
 
+import android.app.Activity
 import android.app.Application
+import android.content.Intent
 import android.net.Uri
+import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
+import app.cashjournal.BuildConfig
 import app.cashjournal.data.backup.BackupManager
+import app.cashjournal.data.update.AppReleaseInfo
+import app.cashjournal.data.update.AppUpdateService
+import app.cashjournal.data.update.UpdateState
+import java.io.File
+import java.util.TimeZone
 import app.cashjournal.data.ExampleDataSeeder
 import app.cashjournal.data.currency.CachedExchangeRates
 import app.cashjournal.data.currency.CurrencyConverter
@@ -70,7 +79,8 @@ enum class ActiveSheet {
     EDIT_TRANSACTION,
     RECONCILE_BALANCE,
     RELEASE_NOTES,
-    EDIT_ACCOUNT
+    EDIT_ACCOUNT,
+    UPDATE_INFO
 }
 
 typealias SafeToSpendStatus = app.cashjournal.domain.model.SafeToSpendStatus
@@ -99,7 +109,9 @@ data class MainUiState(
     val cachedRates: CachedExchangeRates? = null,
     val isRatesOffline: Boolean = false,
     val citySearchResults: List<GeocodingCity> = emptyList(),
-    val isSearchingCity: Boolean = false
+    val isSearchingCity: Boolean = false,
+    val updateState: UpdateState = UpdateState.Idle,
+    val isUpdateReadyToInstall: Boolean = false
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -123,6 +135,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isRatesOffline = MutableStateFlow(false)
     private val _citySearchResults = MutableStateFlow<List<GeocodingCity>>(emptyList())
     private val _isSearchingCity = MutableStateFlow(false)
+
+    // OTA Update State
+    private val appUpdateService = AppUpdateService()
+    private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
+    val updateState = _updateState.asStateFlow()
 
     // App Lock & Privacy Veil Lifecycle State
     private val _isAppLocked = MutableStateFlow(true)
@@ -161,7 +178,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _selectedEditAccount,
             _hideBalances,
             _isReorderMode,
-            _toastMessage
+            _toastMessage,
+            _updateState
         ) { args ->
             args
         }
@@ -181,6 +199,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val hideBal = group3[6] as Boolean
         val reorder = group3[7] as Boolean
         val toast = group3[8] as? String
+        val currentUpdateState = group3[9] as UpdateState
+        val isUpdateReady = currentUpdateState is UpdateState.ReadyToInstall
 
         val totalWorth = rawAccounts.sumOf { it.balance }
         val recentTx = rawTransactions.take(5)
@@ -210,7 +230,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             cachedRates = rates,
             isRatesOffline = isOffline,
             citySearchResults = cityResults,
-            isSearchingCity = isSearching
+            isSearchingCity = isSearching,
+            updateState = currentUpdateState,
+            isUpdateReadyToInstall = isUpdateReady
         )
     }.stateIn(
         scope = viewModelScope,
@@ -232,6 +254,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (prefs.onboardingComplete && prefs.lastSeenVersion != app.cashjournal.BuildConfig.VERSION_NAME) {
                 _activeSheet.value = ActiveSheet.RELEASE_NOTES
             }
+            checkDailyUpdateQuietly()
         }
     }
 
@@ -303,6 +326,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         _isVeiled.value = false
+        checkDailyUpdateQuietly()
     }
 
     fun onAppBackgrounded(hasPin: Boolean) {
@@ -337,6 +361,98 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             preferencesRepository.updateLastSeenVersion(app.cashjournal.BuildConfig.VERSION_NAME)
         }
         dismissSheet()
+    }
+
+    fun checkForUpdates(manual: Boolean = true) {
+        viewModelScope.launch {
+            if (manual) {
+                _activeSheet.value = ActiveSheet.UPDATE_INFO
+            }
+            _updateState.value = UpdateState.Checking
+            val result = appUpdateService.fetchLatestRelease(
+                currentVersion = BuildConfig.VERSION_NAME,
+                isDebugBuild = BuildConfig.DEBUG
+            )
+            result.onSuccess { info ->
+                if (info.isNewer) {
+                    _updateState.value = UpdateState.Available(info)
+                    if (!manual) {
+                        showToast(currentStrings().updateAvailableFormat.format(info.versionName))
+                    }
+                } else {
+                    _updateState.value = UpdateState.UpToDate
+                }
+            }.onFailure { err ->
+                _updateState.value = UpdateState.Error(err.message ?: "Failed to connect to GitHub")
+            }
+        }
+    }
+
+    fun startUpdateDownload() {
+        val current = _updateState.value
+        val info = when (current) {
+            is UpdateState.Available -> current.info
+            is UpdateState.ReadyToInstall -> current.info
+            else -> return
+        }
+
+        viewModelScope.launch {
+            val cacheDir = getApplication<Application>().cacheDir
+            val updateFile = File(cacheDir, "updates/CashJournal-${info.versionName}.apk")
+            _updateState.value = UpdateState.Downloading(info, 0f, 0L, info.apkSize)
+
+            val result = appUpdateService.downloadApk(
+                downloadUrl = info.apkDownloadUrl,
+                destinationFile = updateFile
+            ) { bytesDownloaded, totalBytes, progress ->
+                _updateState.value = UpdateState.Downloading(info, progress, bytesDownloaded, totalBytes)
+            }
+
+            result.onSuccess { file ->
+                _updateState.value = UpdateState.ReadyToInstall(info, file)
+                showToast(currentStrings().updateReadyToInstall)
+            }.onFailure { err ->
+                _updateState.value = UpdateState.Error("Download failed: ${err.message}")
+            }
+        }
+    }
+
+    fun dismissUpdateSheetToBackground() {
+        dismissSheet()
+        showToast(currentStrings().downloadingInBackgroundToast)
+    }
+
+    fun installDownloadedApk(activity: Activity) {
+        val current = _updateState.value
+        val file = (current as? UpdateState.ReadyToInstall)?.apkFile ?: return
+        try {
+            val uri = FileProvider.getUriForFile(
+                activity,
+                "${activity.packageName}.fileprovider",
+                file
+            )
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            activity.startActivity(intent)
+        } catch (e: Exception) {
+            showToast("Failed to launch package installer: ${e.message}")
+        }
+    }
+
+    fun checkDailyUpdateQuietly() {
+        viewModelScope.launch {
+            val prefs = preferencesRepository.userPreferencesFlow.first()
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("Asia/Jakarta")
+            }
+            val todayWib = sdf.format(Date())
+            if (prefs.lastUpdateCheckDateWib != todayWib) {
+                preferencesRepository.updateLastUpdateCheckDateWib(todayWib)
+                checkForUpdates(manual = false)
+            }
+        }
     }
 
     fun showEditTransaction(transaction: Transaction) {

@@ -182,7 +182,7 @@ This log is kept up to date after every step. Any AI assistant or developer read
   - Tag: `v1.0.18-dev`
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.18-dev
   - Artifacts: `app-debug.apk` (17.4 MB), `app-release.apk` (12.2 MB).
-- [ ] **Phase 16: GitHub OTA In-App Updater, PIN Lock Screen Flash Fix, Account Categories/Edit & Balance Left-Alignment**
+- [x] **Phase 16: GitHub OTA In-App Updater, PIN Lock Screen Flash Fix, Account Categories/Edit & Balance Left-Alignment**
   - **Execution Methodology (Two-Stage Staggered Architecture)**:
     - **Rationale**: To maintain peak code quality, prevent AI context-window pressure, and eliminate subtle regressions, Phase 16 is divided into two focused stages separated by a hard compile, unit test (`./gradlew test`), and git commit checkpoint. This isolates Room SQLite schema migrations and UI form sheets (Stage 1) from network allowlisting, Android package installer permissions, and OTA background streaming (Stage 2).
     - **Stage 1 (Phase 16A — Core Fixes, Account Categories & Edit Account Details)**: Execute Item 78, Item 76, and Item 77 -> Run unit tests & build verification -> Commit Stage 1 checkpoint.
@@ -201,16 +201,21 @@ This log is kept up to date after every step. Any AI assistant or developer read
       4. Render category icon and type badge on account cards in `AccountsScreen.kt` and header in `AccountDetailScreen.kt`.
       5. Add Edit Account button (`PencilSimple`) on `AccountDetailScreen.kt` launching `EditAccountSheet.kt` to edit the account's Name, Account Category/Type, and Accent Color.
     - **Verification**: Verified via `AccountTypeTest.kt` covering inference, entity mapping, and JSON round-trips; all 67 unit tests passed (`./gradlew test`) and debug APK assembled successfully (`./gradlew assembleDebug`).
-  - [ ] **Item 75 (Stage 2): GitHub OTA In-App Update System, Background Download, Glowing Settings Icon & Unknown Sources Flow**:
+  - [x] **Item 75 (Stage 2): GitHub OTA In-App Update System, Background Download, Glowing Settings Icon & Unknown Sources Flow**:
     - **Method**:
-      1. Switch `CanYouSpeakEng/CashJournal` repository visibility to `PUBLIC` via GitHub CLI so unauthenticated requests to `https://api.github.com/repos/CanYouSpeakEng/CashJournal/releases/latest` and APK downloads succeed without embedded tokens.
-      2. Add `api.github.com`, `github.com`, and `objects.githubusercontent.com` to `HostAllowlistInterceptor.kt`, `HostAllowlistTest.kt`, and `network_security_config.xml`.
-      3. Configure `<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />` and `androidx.core.content.FileProvider` (`res/xml/file_paths.xml` pointing to `cache-path` `updates/`) in `AndroidManifest.xml`.
-      4. Implement `AppUpdateService` & `MainViewModel` state machine (`IDLE`, `CHECKING`, `UPDATE_AVAILABLE`, `DOWNLOADING(progress)`, `READY_TO_INSTALL`, `UP_TO_DATE`, `ERROR`) with semantic version comparison and automatic variant matching (`app-debug.apk` for debug builds, `app-release.apk` for release builds).
-      5. Implement manual `"Check for Updates" / "Periksa Pembaruan"` action in `SettingsScreen.kt` About card + automatic daily check at midnight Western Indonesian Time (`00:00 WIB` / `Asia/Jakarta` calendar day rollover via `DataStore` `lastUpdateCheckDayWib` and scheduled alarm/resume check) that notifies the user without auto-installing.
-      6. Build `UpdateSheet.kt` displaying version transition badge, APK size, formatted GitHub release notes (`body`), live download progress bar (`0% - 100%`), and `"Update Now" / "Perbarui Sekarang"` vs. `"Later" / "Nanti"` actions.
-      7. Support non-blocking background download in `viewModelScope` so users can navigate freely across the app; upon download completion, illuminate the `GearSix` Settings icon on `SideRail.kt` with a breathing **Cobalt Blue** glow and indicator dot.
-      8. Before triggering APK installation, check `packageManager.canRequestPackageInstalls()`. If false, present a bilingual explanation and one-tap button (`Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES`) to enable `"Install unknown apps"` for CashJournal, automatically resuming the Android Package Installer handoff upon return.
+      1. Switched `CanYouSpeakEng/CashJournal` repository visibility to `PUBLIC` via GitHub CLI for direct unauthenticated release checking and asset downloads.
+      2. Added `api.github.com`, `github.com`, and `objects.githubusercontent.com` to `HostAllowlistInterceptor.kt`, `network_security_config.xml`, and verified with `HostAllowlistTest.kt`.
+      3. Configured `REQUEST_INSTALL_PACKAGES` permission and `FileProvider` with `file_paths.xml` cache path in `AndroidManifest.xml`.
+      4. Implemented `AppUpdateService` with resilient network streaming and progress callbacks, plus `VersionComparator` for semantic version matching.
+      5. Added manual Check for Updates action in `SettingsScreen.kt` About card + daily midnight WIB rollover check (`Asia/Jakarta`) in `MainViewModel`.
+      6. Built `UpdateSheet.kt` with version transition badge, release notes scroll, live progress bar, and background download handoff.
+      7. Enhanced `SideRail.kt` with a breathing Cobalt blue halo and notification dot on the Settings rail button when an update is downloaded and ready to install.
+      8. Added unknown sources permission detection and settings launch dialog via `Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES`.
+    - **Verification**: Verified via `AppUpdateTest.kt`; all 70 unit tests passed (`./gradlew test`), and both release and debug APKs assembled cleanly (`./gradlew assembleRelease assembleDebug`).
+- [x] **Release v1.0.19-dev (Phase 16: GitHub OTA In-App Updater, PIN Lock Screen Flash Fix, Account Categories/Edit & Balance Left-Alignment)**
+  - Tag: `v1.0.19-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.19-dev
+  - Artifacts: `app-debug.apk` (17.5 MB), `app-release.apk` (12.3 MB).
 
 
 

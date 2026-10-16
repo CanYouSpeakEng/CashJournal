@@ -44,7 +44,8 @@ data class UserPreferences(
     val temperatureUnit: String = "C",
     val selectedWorldCurrency: String = "USD",
     val immersiveModeEnabled: Boolean = true,
-    val lastSeenVersion: String = ""
+    val lastSeenVersion: String = "",
+    val lastUpdateCheckDateWib: String = ""
 )
 
 class UserPreferencesRepository(private val context: Context) {
@@ -75,6 +76,7 @@ class UserPreferencesRepository(private val context: Context) {
         val SELECTED_WORLD_CURRENCY = stringPreferencesKey("selected_world_currency")
         val IMMERSIVE_MODE_ENABLED = booleanPreferencesKey("immersive_mode_enabled")
         val LAST_SEEN_VERSION = stringPreferencesKey("last_seen_version")
+        val LAST_UPDATE_CHECK_DATE_WIB = stringPreferencesKey("last_update_check_date_wib")
 
         // Weather Cache
         val CACHED_WEATHER_TEMP = doublePreferencesKey("cached_weather_temp")
@@ -123,7 +125,8 @@ class UserPreferencesRepository(private val context: Context) {
                 temperatureUnit = preferences[PreferencesKeys.TEMPERATURE_UNIT] ?: "C",
                 selectedWorldCurrency = preferences[PreferencesKeys.SELECTED_WORLD_CURRENCY] ?: "USD",
                 immersiveModeEnabled = preferences[PreferencesKeys.IMMERSIVE_MODE_ENABLED] ?: true,
-                lastSeenVersion = preferences[PreferencesKeys.LAST_SEEN_VERSION] ?: ""
+                lastSeenVersion = preferences[PreferencesKeys.LAST_SEEN_VERSION] ?: "",
+                lastUpdateCheckDateWib = preferences[PreferencesKeys.LAST_UPDATE_CHECK_DATE_WIB] ?: ""
             )
         }
 
@@ -263,6 +266,10 @@ class UserPreferencesRepository(private val context: Context) {
 
     suspend fun updateLastSeenVersion(version: String) {
         context.dataStore.edit { it[PreferencesKeys.LAST_SEEN_VERSION] = version }
+    }
+
+    suspend fun updateLastUpdateCheckDateWib(date: String) {
+        context.dataStore.edit { it[PreferencesKeys.LAST_UPDATE_CHECK_DATE_WIB] = date }
     }
 
     suspend fun updateWeatherCache(weather: WeatherData) {

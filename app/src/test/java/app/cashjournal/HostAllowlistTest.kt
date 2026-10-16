@@ -22,7 +22,10 @@ class HostAllowlistTest {
         val expected = setOf(
             "api.open-meteo.com",
             "geocoding-api.open-meteo.com",
-            "open.er-api.com"
+            "open.er-api.com",
+            "api.github.com",
+            "github.com",
+            "objects.githubusercontent.com"
         )
         assertEquals(expected, HostAllowlistInterceptor.ALLOWED_HOSTS)
     }
