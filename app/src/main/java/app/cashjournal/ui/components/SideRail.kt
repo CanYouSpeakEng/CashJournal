@@ -292,7 +292,8 @@ fun SideRail(
                                 },
                                 onRelease = {
                                     activeTooltip = null
-                                }
+                                },
+                                hapticsEnabled = hapticsEnabled
                             )
 
                             RailNavButton(
@@ -309,7 +310,8 @@ fun SideRail(
                                 },
                                 onRelease = {
                                     activeTooltip = null
-                                }
+                                },
+                                hapticsEnabled = hapticsEnabled
                             )
 
                             RailNavButton(
@@ -326,7 +328,8 @@ fun SideRail(
                                 },
                                 onRelease = {
                                     activeTooltip = null
-                                }
+                                },
+                                hapticsEnabled = hapticsEnabled
                             )
 
                             RailNavButton(
@@ -343,7 +346,8 @@ fun SideRail(
                                 },
                                 onRelease = {
                                     activeTooltip = null
-                                }
+                                },
+                                hapticsEnabled = hapticsEnabled
                             )
 
                             RailNavButton(
@@ -360,7 +364,8 @@ fun SideRail(
                                 },
                                 onRelease = {
                                     activeTooltip = null
-                                }
+                                },
+                                hapticsEnabled = hapticsEnabled
                             )
                         }
                     }
@@ -375,6 +380,7 @@ fun SideRail(
 
                     val currentQuickAddStrings by rememberUpdatedState(strings)
                     val currentOnQuickAddClick by rememberUpdatedState(onQuickAddClick)
+                    val currentHapticsEnabled by rememberUpdatedState(hapticsEnabled)
                     Box(
                         modifier = Modifier
                             .size(42.dp)
@@ -388,12 +394,12 @@ fun SideRail(
                                         activeTooltip = null
                                     },
                                     onLongPress = {
-                                        if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                        if (currentHapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                                         activeTooltip = currentQuickAddStrings.tooltipLogTransaction
                                         activeTooltipY = 338f
                                     },
                                     onTap = {
-                                        if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        if (currentHapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                                         currentOnQuickAddClick()
                                     }
                                 )
@@ -420,13 +426,15 @@ private fun RailNavButton(
     isSelected: Boolean,
     onClick: () -> Unit,
     onLongPress: (() -> Unit)? = null,
-    onRelease: (() -> Unit)? = null
+    onRelease: (() -> Unit)? = null,
+    hapticsEnabled: Boolean = true
 ) {
     val iconColor = if (isSelected) Color.White else Slate500
     val view = LocalView.current
     val currentOnClick by rememberUpdatedState(onClick)
     val currentOnLongPress by rememberUpdatedState(onLongPress)
     val currentOnRelease by rememberUpdatedState(onRelease)
+    val currentHapticsEnabled by rememberUpdatedState(hapticsEnabled)
 
     Box(
         modifier = Modifier
@@ -439,7 +447,9 @@ private fun RailNavButton(
                         currentOnRelease?.invoke()
                     },
                     onLongPress = {
-                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        if (currentHapticsEnabled) {
+                            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        }
                         currentOnLongPress?.invoke()
                     },
                     onTap = {

@@ -9,9 +9,11 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -46,6 +48,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -125,6 +128,7 @@ fun OnboardingScreen(
         name: String,
         railOnRight: Boolean,
         shakeToSwap: Boolean,
+        knockSensitivity: String,
         loadExample: Boolean,
         weatherOption: WeatherOption,
         weatherCityName: String,
@@ -142,6 +146,7 @@ fun OnboardingScreen(
     var weatherCityLon by remember { mutableDoubleStateOf(107.6098) }
     var railOnRight by remember { mutableStateOf(true) }
     var shakeToSwap by remember { mutableStateOf(false) }
+    var knockSensitivity by remember { mutableStateOf("balanced") }
     var loadExampleData by remember { mutableStateOf(true) }
     var isCompleted by remember { mutableStateOf(false) }
 
@@ -191,6 +196,7 @@ fun OnboardingScreen(
                             userName,
                             railOnRight,
                             shakeToSwap,
+                            knockSensitivity,
                             loadExampleData,
                             weatherOption,
                             weatherCityName,
@@ -206,7 +212,7 @@ fun OnboardingScreen(
                         .padding(horizontal = 32.dp)
                 ) {
                     Text(
-                        text = "Go to Dashboard",
+                        text = if (language == AppLanguage.INDONESIAN) "Menuju Dasbor" else "Go to Dashboard",
                         fontFamily = PlusJakartaSansFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
@@ -361,6 +367,11 @@ fun OnboardingScreen(
                                 onToggleShake = {
                                     hapticTick()
                                     shakeToSwap = it
+                                },
+                                knockSensitivity = knockSensitivity,
+                                onSelectKnockSensitivity = {
+                                    hapticTick()
+                                    knockSensitivity = it
                                 },
                                 texts = texts
                             )
@@ -1389,6 +1400,8 @@ private fun Step7Layout(
     onToggleRail: (Boolean) -> Unit,
     shakeToSwap: Boolean,
     onToggleShake: (Boolean) -> Unit,
+    knockSensitivity: String,
+    onSelectKnockSensitivity: (String) -> Unit,
     texts: OnboardingTexts
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -1437,38 +1450,81 @@ private fun Step7Layout(
             }
         }
 
-        // Toggle: Shake to Swap Sides
+        // Toggle: Shake to Swap Sides with expandable Knock Sensitivity
         GlassCard(
             modifier = Modifier.fillMaxWidth(),
             onClick = { onToggleShake(!shakeToSwap) }
         ) {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
-                    Text(
-                        text = texts.shakeTitle,
-                        fontFamily = PlusJakartaSansFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        color = Charcoal
-                    )
-                    Text(
-                        text = texts.shakeSubtitle,
-                        fontFamily = PlusJakartaSansFamily,
-                        fontSize = 12.sp,
-                        color = Slate500
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                        Text(
+                            text = texts.shakeTitle,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = Charcoal
+                        )
+                        Text(
+                            text = texts.shakeSubtitle,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontSize = 12.sp,
+                            color = Slate500
+                        )
+                    }
+
+                    ToggleSwitch(
+                        checked = shakeToSwap,
+                        onCheckedChange = onToggleShake
                     )
                 }
 
-                ToggleSwitch(
-                    checked = shakeToSwap,
-                    onCheckedChange = onToggleShake
-                )
+                AnimatedVisibility(
+                    visible = shakeToSwap,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(Slate200.copy(alpha = 0.6f))
+                        )
+
+                        Text(
+                            text = texts.knockSensitivityTitle,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.sp,
+                            color = Slate600
+                        )
+
+                        val sensitivityItems = listOf(
+                            SegmentItem("gentle", texts.knockSensitivityLow, Cobalt),
+                            SegmentItem("balanced", texts.knockSensitivityMed, Cobalt),
+                            SegmentItem("firm", texts.knockSensitivityHigh, Cobalt)
+                        )
+
+                        SegmentedControl(
+                            items = sensitivityItems,
+                            selectedValue = knockSensitivity,
+                            onValueSelected = onSelectKnockSensitivity
+                        )
+                    }
+                }
             }
         }
     }
@@ -1484,6 +1540,16 @@ private fun PhoneSilhouettePreview(
     val coroutineScope = rememberCoroutineScope()
     val phoneShakeOffset = remember { androidx.compose.animation.core.Animatable(0f) }
     val phoneShakeTilt = remember { androidx.compose.animation.core.Animatable(0f) }
+    val railTiltAnim = remember { androidx.compose.animation.core.Animatable(0f) }
+
+    LaunchedEffect(railOnRight) {
+        val kick = if (railOnRight) -10f else 10f
+        railTiltAnim.snapTo(kick)
+        railTiltAnim.animateTo(
+            targetValue = 0f,
+            animationSpec = spring(stiffness = 320f, dampingRatio = 0.65f)
+        )
+    }
 
     val railBias by animateFloatAsState(
         targetValue = if (railOnRight) 0.82f else -0.82f,
@@ -1491,30 +1557,24 @@ private fun PhoneSilhouettePreview(
         label = "silhouette_rail_bias"
     )
 
-    val railTilt by animateFloatAsState(
-        targetValue = if (railOnRight) -10f else 10f,
-        animationSpec = spring(stiffness = 320f, dampingRatio = 0.65f),
-        label = "silhouette_rail_tilt"
-    )
-
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // Outer Phone Chassis (width: 170dp, height: 200dp)
+        // Outer Phone Chassis (width: 118dp, height: 236dp - realistic 1:2 ratio)
         Box(
             modifier = Modifier
-                .width(170.dp)
-                .height(200.dp)
+                .width(118.dp)
+                .height(236.dp)
                 .graphicsLayer {
                     translationX = phoneShakeOffset.value
                     rotationZ = phoneShakeTilt.value
                 }
-                .shadow(elevation = 8.dp, shape = RoundedCornerShape(24.dp))
-                .clip(RoundedCornerShape(24.dp))
+                .shadow(elevation = 8.dp, shape = RoundedCornerShape(22.dp))
+                .clip(RoundedCornerShape(22.dp))
                 .background(Color(0xFF0F172A))
-                .border(2.dp, Color(0xFF334155), RoundedCornerShape(24.dp))
+                .border(2.dp, Color(0xFF334155), RoundedCornerShape(22.dp))
                 .clickable {
                     view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                     coroutineScope.launch {
@@ -1535,22 +1595,22 @@ private fun PhoneSilhouettePreview(
                     }
                     onToggleRail()
                 }
-                .padding(6.dp)
+                .padding(5.dp)
         ) {
             // Glass Screen interior
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(18.dp))
+                    .clip(RoundedCornerShape(17.dp))
                     .background(Color(0xFFF8FAFC))
             ) {
                 // Top Camera Hole / Speaker Slit
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .padding(top = 5.dp)
-                        .size(width = 22.dp, height = 3.5.dp)
-                        .clip(RoundedCornerShape(2.dp))
+                        .padding(top = 4.dp)
+                        .size(width = 18.dp, height = 3.dp)
+                        .clip(RoundedCornerShape(1.5.dp))
                         .background(Color(0xFF0F172A).copy(alpha = 0.4f))
                 )
 
@@ -1558,7 +1618,7 @@ private fun PhoneSilhouettePreview(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 14.dp, vertical = 14.dp),
+                        .padding(horizontal = 10.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     // Net worth wireframe bar
@@ -1569,14 +1629,14 @@ private fun PhoneSilhouettePreview(
                     ) {
                         Box(
                             modifier = Modifier
-                                .width(36.dp)
-                                .height(5.dp)
+                                .width(32.dp)
+                                .height(4.dp)
                                 .clip(RoundedCornerShape(2.dp))
                                 .background(Slate300)
                         )
                         Box(
                             modifier = Modifier
-                                .size(7.dp)
+                                .size(6.dp)
                                 .clip(CircleShape)
                                 .background(Slate200)
                         )
@@ -1584,8 +1644,8 @@ private fun PhoneSilhouettePreview(
 
                     Box(
                         modifier = Modifier
-                            .width(65.dp)
-                            .height(9.dp)
+                            .width(52.dp)
+                            .height(8.dp)
                             .clip(RoundedCornerShape(3.dp))
                             .background(Charcoal.copy(alpha = 0.15f))
                     )
@@ -1594,7 +1654,7 @@ private fun PhoneSilhouettePreview(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(38.dp)
+                            .height(36.dp)
                             .clip(RoundedCornerShape(7.dp))
                             .background(Color.White)
                             .border(1.dp, Slate200, RoundedCornerShape(7.dp))
@@ -1603,14 +1663,14 @@ private fun PhoneSilhouettePreview(
                         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             Box(
                                 modifier = Modifier
-                                    .width(44.dp)
+                                    .width(36.dp)
                                     .height(4.dp)
                                     .clip(RoundedCornerShape(2.dp))
                                     .background(Emerald.copy(alpha = 0.4f))
                             )
                             Box(
                                 modifier = Modifier
-                                    .width(32.dp)
+                                    .width(28.dp)
                                     .height(5.dp)
                                     .clip(RoundedCornerShape(2.dp))
                                     .background(Emerald.copy(alpha = 0.6f))
@@ -1619,11 +1679,11 @@ private fun PhoneSilhouettePreview(
                     }
 
                     // Account list mock items
-                    repeat(2) {
+                    repeat(3) { idx ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(20.dp)
+                                .height(19.dp)
                                 .clip(RoundedCornerShape(5.dp))
                                 .background(Color.White)
                                 .border(1.dp, Slate200.copy(alpha = 0.6f), RoundedCornerShape(5.dp))
@@ -1633,13 +1693,19 @@ private fun PhoneSilhouettePreview(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(7.dp)
+                                    .size(6.dp)
                                     .clip(CircleShape)
-                                    .background(if (it == 0) Cobalt.copy(alpha = 0.4f) else Persimmon.copy(alpha = 0.4f))
+                                    .background(
+                                        when (idx) {
+                                            0 -> Cobalt.copy(alpha = 0.4f)
+                                            1 -> Persimmon.copy(alpha = 0.4f)
+                                            else -> Emerald.copy(alpha = 0.4f)
+                                        }
+                                    )
                             )
                             Box(
                                 modifier = Modifier
-                                    .width(38.dp)
+                                    .width(34.dp)
                                     .height(4.dp)
                                     .clip(RoundedCornerShape(2.dp))
                                     .background(Slate300)
@@ -1652,18 +1718,18 @@ private fun PhoneSilhouettePreview(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 5.dp),
+                        .padding(horizontal = 4.dp),
                     contentAlignment = BiasAlignment(railBias, 0f)
                 ) {
                     Box(
                         modifier = Modifier
-                            .width(17.dp)
-                            .height(80.dp)
-                            .rotate(railTilt)
-                            .shadow(elevation = 4.dp, shape = RoundedCornerShape(9.dp))
-                            .clip(RoundedCornerShape(9.dp))
+                            .width(16.dp)
+                            .height(84.dp)
+                            .rotate(railTiltAnim.value)
+                            .shadow(elevation = 4.dp, shape = RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(8.dp))
                             .background(Color.White)
-                            .border(1.dp, Cobalt.copy(alpha = 0.25f), RoundedCornerShape(9.dp))
+                            .border(1.dp, Cobalt.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
                             .padding(vertical = 4.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -1705,9 +1771,9 @@ private fun PhoneSilhouettePreview(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 4.dp)
-                        .size(width = 34.dp, height = 2.5.dp)
+                        .size(width = 28.dp, height = 2.5.dp)
                         .clip(RoundedCornerShape(1.5.dp))
-                        .background(Slate300)
+                        .background(Color(0xFF0F172A).copy(alpha = 0.35f))
                 )
             }
         }

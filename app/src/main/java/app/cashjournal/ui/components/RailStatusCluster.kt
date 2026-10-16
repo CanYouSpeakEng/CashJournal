@@ -162,6 +162,8 @@ fun RailStatusCluster(
         val currentOnReleasePrivacy by rememberUpdatedState(onReleasePrivacy)
         val currentOnBackClick by rememberUpdatedState(onBackClick)
         val currentOnToggleBalances by rememberUpdatedState(onToggleBalances)
+        val currentIsNestedScreen by rememberUpdatedState(isNestedScreen)
+        val currentHapticsEnabled by rememberUpdatedState(hapticsEnabled)
 
         // Circular Status Button / Back Button
         Box(
@@ -170,25 +172,25 @@ fun RailStatusCluster(
                 .shadow(elevation = 3.dp, shape = CircleShape)
                 .clip(CircleShape)
                 .background(Color.White)
-                .pointerInput(Unit) {
+                .pointerInput(isNestedScreen) {
                     detectTapGestures(
                         onPress = {
                             val released = tryAwaitRelease()
                             currentOnReleasePrivacy?.invoke()
                         },
                         onLongPress = {
-                            if (!isNestedScreen) {
-                                if (hapticsEnabled) {
+                            if (!currentIsNestedScreen) {
+                                if (currentHapticsEnabled) {
                                     view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                                 }
                                 currentOnLongPressPrivacy?.invoke()
                             }
                         },
                         onTap = {
-                            if (hapticsEnabled) {
+                            if (currentHapticsEnabled) {
                                 view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                             }
-                            if (isNestedScreen) {
+                            if (currentIsNestedScreen) {
                                 currentOnBackClick?.invoke()
                             } else {
                                 currentOnToggleBalances()

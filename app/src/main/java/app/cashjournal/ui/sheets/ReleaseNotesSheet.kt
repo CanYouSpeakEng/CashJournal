@@ -75,35 +75,35 @@ fun ReleaseNotesSheet(
 
     val highlights = listOf(
         ReleaseHighlight(
-            titleEn = "Immersive Fullscreen Mode",
-            titleIn = "Layar Penuh Imersif",
-            descEn = "Clean edge-to-edge canvas hiding system status and navigation bars. Swipe from the screen edge anytime to temporarily reveal them. Configurable in Settings.",
-            descIn = "Tampilan penuh tanpa gangguan menyembunyikan bilah status dan navigasi gestur. Geser tepi layar kapan saja untuk memunculkannya sementara. Dapat diatur di Pengaturan.",
-            icon = PhosphorIcons.Regular.DeviceMobile,
+            titleEn = "Back Navigation Fix",
+            titleIn = "Perbaikan Navigasi Kembali",
+            descEn = "Back button in account details now immediately navigates back to accounts without triggering privacy balance masking.",
+            descIn = "Tombol kembali di detail akun kini langsung kembali ke daftar akun tanpa memicu penyembunyian saldo.",
+            icon = PhosphorIcons.Regular.ArrowsClockwise,
             iconTint = Cobalt
         ),
         ReleaseHighlight(
-            titleEn = "Status Ring Micro-interactions",
-            titleIn = "Transisi Status Ring",
-            descEn = "Seamless inward scale-and-pop physics when switching between battery/signal status ring and back navigation button.",
-            descIn = "Fisika scale-and-pop halus saat berpindah antara indikator baterai/sinyal dan tombol navigasi kembali.",
-            icon = PhosphorIcons.Regular.ArrowsClockwise,
+            titleEn = "Balance Card Layout & Auto-Scale",
+            titleIn = "Tata Letak Kartu Saldo & Auto-Scale",
+            descEn = "Clean two-row layout with dynamic single-line font scaling, ensuring large balances never wrap to a second line.",
+            descIn = "Tata letak dua baris dengan penyesuaian ukuran teks otomatis, memastikan nominal saldo besar tidak terpotong ke baris baru.",
+            icon = PhosphorIcons.Regular.DeviceMobile,
             iconTint = Emerald
         ),
         ReleaseHighlight(
-            titleEn = "Interactive Handedness Preview",
-            titleIn = "Pratinjau Tata Letak Interaktif",
-            descEn = "Explore floating rail ergonomics with a dynamic phone silhouette, spring-tilt physics, and knock-to-swap simulation during onboarding.",
-            descIn = "Rasakan ergonomi bilah navigasi dengan siluet ponsel dinamis, fisika pegas, dan simulasi ketuk-goyang di onboarding.",
-            icon = PhosphorIcons.Regular.SquaresFour,
+            titleEn = "Natural Copywriting Overhaul",
+            titleIn = "Bahasa Lebih Alami & Mudah Dipahami",
+            descEn = "Everyday, familiar phrasing across English and Indonesian (e.g. Edit Balance, Difference, Transactions, Monthly Budget).",
+            descIn = "Penyempurnaan istilah di seluruh menu dan dialog menjadi lebih akrab (cth. Ubah Saldo, Selisih, Riwayat Transaksi, Anggaran Bulanan).",
+            icon = PhosphorIcons.Regular.CheckCircle,
             iconTint = Persimmon
         ),
         ReleaseHighlight(
-            titleEn = "Instant Tooltip Localization",
-            titleIn = "Lokalisasi Tooltip Instan",
-            descEn = "Sidebar and navigation button long-press tooltips now switch immediately between English and Indonesian in real-time.",
-            descIn = "Tooltip tekan-lama pada bilah navigasi kini langsung berubah mengikuti pilihan bahasa secara real-time.",
-            icon = PhosphorIcons.Regular.CheckCircle,
+            titleEn = "Realistic Silhouette & Knock Sensitivity",
+            titleIn = "Siluet Ponsel Realistis & Sensitivitas Ketukan",
+            descEn = "Realistic 1:2 phone silhouette with upright idle rail physics, plus inline knock sensitivity selector during onboarding.",
+            descIn = "Siluet ponsel berproporsi 1:2 dengan bilah tegak lurus saat diam, serta pengaturan sensitivitas ketukan langsung di onboarding.",
+            icon = PhosphorIcons.Regular.SquaresFour,
             iconTint = Cobalt
         )
     )

@@ -38,10 +38,21 @@ fun MaskedAmount(
     modifier: Modifier = Modifier
 ) {
     val formatted = Currency.formatMinor(amountMinor, currencyCode, includeSymbol = false)
+    val baseFontSize = textStyle.fontSize
+    val effectiveFontSize = if (baseFontSize != TextUnit.Unspecified && baseFontSize.value >= 24f) {
+        when {
+            formatted.length >= 14 -> (baseFontSize.value * 0.70f).sp
+            formatted.length >= 11 -> (baseFontSize.value * 0.82f).sp
+            else -> baseFontSize
+        }
+    } else {
+        baseFontSize
+    }
+
     MaskedAmountText(
         amountText = formatted,
         balancesVisible = !isMasked,
-        fontSize = textStyle.fontSize,
+        fontSize = effectiveFontSize,
         fontWeight = textStyle.fontWeight ?: FontWeight.Normal,
         color = textStyle.color,
         modifier = modifier
@@ -124,7 +135,9 @@ fun MaskedAmountText(
                     fontWeight = fontWeight,
                     fontSize = fontSize,
                     letterSpacing = 0.12.sp,
-                    color = color
+                    color = color,
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
             MaskVisualState.REVEALED_IDLE -> {
@@ -133,7 +146,9 @@ fun MaskedAmountText(
                     fontFamily = SpaceGroteskFamily,
                     fontWeight = fontWeight,
                     fontSize = fontSize,
-                    color = color
+                    color = color,
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
             MaskVisualState.WAVE_HIDING -> {

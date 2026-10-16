@@ -456,7 +456,8 @@ fun MainAppScaffold(
                         onCreateAccount = { name, bal, accent ->
                             viewModel.createAccount(name, bal, accent)
                         },
-                        onDismiss = { viewModel.dismissSheet() }
+                        onDismiss = { viewModel.dismissSheet() },
+                        languageCode = state.userPreferences.language
                     )
 
                     ActiveSheet.MAIN_CURRENCY -> MainCurrencySheet(
@@ -497,7 +498,8 @@ fun MainAppScaffold(
                                 viewModel.dismissSheet()
                             }
                         },
-                        onDismiss = { viewModel.dismissSheet() }
+                        onDismiss = { viewModel.dismissSheet() },
+                        languageCode = state.userPreferences.language
                     )
 
                     ActiveSheet.RELEASE_NOTES -> ReleaseNotesSheet(

@@ -351,7 +351,7 @@ fun LogTransactionSheet(
         // Account Chips Row
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                text = if (selectedType == TransactionType.TRANSFER) "Source account" else "Account",
+                text = if (selectedType == TransactionType.TRANSFER) strings.sourceAccountLabel else strings.accountLabel,
                 fontFamily = PlusJakartaSansFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 12.sp,
@@ -380,7 +380,7 @@ fun LogTransactionSheet(
         if (selectedType == TransactionType.TRANSFER) {
             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    text = "To account",
+                    text = strings.toAccountLabel,
                     fontFamily = PlusJakartaSansFamily,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 12.sp,
@@ -430,7 +430,7 @@ fun LogTransactionSheet(
                         decorationBox = { innerTextField ->
                             if (note.isEmpty()) {
                                 Text(
-                                    text = "e.g. Coffee, Lunch, Salary",
+                                    text = strings.transactionNotePlaceholder,
                                     fontFamily = PlusJakartaSansFamily,
                                     fontSize = 14.sp,
                                     color = Slate400
@@ -547,7 +547,7 @@ fun LogTransactionSheet(
                     .height(54.dp)
             ) {
                 Text(
-                    text = "SAVE TRANSACTION",
+                    text = strings.saveTransactionAction.uppercase(),
                     fontFamily = SpaceGroteskFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,

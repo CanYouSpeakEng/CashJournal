@@ -38,6 +38,7 @@ import app.cashjournal.domain.model.AccentKey
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.ui.components.GlassCard
 import app.cashjournal.ui.components.SubtleGlassCard
+import app.cashjournal.ui.i18n.AppStrings
 import app.cashjournal.ui.theme.CashColors
 import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Cobalt
@@ -57,8 +58,10 @@ fun NewAccountSheet(
     currencyCode: String,
     onCreateAccount: (name: String, startingBalance: Long, accentKey: AccentKey) -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    languageCode: String = "en"
 ) {
+    val strings = AppStrings.get(languageCode)
     var name by remember { mutableStateOf("") }
     var rawBalance by remember { mutableStateOf("") }
     var selectedAccent by remember { mutableStateOf(AccentKey.COBALT) }
@@ -80,7 +83,7 @@ fun NewAccountSheet(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "New Account",
+                text = strings.newAccountTitle,
                 fontFamily = PlusJakartaSansFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,
@@ -100,7 +103,7 @@ fun NewAccountSheet(
         // Account Name Input
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                text = "ACCOUNT NAME",
+                text = strings.accountNameLabel,
                 fontFamily = SpaceGroteskFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 11.sp,
@@ -123,7 +126,7 @@ fun NewAccountSheet(
                         decorationBox = { innerTextField ->
                             if (name.isEmpty()) {
                                 Text(
-                                    text = "e.g. Checking Account, Cash Wallet",
+                                    text = strings.accountNamePlaceholder,
                                     fontFamily = PlusJakartaSansFamily,
                                     fontSize = 14.sp,
                                     color = Slate400
@@ -140,7 +143,7 @@ fun NewAccountSheet(
         // Starting Balance Input
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                text = "STARTING BALANCE (${currency.symbol})",
+                text = "${strings.startingBalanceLabel} (${currency.symbol})",
                 fontFamily = SpaceGroteskFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 11.sp,
@@ -182,7 +185,7 @@ fun NewAccountSheet(
         // Accent Color Picker: 6 circles (Cobalt, Emerald, Persimmon, Saffron, Iris, Berry)
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                text = "ACCENT COLOR",
+                text = strings.accentColorLabel,
                 fontFamily = SpaceGroteskFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 11.sp,
@@ -242,7 +245,7 @@ fun NewAccountSheet(
                 .height(54.dp)
         ) {
             Text(
-                text = "Create Account",
+                text = strings.createAccountAction,
                 fontFamily = PlusJakartaSansFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp,

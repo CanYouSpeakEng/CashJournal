@@ -99,7 +99,7 @@ class MainActivity : FragmentActivity() {
                     )
                 } else if (!state.userPreferences.onboardingComplete) {
                     OnboardingScreen(
-                        onFinish = { language, currencyCode, name, railOnRight, shakeToSwap, loadExample, weatherOption, cityName, cityLat, cityLon ->
+                        onFinish = { language, currencyCode, name, railOnRight, shakeToSwap, knockSensitivity, loadExample, weatherOption, cityName, cityLat, cityLon ->
                             val weatherOptionKey = when (weatherOption) {
                                 WeatherOption.APPROX_LOCATION -> "approx"
                                 WeatherOption.SEARCH_CITY -> "search"
@@ -111,6 +111,7 @@ class MainActivity : FragmentActivity() {
                                 prefs.updateUserName(name)
                                 prefs.updateRailOnRight(railOnRight)
                                 prefs.updateShakeToSwap(shakeToSwap)
+                                prefs.updateKnockSensitivity(knockSensitivity)
                                 prefs.updateWeatherOption(weatherOptionKey, cityName, cityLat, cityLon)
                                 prefs.updateOnboardingComplete(true)
                                 prefs.updateLastSeenVersion(BuildConfig.VERSION_NAME)

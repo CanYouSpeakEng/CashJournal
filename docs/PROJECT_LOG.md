@@ -173,6 +173,18 @@ This log is kept up to date after every step. Any AI assistant or developer read
   - Tag: `v1.0.17-dev`
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.17-dev
   - Artifacts: `app-debug.apk` (17.4 MB), `app-release.apk` (12.2 MB).
+- [x] **Phase 15: Back Button Closure Fix, Balance Card Layout, Natural Copywriting & Onboarding Phone/Sensitivity Polish**
+  - [x] **Item 71: Fix Back Button Triggering Balance Masking on AccountDetailScreen**: Restore `isNestedScreen` key on `.pointerInput(isNestedScreen)` and wrap `isNestedScreen` and `hapticsEnabled` in `rememberUpdatedState` inside `RailStatusCluster.kt` and `SideRail.kt` so tapping the Back Button in `AccountDetailScreen` invokes `onBackClick` instead of executing the stale `onToggleBalances` closure.
+  - [x] **Item 72: Fix Account Detail Balance Number Wrapping (`12.500.00\n0`)**: Restructure the Balance Card in `AccountDetailScreen.kt` so the `BALANCE` label and `Edit Balance` action pill share the top header row while the `MaskedAmount` hero figure occupies 100% of the card width below with single-line auto-scaling (`maxLines = 1`).
+  - [x] **Item 73: Natural Everyday English & Indonesian Terminology Overhaul**: Replace stiff accounting jargon and overly literal Indonesian translations across `AppStrings.kt`, `OnboardingStrings.kt`, and bottom sheets (e.g. `Reconcile Balance` / `Rekonsiliasi Saldo` -> `Edit Balance` / `Ubah Saldo`, `Adjustment Delta` -> `Difference` / `Selisih`, `Activity Ledger` / `Buku Kas` -> `Transactions` / `Riwayat Transaksi`, `runway telemetry` / `landasan keuangan` -> natural budget phrasing, `Sisi Bilah Sisi` -> `Posisi Menu`).
+  - [x] **Item 74: Onboarding Step 7 Smartphone Proportions, Straight Idle Rail & Knock Intensity Selector**: Reshape `PhoneSilhouettePreview` from boxy `170x200dp` to a true portrait smartphone aspect ratio (`118x236dp`), fix `railTilt` using `Animatable(0f)` so the miniature sidebar sits completely straight (`0 deg`) when idle and only tilts during transit, and add an expandable Knock Sensitivity (`Low` / `Medium` / `High`) segmented selector when Shake/Knock to Swap is enabled in Onboarding Step 7.
+- [x] **Release v1.0.18-dev (Phase 15: Back Button Fix, Balance Card Layout, Natural Copywriting & Onboarding Polish)**
+  - Tag: `v1.0.18-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.18-dev
+  - Artifacts: `app-debug.apk` (17.4 MB), `app-release.apk` (12.2 MB).
+
+
+
 
 
 

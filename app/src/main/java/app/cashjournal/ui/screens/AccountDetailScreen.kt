@@ -6,8 +6,10 @@ import androidx.compose.foundation.layout.Arrangement
 import app.cashjournal.ui.i18n.AppStrings
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -147,24 +149,28 @@ fun AccountDetailScreen(
             modifier = Modifier.fillMaxWidth(),
             cornerRadius = 24.dp
         ) {
-            Row(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Min)
+            ) {
                 Box(
                     modifier = Modifier
                         .width(4.dp)
-                        .height(84.dp)
+                        .fillMaxHeight()
                         .background(account.accentKey.color)
                 )
 
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(18.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = strings.accountDetailBalance,
@@ -175,31 +181,32 @@ fun AccountDetailScreen(
                             color = Slate500
                         )
 
-                        MaskedAmount(
-                            amountMinor = account.balance,
-                            currencyCode = state.userPreferences.currencyCode,
-                            isMasked = state.hideBalances,
-                            textStyle = CashTypography.HeroAmount.copy(fontSize = 28.sp)
-                        )
-                    }
-
-                    if (onReconcileClick != null) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(account.accentKey.color.copy(alpha = 0.12f))
-                                .clickable { onReconcileClick() }
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Text(
-                                text = strings.reconcileBalanceButton,
-                                fontFamily = PlusJakartaSansFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp,
-                                color = account.accentKey.color
-                            )
+                        if (onReconcileClick != null) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(account.accentKey.color.copy(alpha = 0.12f))
+                                    .clickable { onReconcileClick() }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = strings.reconcileBalanceButton,
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = account.accentKey.color
+                                )
+                            }
                         }
                     }
+
+                    MaskedAmount(
+                        amountMinor = account.balance,
+                        currencyCode = state.userPreferences.currencyCode,
+                        isMasked = state.hideBalances,
+                        textStyle = CashTypography.HeroAmount.copy(fontSize = 28.sp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }

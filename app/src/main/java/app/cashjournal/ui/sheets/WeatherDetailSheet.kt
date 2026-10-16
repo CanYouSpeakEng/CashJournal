@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cashjournal.data.weather.GeocodingCity
 import app.cashjournal.ui.components.GlassCard
+import app.cashjournal.ui.i18n.AppStrings
 import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Cobalt
 import app.cashjournal.ui.theme.PlusJakartaSansFamily
@@ -62,8 +63,10 @@ fun WeatherDetailSheet(
     citySearchResults: List<GeocodingCity> = emptyList(),
     isSearchingCity: Boolean = false,
     onSearchCity: (String) -> Unit = {},
-    onSelectCity: (GeocodingCity) -> Unit = {}
+    onSelectCity: (GeocodingCity) -> Unit = {},
+    languageCode: String = "en"
 ) {
+    val strings = AppStrings.get(languageCode)
     var selectedOption by remember { mutableStateOf(currentOption) }
     var searchQuery by remember { mutableStateOf("") }
 
@@ -83,7 +86,7 @@ fun WeatherDetailSheet(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Weather Settings",
+                text = strings.weatherSettingsTitle,
                 fontFamily = PlusJakartaSansFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,
@@ -101,7 +104,7 @@ fun WeatherDetailSheet(
         }
 
         Text(
-            text = "Weather data is fetched from Open-Meteo while the app is active and cached. Coordinates are rounded to ~1 km for privacy.",
+            text = strings.weatherSettingsDescription,
             fontFamily = PlusJakartaSansFamily,
             fontSize = 13.sp,
             color = Slate600
@@ -109,8 +112,8 @@ fun WeatherDetailSheet(
 
         // Option Cards
         WeatherOptionTile(
-            title = "Approximate Location",
-            subtitle = "Rounded to ~1 km before sending",
+            title = strings.weatherApproxLocationTitle,
+            subtitle = strings.weatherApproxLocationSubtitle,
             icon = PhosphorIcons.Regular.MapPin,
             isSelected = selectedOption == "approx",
             onClick = {
@@ -120,8 +123,8 @@ fun WeatherDetailSheet(
         )
 
         WeatherOptionTile(
-            title = "Search City",
-            subtitle = "Manually choose your city",
+            title = strings.weatherSearchCityTitle,
+            subtitle = strings.weatherSearchCitySubtitle,
             icon = PhosphorIcons.Regular.MagnifyingGlass,
             isSelected = selectedOption == "search",
             onClick = {
@@ -173,7 +176,7 @@ fun WeatherDetailSheet(
                             decorationBox = { innerTextField ->
                                 if (searchQuery.isEmpty()) {
                                     Text(
-                                        text = "Search city (e.g. Jakarta, Tokyo...)",
+                                        text = strings.weatherSearchPlaceholder,
                                         fontFamily = PlusJakartaSansFamily,
                                         fontSize = 14.sp,
                                         color = Slate400
@@ -230,7 +233,7 @@ fun WeatherDetailSheet(
                         }
 
                         Text(
-                            text = "Select",
+                            text = strings.selectCityAction,
                             fontFamily = PlusJakartaSansFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp,
@@ -242,8 +245,8 @@ fun WeatherDetailSheet(
         }
 
         WeatherOptionTile(
-            title = "Off",
-            subtitle = "Hide weather from the greeting bar",
+            title = strings.weatherOffTitle,
+            subtitle = strings.weatherOffSubtitle,
             icon = PhosphorIcons.Regular.Thermometer,
             isSelected = selectedOption == "not_now",
             onClick = {
@@ -253,7 +256,7 @@ fun WeatherDetailSheet(
         )
 
         Text(
-            text = "Weather data provided by Open-Meteo.com (100% free, no key)",
+            text = strings.weatherAttribution,
             fontFamily = PlusJakartaSansFamily,
             fontSize = 11.sp,
             color = Slate500
