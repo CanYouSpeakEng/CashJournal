@@ -227,6 +227,17 @@ This log is kept up to date after every step. Any AI assistant or developer read
   - Tag: `v1.0.20-dev`
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.20-dev
   - Artifacts: `app-debug.apk` (17.5 MB), `app-release.apk` (12.3 MB).
+- [ ] **Phase 17: OTA Architecture & Lock Isolation Polish**
+  - [ ] **Item 80: Dynamic Runtime Version Name Resolution (`PackageManager.getPackageInfo`) & Clean Build Execution**:
+    - **Root Cause**: Disassembly of `classes2.dex` confirmed that Kotlin compiler inlined the compile-time constant `BuildConfig.VERSION_NAME` as static literals (`"CashJournal v1.0.19-dev"`, `"What's New in v1.0.19-dev"`) during earlier builds, and Kotlin incremental compilation skipped recompilation of unchanged source files when bumping `versionName`. Consequently, `SettingsScreen` displayed stale `1.0.19-dev`, and `MainViewModel` compared `"1.0.19-dev"` against GitHub's `"v1.0.20-dev"`, causing an infinite update loop.
+    - **Method**: Implement `AppVersionProvider.getVersionName(context)` reading dynamically from `packageManager.getPackageInfo(context.packageName, 0).versionName`, eliminate direct `BuildConfig.VERSION_NAME` inlining in UI and update checks, and enforce `./gradlew clean` on version releases.
+  - [ ] **Item 81: Lock/Veil Gate for Modal Bottom Sheets in `MainAppScaffold`**:
+    - **Root Cause**: In Jetpack Compose Material 3, `ModalBottomSheet` renders inside an independent Android `DialogWindow` (WindowManager popup layer). When the app is veiled or locked, `Modifier.alpha(0f)` on `MainAppScaffold` only hid the base layout, leaving the floating `UpdateSheet` dialog visible on top of `AppLockScreen`.
+    - **Method**: Gate `ModalBottomSheet` rendering in `MainAppScaffold.kt` with `if (!isAppLocked && !isVeiled)` so all modal sheet windows are immediately dismissed from the WindowManager when locked or backgrounded.
+  - [ ] **Item 82: Seamless Update Installation Window & Samsung FileProvider Permissions**:
+    - **Root Cause**: Launching Android's package installer or app chooser pauses `MainActivity`, triggering `onAppBackgrounded()` and immediately locking the screen behind the installer dialog.
+    - **Method**: Add `isInstallingUpdate` state in `MainViewModel` to bypass veiling during installation hand-off with a 45-second grace window, auto-dismiss the update bottom sheet prior to intent launch, grant `FLAG_GRANT_WRITE_URI_PERMISSION`, and explicitly invoke `grantUriPermission()` for all resolved installer packages for Samsung One UI compatibility.
+
 
 
 
