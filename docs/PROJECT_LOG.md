@@ -266,21 +266,25 @@ This log is kept up to date after every step. Any AI assistant or developer read
       1. Created `README.md` structured like a Google Play Store showcase: About summary, Why CashJournal value propositions, deep feature breakdowns across all 8 feature pillars, architecture & tech stack specifications, build instructions, and privacy guarantee.
       2. Created standard MIT `LICENSE` file for the repository.
     - **Verification**: Verified Markdown formatting, header structure, and repository cleanliness.
-- [ ] **Phase 20: Smart Brand Color Auto-Detection & Custom Hex Color Engine (PLANNED / UNDER REVIEW)**
-  - [ ] **Item 85: Account Brand Color Registry & Keyword Auto-Detection Engine**:
+- [x] **Phase 20: Smart Brand Color Auto-Detection & Custom Hex Color Engine**
+  - [x] **Item 85: Account Brand Color Registry & Keyword Auto-Detection Engine**:
     - **Context**: Currently, accounts are constrained to 6 generic enum color swatches (`COBALT`, `EMERALD`, `PERSIMMON`, `SAFFRON`, `IRIS`, `BERRY`). Users want their accounts and e-wallets (e.g., BCA, Mandiri, BNI, BRI, GoPay, OVO, DANA, ShopeePay, Amex, PayPal, Apple Card) to automatically reflect their authentic visual identity without friction or complex setup.
     - **Method**:
-      1. Implement `BrandRegistry` in `domain/model/BrandRegistry.kt` containing 42+ commercial banks, digital banks, e-wallets, global institutions, and cash indicators with verified primary HEX colors, 10% contrast tints, and tokenized keyword aliases.
-      2. Build a fast tokenized keyword matcher in `BrandRegistry.matchBrand(name: String)` with $< 0.05$ ms latency and zero memory overhead.
-      3. Update `NewAccountSheet.kt` and `EditAccountSheet.kt` to trigger live brand matching as the user types account names, automatically selecting authentic brand colors with an interactive suggestion chip while preserving manual override freedom.
-    - **Verification Plan**: Unit test brand tokenization and keyword matching accuracy; UI tests on account creation and edit sheets across diverse institution names.
-  - [ ] **Item 86: Universal Account Color Model & Custom Hex Swatch UI**:
+      1. Implemented `BrandRegistry` in `domain/model/BrandRegistry.kt` containing 42+ commercial banks, digital banks, e-wallets, global institutions, and cash indicators with verified primary HEX colors, 12% contrast tints, and tokenized keyword aliases.
+      2. Built a fast tokenized keyword matcher in `BrandRegistry.matchBrand(name: String)` with < 0.05 ms latency, prioritizing multi-word aliases before tokenized word-boundary checks.
+      3. Updated `NewAccountSheet.kt` and `EditAccountSheet.kt` to trigger live brand matching as the user types account names, automatically selecting authentic brand colors with an interactive detected badge while preserving manual override freedom.
+    - **Verification**: Verified brand tokenization and keyword matching accuracy via `BrandRegistryTest.kt` across Indonesian and international banks, e-wallets, cash accounts, and word-boundary negative cases (e.g., "perdana" does not trigger "dana").
+  - [x] **Item 86: Universal Account Color Model & Custom Hex Swatch UI**:
     - **Context**: Users require full creative freedom to assign custom colors beyond presets or for unlisted/niche institutions.
     - **Method**:
-      1. Evolve `AccentKey` / `AccountColor` model to support arbitrary `#RRGGBB` hex strings while remaining 100% backward-compatible with existing database records in `AccountEntity.accentKey`.
-      2. Expand the color picker UI in `NewAccountSheet.kt` and `EditAccountSheet.kt` with a curated 16-color modern fintech swatch grid plus a dedicated Custom Hex code input dialog with real-time contrast checking.
-      3. Ensure account balance cards, badges, and account detail screens render custom hex tints smoothly.
-    - **Verification Plan**: Room database migration and backward compatibility verification with existing accounts; hex parser validation tests.
+      1. Evolved `AccentKey` / `AccountColor` model in `AccentKey.kt` to support arbitrary `#RRGGBB` hex strings while remaining 100% backward-compatible with existing database records in `AccountEntity.accentKey`.
+      2. Expanded color picker UI in `NewAccountSheet.kt` and `EditAccountSheet.kt` with a curated 16-color modern fintech swatch grid plus a dedicated Custom Hex code input dialog (`CustomHexColorDialog.kt`) with real-time contrast checking and validation.
+      3. Added localized strings in English and Indonesian for detected brand badges and custom hex dialogues in `AppStrings.kt`.
+    - **Verification**: All 80 unit tests passed (`./gradlew test`). Both debug and release APKs assembled successfully.
+- [x] **Release v1.0.23-dev (Phase 20: Smart Brand Color Auto-Detection & Custom Hex Color Engine)**
+  - Tag: `v1.0.23-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.23-dev
+  - Artifacts: `app-debug.apk` (17.5 MB), `app-release.apk` (12.3 MB).
 - [ ] **Phase 21: Inclusive Spending Runway & Fund-Preservation Capital Mode (PLANNED / UNDER REVIEW)**
   - [ ] **Item 87: Percentage-of-Funds Monthly Budget Mode & Capital Runway**:
     - **Context**: The existing Monthly Spending Runway assumes a traditional monthly paycheck/budget ceiling. For students, freelancers, job-seekers, or anyone living off savings, setting a static nominal budget is unnatural. These users need capital preservation based on a percentage of their total available funds/net worth (e.g., "spend at most 10% of total funds this month").

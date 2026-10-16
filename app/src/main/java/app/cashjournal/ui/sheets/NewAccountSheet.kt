@@ -56,7 +56,11 @@ import com.adamglin.phosphoricons.regular.X
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import app.cashjournal.domain.model.AccountColor
 import app.cashjournal.domain.model.AccountType
+import app.cashjournal.domain.model.BrandProfile
+import app.cashjournal.domain.model.BrandRegistry
+import app.cashjournal.ui.components.CustomHexColorDialog
 
 @Composable
 fun NewAccountSheet(
@@ -68,9 +72,13 @@ fun NewAccountSheet(
 ) {
     val strings = AppStrings.get(languageCode)
     var selectedType by remember { mutableStateOf(AccountType.BANK_DEBIT) }
+    var userModifiedType by remember { mutableStateOf(false) }
+    var userModifiedAccent by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
     var rawBalance by remember { mutableStateOf("") }
     var selectedAccent by remember { mutableStateOf(AccentKey.COBALT) }
+    var detectedBrand by remember { mutableStateOf<BrandProfile?>(null) }
+    var showCustomHexDialog by remember { mutableStateOf(false) }
 
     val currency = Currency.findByCode(currencyCode)
 
@@ -132,7 +140,10 @@ fun NewAccountSheet(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
                             .background(chipBg)
-                            .clickable { selectedType = type }
+                            .clickable {
+                                userModifiedType = true
+                                selectedType = type
+                            }
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -170,7 +181,21 @@ fun NewAccountSheet(
                 Box(modifier = Modifier.padding(14.dp)) {
                     BasicTextField(
                         value = name,
-                        onValueChange = { if (it.length <= 28) name = it },
+                        onValueChange = { input ->
+                            if (input.length <= 28) {
+                                name = input
+                                val matched = BrandRegistry.matchBrand(input)
+                                detectedBrand = matched
+                                if (matched != null) {
+                                    if (!userModifiedAccent) {
+                                        selectedAccent = matched.accountColor
+                                    }
+                                    if (!userModifiedType) {
+                                        selectedType = matched.defaultAccountType
+                                    }
+                                }
+                            }
+                        },
                         textStyle = androidx.compose.ui.text.TextStyle(
                             fontFamily = PlusJakartaSansFamily,
                             fontWeight = FontWeight.SemiBold,
@@ -190,6 +215,31 @@ fun NewAccountSheet(
                             innerTextField()
                         },
                         modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            if (detectedBrand != null) {
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(detectedBrand!!.color.copy(alpha = 0.12f))
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(detectedBrand!!.color)
+                    )
+                    Text(
+                        text = strings.brandDetectedFormat.format(detectedBrand!!.name),
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 11.sp,
+                        color = Charcoal
                     )
                 }
             }
@@ -237,24 +287,54 @@ fun NewAccountSheet(
             }
         }
 
-        // Accent Color Picker: 6 circles (Cobalt, Emerald, Persimmon, Saffron, Iris, Berry)
+        // Accent Color Picker: Curated swatches + detected/custom indicator + Hex dialog
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = strings.accentColorLabel,
-                fontFamily = SpaceGroteskFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.sp,
-                letterSpacing = 0.8.sp,
-                color = Slate500
-            )
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                AccentKey.entries.forEach { accent ->
-                    val isSelected = accent == selectedAccent
+                Text(
+                    text = strings.accentColorLabel,
+                    fontFamily = SpaceGroteskFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    letterSpacing = 0.8.sp,
+                    color = Slate500
+                )
+
+                Text(
+                    text = strings.customHexButton,
+                    fontFamily = SpaceGroteskFamily,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 11.sp,
+                    color = Cobalt,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable { showCustomHexDialog = true }
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+
+            val swatches = remember(selectedAccent) {
+                val list = mutableListOf<AccountColor>()
+                val inCurated = AccountColor.curatedPalette.any { it.color == selectedAccent.color }
+                if (!inCurated) {
+                    list.add(selectedAccent)
+                }
+                list.addAll(AccountColor.curatedPalette)
+                list
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                swatches.forEach { accent ->
+                    val isSelected = accent.color == selectedAccent.color
                     Box(
                         modifier = Modifier
                             .size(36.dp)
@@ -263,13 +343,16 @@ fun NewAccountSheet(
                                 if (isSelected) {
                                     Modifier.border(2.dp, Cobalt, CircleShape)
                                 } else {
-                                    Modifier
+                                    Modifier.border(1.dp, Slate200, CircleShape)
                                 }
                             )
                             .padding(if (isSelected) 3.dp else 0.dp)
                             .clip(CircleShape)
                             .background(accent.color)
-                            .clickable { selectedAccent = accent },
+                            .clickable {
+                                userModifiedAccent = true
+                                selectedAccent = accent
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         if (isSelected) {
@@ -283,6 +366,19 @@ fun NewAccountSheet(
                     }
                 }
             }
+        }
+
+        if (showCustomHexDialog) {
+            CustomHexColorDialog(
+                currentHex = selectedAccent.key,
+                strings = strings,
+                onDismiss = { showCustomHexDialog = false },
+                onColorSelected = { customColor ->
+                    userModifiedAccent = true
+                    selectedAccent = customColor
+                    showCustomHexDialog = false
+                }
+            )
         }
 
         Spacer(modifier = Modifier.height(6.dp))
