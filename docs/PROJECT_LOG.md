@@ -168,6 +168,8 @@ This log is kept up to date after every step. Any AI assistant or developer read
   - [ ] **Item 67: Immersive Sticky Fullscreen by Default**: Enable `WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE` hiding system bars with a toggle in Settings (`immersiveModeEnabled`).
   - [ ] **Item 68: Onboarding Step 7 Phone Silhouette Wireframe**: High-fidelity phone vector wireframe with animated rail spring glide and knock/shake-to-swap motion cue.
   - [ ] **Item 69: What's New In-App Release Notes Modal Window**: One-time post-update pop-up sheet driven by `lastSeenVersion` DataStore tracking and re-readable via Settings About.
+  - [ ] **Item 70: Side Rail Tooltip Runtime Localization Reactivity**: Key `pointerInput(languageCode)` across `RailNavButton`, Quick Add button, and `RailStatusCluster` so long-press tooltips update to Indonesian (*"Dasbor"*, *"Buku Kas"*, *"Akun"*, *"Analisis"*, *"Pengaturan"*, *"Catat Transaksi"*, *"Privasi Layar"*) at runtime.
+
 
 
 
