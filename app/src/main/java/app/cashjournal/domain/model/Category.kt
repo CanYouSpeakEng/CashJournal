@@ -43,7 +43,7 @@ enum class Category(
         defaultName = "Transport",
         indonesianName = "Transportasi",
         defaultAccent = AccentKey.IRIS,
-        keywords = listOf("transport", "gojek", "grab", "bensin", "fuel", "gas", "train", "bus", "parking", "parkir", "toll", "tol", "mrt", "lrt")
+        keywords = listOf("transport", "gojek", "grab", "grabcar", "grabbike", "gocar", "goride", "bensin", "fuel", "gas", "train", "bus", "parking", "parkir", "toll", "tol", "mrt", "lrt", "bengkel")
     ),
     SHOPPING(
         key = "SHOPPING",
@@ -64,7 +64,7 @@ enum class Category(
         defaultName = "Housing",
         indonesianName = "Tempat Tinggal",
         defaultAccent = AccentKey.COBALT,
-        keywords = listOf("house", "rent", "sewa", "kos", "kontrakan", "mortgage", "cicilan", "maintenance", "repair")
+        keywords = listOf("house", "rent", "sewa", "kos", "kosan", "kost", "kostan", "kontrakan", "mortgage", "cicilan", "maintenance", "renovasi")
     ),
     HEALTH(
         key = "HEALTH",
@@ -130,16 +130,25 @@ enum class Category(
     }
 
     companion object {
+        private val categoryRegexMap: Map<Category, List<Regex>> by lazy {
+            entries.filter { it != OTHER }.associateWith { category ->
+                category.keywords.map { keyword ->
+                    Regex("\\b${Regex.escape(keyword)}\\b", RegexOption.IGNORE_CASE)
+                }
+            }
+        }
+
         fun fromKey(key: String?): Category {
             return entries.firstOrNull { it.key.equals(key, ignoreCase = true) } ?: OTHER
         }
 
         fun detectFromNote(note: String): Category {
-            val lower = note.lowercase()
+            if (note.isBlank()) return OTHER
             for (category in entries) {
                 if (category == OTHER) continue
-                for (keyword in category.keywords) {
-                    if (lower.contains(keyword)) {
+                val patterns = categoryRegexMap[category] ?: continue
+                for (pattern in patterns) {
+                    if (pattern.containsMatchIn(note)) {
                         return category
                     }
                 }

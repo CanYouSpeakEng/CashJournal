@@ -409,7 +409,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 TransactionType.TRANSFER -> "ArrowsLeftRight"
             }
             val accentKey = when (type) {
-                TransactionType.EXPENSE -> sourceAcc?.accentKey ?: "COBALT"
+                TransactionType.EXPENSE -> category.defaultAccent.name
                 TransactionType.INCOME -> "EMERALD"
                 TransactionType.TRANSFER -> "COBALT"
             }

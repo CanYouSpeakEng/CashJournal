@@ -189,6 +189,14 @@ fun LogTransactionSheet(
     }
 
     if (showCategoryPicker) {
+        val availableCategories = remember(selectedType) {
+            if (selectedType == TransactionType.INCOME) {
+                listOf(Category.SALARY, Category.INVESTMENT, Category.OTHER)
+            } else {
+                Category.entries.filter { it != Category.SALARY }
+            }
+        }
+
         AlertDialog(
             onDismissRequest = { showCategoryPicker = false },
             title = {
@@ -205,7 +213,7 @@ fun LogTransactionSheet(
                     modifier = Modifier.verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Category.entries.filter { it != Category.SALARY }.forEach { cat ->
+                    availableCategories.forEach { cat ->
                         val isSelected = cat == activeCategory
                         Row(
                             modifier = Modifier
@@ -302,6 +310,15 @@ fun LogTransactionSheet(
                 if (type != selectedType) {
                     ChimeGenerator.playChime(soundEffectsEnabled, scope)
                     selectedType = type
+                    if (type == TransactionType.INCOME) {
+                        if (customCategory == null || customCategory !in listOf(Category.SALARY, Category.INVESTMENT, Category.OTHER)) {
+                            customCategory = Category.SALARY
+                        }
+                    } else if (type == TransactionType.EXPENSE) {
+                        if (customCategory == Category.SALARY) {
+                            customCategory = null
+                        }
+                    }
                 }
             }
         )

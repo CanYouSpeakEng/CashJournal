@@ -23,7 +23,10 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -344,6 +347,7 @@ fun AnalyticsScreen(
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             val safe = state.safeToSpend
             val currentBudget = state.monthlyPlan.budget
+            var sliderBudget by remember(currentBudget) { mutableLongStateOf(currentBudget) }
             val decimals = Currency.getDecimals(currencyCode)
             val isZeroDecimal = decimals == 0
             val stepSize = if (isZeroDecimal) 500_000L else 5_000L
@@ -391,9 +395,9 @@ fun AnalyticsScreen(
                             letterSpacing = 0.8.sp,
                             color = Slate400
                         )
-                        if (currentBudget > 0L) {
+                        if (sliderBudget > 0L) {
                             Text(
-                                text = Currency.formatMinor(currentBudget, currencyCode),
+                                text = Currency.formatMinor(sliderBudget, currencyCode),
                                 fontFamily = SpaceGroteskFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
@@ -426,7 +430,8 @@ fun AnalyticsScreen(
                             .clip(RoundedCornerShape(8.dp))
                             .background(Slate100)
                             .clickable {
-                                val next = (currentBudget - stepSize).coerceAtLeast(minBudget)
+                                val next = (sliderBudget - stepSize).coerceAtLeast(minBudget)
+                                sliderBudget = next
                                 onBudgetChange(next)
                             },
                         contentAlignment = Alignment.Center
@@ -441,8 +446,9 @@ fun AnalyticsScreen(
 
                     // Interactive Slider
                     Slider(
-                        value = currentBudget.toFloat().coerceIn(minBudget.toFloat(), maxBudget.toFloat()),
-                        onValueChange = { onBudgetChange(it.toLong()) },
+                        value = sliderBudget.toFloat().coerceIn(minBudget.toFloat(), maxBudget.toFloat()),
+                        onValueChange = { sliderBudget = it.toLong() },
+                        onValueChangeFinished = { onBudgetChange(sliderBudget) },
                         valueRange = minBudget.toFloat()..maxBudget.toFloat(),
                         steps = 25,
                         colors = SliderDefaults.colors(
@@ -460,7 +466,8 @@ fun AnalyticsScreen(
                             .clip(RoundedCornerShape(8.dp))
                             .background(Slate100)
                             .clickable {
-                                val next = (currentBudget + stepSize).coerceAtMost(maxBudget)
+                                val next = (sliderBudget + stepSize).coerceAtMost(maxBudget)
+                                sliderBudget = next
                                 onBudgetChange(next)
                             },
                         contentAlignment = Alignment.Center

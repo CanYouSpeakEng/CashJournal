@@ -70,6 +70,7 @@ import app.cashjournal.ui.theme.Slate100
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Sun
+import com.adamglin.phosphoricons.regular.Thermometer
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -188,16 +189,17 @@ fun MainAppScaffold(
     // Modal sheet state
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    val isWeatherEnabled = state.userPreferences.weatherOption != "not_now"
     val weather = state.weatherData
-    val weatherIcon = if (weather != null) {
-        WeatherIconMapper.getIcon(weather.weatherCode, weather.isDay)
-    } else {
-        PhosphorIcons.Regular.Sun
+    val weatherIcon = when {
+        !isWeatherEnabled -> PhosphorIcons.Regular.Sun
+        weather != null -> WeatherIconMapper.getIcon(weather.weatherCode, weather.isDay)
+        else -> PhosphorIcons.Regular.Thermometer
     }
-    val tempText = if (weather != null && state.userPreferences.weatherOption != "not_now") {
-        TemperatureConverter.format(weather.temperature, state.userPreferences.temperatureUnit)
-    } else {
-        TemperatureConverter.format(24.0, state.userPreferences.temperatureUnit)
+    val tempText = when {
+        !isWeatherEnabled -> ""
+        weather != null -> TemperatureConverter.format(weather.temperature, state.userPreferences.temperatureUnit)
+        else -> "--"
     }
 
     Box(
@@ -228,6 +230,8 @@ fun MainAppScaffold(
                     name = state.selectedAccount!!.name,
                     weatherIcon = weatherIcon,
                     temperature = tempText,
+                    weatherEnabled = isWeatherEnabled,
+                    onWeatherClick = if (isWeatherEnabled) { { viewModel.openSheet(ActiveSheet.WEATHER_DETAIL) } } else null,
                     modifier = Modifier.fillMaxWidth()
                 )
             } else {
@@ -235,6 +239,8 @@ fun MainAppScaffold(
                     name = state.userPreferences.userName,
                     weatherIcon = weatherIcon,
                     temperature = tempText,
+                    weatherEnabled = isWeatherEnabled,
+                    onWeatherClick = if (isWeatherEnabled) { { viewModel.openSheet(ActiveSheet.WEATHER_DETAIL) } } else null,
                     modifier = Modifier.fillMaxWidth()
                 )
             }

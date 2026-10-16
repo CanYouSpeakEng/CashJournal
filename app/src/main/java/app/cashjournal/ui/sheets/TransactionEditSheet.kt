@@ -106,6 +106,7 @@ fun TransactionEditSheet(
     }
     var note by remember { mutableStateOf(transaction.title) }
     var selectedCategory by remember { mutableStateOf(transaction.category) }
+    var userSelectedCategory by remember { mutableStateOf(transaction.category != Category.OTHER) }
     var rawDigits by remember { mutableStateOf(transaction.amount.toString()) }
     var selectedDateMillis by remember { mutableLongStateOf(transaction.date) }
     var showDatePickerDialog by remember { mutableStateOf(false) }
@@ -270,6 +271,7 @@ fun TransactionEditSheet(
                                 .background(if (isSelected) cat.defaultAccent.color.copy(alpha = 0.15f) else Color.Transparent)
                                 .clickable {
                                     selectedCategory = cat
+                                    userSelectedCategory = true
                                     showCategoryPicker = false
                                 }
                                 .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -373,6 +375,17 @@ fun TransactionEditSheet(
                 if (type != selectedType) {
                     ChimeGenerator.playChime(soundEffectsEnabled, scope)
                     selectedType = type
+                    if (type == TransactionType.INCOME) {
+                        if (selectedCategory !in listOf(Category.SALARY, Category.INVESTMENT, Category.OTHER)) {
+                            selectedCategory = Category.SALARY
+                            userSelectedCategory = true
+                        }
+                    } else if (type == TransactionType.EXPENSE) {
+                        if (selectedCategory == Category.SALARY) {
+                            selectedCategory = Category.OTHER
+                            userSelectedCategory = false
+                        }
+                    }
                 }
             }
         )
@@ -474,7 +487,12 @@ fun TransactionEditSheet(
                         value = note,
                         onValueChange = {
                             note = it
-                            selectedCategory = Category.detectFromNote(it)
+                            if (!userSelectedCategory) {
+                                val detected = Category.detectFromNote(it)
+                                if (detected != Category.OTHER) {
+                                    selectedCategory = detected
+                                }
+                            }
                         },
                         textStyle = androidx.compose.ui.text.TextStyle(
                             fontFamily = PlusJakartaSansFamily,

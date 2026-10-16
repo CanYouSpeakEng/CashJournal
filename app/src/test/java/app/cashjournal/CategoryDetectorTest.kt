@@ -71,4 +71,22 @@ class CategoryDetectorTest {
         assertEquals(Category.OTHER, Category.detectFromNote(""))
         assertEquals(Category.OTHER, Category.detectFromNote("   "))
     }
+
+    @Test
+    fun testWordBoundaryEliminatesFalseSubstrings() {
+        // "Movie theater" must detect as ENTERTAINMENT via "movie", NOT FOOD via substring "eat" in "theater"
+        assertEquals(Category.ENTERTAINMENT, Category.detectFromNote("Movie theater"))
+
+        // "New sweater" must NOT detect as FOOD via substring "eat" in "sweater"
+        assertEquals(Category.OTHER, Category.detectFromNote("New sweater"))
+
+        // "Office chair" must NOT detect as UTILITIES via substring "air" in "chair"
+        assertEquals(Category.OTHER, Category.detectFromNote("Office chair"))
+
+        // "Car repair" must NOT detect as UTILITIES via substring "air" in "repair"
+        assertEquals(Category.OTHER, Category.detectFromNote("Car repair"))
+
+        // "Cost of shoes" must detect as SHOPPING via "shoes", NOT HOUSING via substring "kos" in "cost"
+        assertEquals(Category.SHOPPING, Category.detectFromNote("Cost of shoes"))
+    }
 }
