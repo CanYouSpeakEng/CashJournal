@@ -23,8 +23,12 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import app.cashjournal.domain.model.SafeToSpendCalculator
+import kotlin.math.roundToInt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -66,6 +70,7 @@ import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Cobalt
 import app.cashjournal.ui.theme.PlusJakartaSansFamily
 import app.cashjournal.ui.theme.Slate100
+import app.cashjournal.ui.theme.Slate200
 import app.cashjournal.ui.theme.Slate400
 import app.cashjournal.ui.theme.Slate500
 import app.cashjournal.ui.theme.Slate600
@@ -100,10 +105,12 @@ fun SettingsScreen(
     onResetOnboarding: () -> Unit = {},
     onExportBackup: (Uri) -> Unit = {},
     onRestoreBackup: (Uri) -> Unit = {},
+    onCycleStartDayChange: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showRestoreDialog by remember { mutableStateOf(false) }
+    var showCycleDialog by remember { mutableStateOf(false) }
     var showPinSetupSheet by remember { mutableStateOf(false) }
     var showPinRemoveSheet by remember { mutableStateOf(false) }
 
@@ -228,6 +235,98 @@ fun SettingsScreen(
         )
     }
 
+    if (showCycleDialog) {
+        var selectedDay by remember { mutableStateOf(state.userPreferences.cycleStartDay.toFloat()) }
+        val cyclePreview = remember(selectedDay) {
+            SafeToSpendCalculator.getCycleRange(selectedDay.roundToInt()).label
+        }
+
+        AlertDialog(
+            onDismissRequest = { showCycleDialog = false },
+            title = {
+                Text(
+                    text = strings.cycleStartDayDialogTitle,
+                    fontFamily = SpaceGroteskFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Charcoal
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text(
+                        text = strings.cycleStartDayDialogDesc,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontSize = 13.sp,
+                        color = Slate600
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (selectedDay.roundToInt() == 1) strings.cycleStartDayCalendarMonth else strings.cycleStartDaySubtitleFormat.format(selectedDay.roundToInt()),
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = Cobalt
+                        )
+                        Text(
+                            text = cyclePreview,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontSize = 12.sp,
+                            color = Slate500
+                        )
+                    }
+
+                    Slider(
+                        value = selectedDay,
+                        onValueChange = { selectedDay = it },
+                        valueRange = 1f..28f,
+                        steps = 26,
+                        colors = SliderDefaults.colors(
+                            thumbColor = Cobalt,
+                            activeTrackColor = Cobalt,
+                            inactiveTrackColor = Slate200
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showCycleDialog = false
+                        onCycleStartDayChange(selectedDay.roundToInt())
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Cobalt),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        text = if (state.userPreferences.language == "in") "Simpan" else "Save",
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCycleDialog = false }) {
+                    Text(
+                        text = strings.cancelAction,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Slate600
+                    )
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -339,7 +438,53 @@ fun SettingsScreen(
             }
         }
 
-        // 3. Security & Access Card
+        // 3. Billing & Payday Cycle Card
+        GlassCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { showCycleDialog = true }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = strings.cycleStartDayTitle.uppercase(),
+                        fontFamily = SpaceGroteskFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.8.sp,
+                        color = Slate500
+                    )
+                    val currentCycleDay = state.userPreferences.cycleStartDay
+                    val subtitleText = if (currentCycleDay == 1) {
+                        strings.cycleStartDayCalendarMonth
+                    } else {
+                        strings.cycleStartDaySubtitleFormat.format(currentCycleDay)
+                    }
+                    Text(
+                        text = subtitleText,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                        color = Charcoal
+                    )
+                }
+
+                Icon(
+                    imageVector = PhosphorIcons.Regular.CaretRight,
+                    contentDescription = "Change Cycle",
+                    tint = Slate400,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        // 4. Security & Access Card
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier.padding(16.dp),

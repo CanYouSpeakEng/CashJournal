@@ -17,10 +17,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import com.adamglin.PhosphorIcons
+import com.adamglin.phosphoricons.Regular
+import com.adamglin.phosphoricons.regular.Check
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -82,7 +88,8 @@ fun LogTransactionSheet(
         destAccountId: String?,
         note: String,
         amount: Long,
-        date: Long
+        date: Long,
+        category: Category?
     ) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -101,6 +108,10 @@ fun LogTransactionSheet(
     var rawDigits by remember { mutableStateOf("0") }
     var selectedDateMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var showDatePickerDialog by remember { mutableStateOf(false) }
+    var showCategoryPicker by remember { mutableStateOf(false) }
+    var customCategory by remember { mutableStateOf<Category?>(null) }
+    val detectedCategory = remember(note) { Category.detectFromNote(note) }
+    val activeCategory = customCategory ?: detectedCategory
 
     val (isToday, isYesterday) = remember(selectedDateMillis) {
         val nowCal = Calendar.getInstance()
@@ -121,7 +132,6 @@ fun LogTransactionSheet(
     }
 
     val currency = Currency.findByCode(currencyCode)
-    val detectedCategory = remember(note) { Category.detectFromNote(note) }
 
     // Parse amount from raw digits
     val parsedAmount: Long = remember(rawDigits, currency.isZeroDecimal) {
@@ -172,6 +182,88 @@ fun LogTransactionSheet(
         ) {
             DatePicker(state = datePickerState)
         }
+    }
+
+    if (showCategoryPicker) {
+        AlertDialog(
+            onDismissRequest = { showCategoryPicker = false },
+            title = {
+                Text(
+                    text = strings.selectCategoryTitle,
+                    fontFamily = SpaceGroteskFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Charcoal
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Category.entries.filter { it != Category.SALARY }.forEach { cat ->
+                        val isSelected = cat == activeCategory
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isSelected) cat.defaultAccent.color.copy(alpha = 0.15f) else Color.Transparent)
+                                .clickable {
+                                    customCategory = cat
+                                    showCategoryPicker = false
+                                }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(cat.defaultAccent.color.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = cat.icon,
+                                    contentDescription = cat.defaultName,
+                                    tint = cat.defaultAccent.color,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                            Text(
+                                text = cat.localizedName(languageCode),
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                                fontSize = 14.sp,
+                                color = if (isSelected) cat.defaultAccent.color else Charcoal,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = PhosphorIcons.Regular.Check,
+                                    contentDescription = "Selected",
+                                    tint = cat.defaultAccent.color,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showCategoryPicker = false }) {
+                    Text(
+                        text = strings.cancelAction,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Slate600
+                    )
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(20.dp)
+        )
     }
 
     Column(
@@ -326,27 +418,28 @@ fun LogTransactionSheet(
                         modifier = Modifier.weight(1f)
                     )
 
-                    // Detected Category Pill
+                    // Category Selection Pill
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(detectedCategory.defaultAccent.color.copy(alpha = 0.12f))
+                            .background(activeCategory.defaultAccent.color.copy(alpha = 0.12f))
+                            .clickable { showCategoryPicker = true }
                             .padding(horizontal = 8.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
-                            imageVector = detectedCategory.icon,
-                            contentDescription = detectedCategory.defaultName,
-                            tint = detectedCategory.defaultAccent.color,
+                            imageVector = activeCategory.icon,
+                            contentDescription = activeCategory.defaultName,
+                            tint = activeCategory.defaultAccent.color,
                             modifier = Modifier.size(14.dp)
                         )
                         Text(
-                            text = detectedCategory.defaultName,
+                            text = activeCategory.localizedName(languageCode),
                             fontFamily = PlusJakartaSansFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp,
-                            color = detectedCategory.defaultAccent.color
+                            color = activeCategory.defaultAccent.color
                         )
                     }
                 }
@@ -418,7 +511,8 @@ fun LogTransactionSheet(
                             selectedDestAccountId,
                             note,
                             parsedAmount,
-                            selectedDateMillis
+                            selectedDateMillis,
+                            activeCategory
                         )
                     }
                 },

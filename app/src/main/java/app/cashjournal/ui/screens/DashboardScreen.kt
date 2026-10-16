@@ -524,6 +524,15 @@ fun DashboardScreen(
                             letterSpacing = 0.8.sp,
                             color = Slate500
                         )
+                        if (safe.cycleLabel.isNotEmpty()) {
+                            Text(
+                                text = safe.cycleLabel,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 10.sp,
+                                color = Slate400
+                            )
+                        }
                     }
 
                     Column(horizontalAlignment = Alignment.End) {

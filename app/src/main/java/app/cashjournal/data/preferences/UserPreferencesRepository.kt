@@ -23,6 +23,7 @@ data class UserPreferences(
     val language: String = "en",
     val currencyCode: String = "IDR",
     val userName: String = "",
+    val cycleStartDay: Int = 1,
     val railOnRight: Boolean = true,
     val shakeToSwap: Boolean = false,
     val knockSensitivity: String = "balanced", // "gentle", "balanced", "firm"
@@ -50,6 +51,7 @@ class UserPreferencesRepository(private val context: Context) {
         val LANGUAGE = stringPreferencesKey("language")
         val CURRENCY_CODE = stringPreferencesKey("currency_code")
         val USER_NAME = stringPreferencesKey("user_name")
+        val CYCLE_START_DAY = intPreferencesKey("cycle_start_day")
         val RAIL_ON_RIGHT = booleanPreferencesKey("rail_on_right")
         val SHAKE_TO_SWAP = booleanPreferencesKey("shake_to_swap")
         val KNOCK_SENSITIVITY = stringPreferencesKey("knock_sensitivity")
@@ -96,6 +98,7 @@ class UserPreferencesRepository(private val context: Context) {
                 language = preferences[PreferencesKeys.LANGUAGE] ?: "en",
                 currencyCode = preferences[PreferencesKeys.CURRENCY_CODE] ?: "IDR",
                 userName = preferences[PreferencesKeys.USER_NAME] ?: "",
+                cycleStartDay = (preferences[PreferencesKeys.CYCLE_START_DAY] ?: 1).coerceIn(1, 28),
                 railOnRight = preferences[PreferencesKeys.RAIL_ON_RIGHT] ?: true,
                 shakeToSwap = preferences[PreferencesKeys.SHAKE_TO_SWAP] ?: false,
                 knockSensitivity = preferences[PreferencesKeys.KNOCK_SENSITIVITY] ?: "balanced",
@@ -167,6 +170,10 @@ class UserPreferencesRepository(private val context: Context) {
 
     suspend fun updateUserName(name: String) {
         context.dataStore.edit { it[PreferencesKeys.USER_NAME] = name }
+    }
+
+    suspend fun updateCycleStartDay(day: Int) {
+        context.dataStore.edit { it[PreferencesKeys.CYCLE_START_DAY] = day.coerceIn(1, 28) }
     }
 
     suspend fun updateRailOnRight(onRight: Boolean) {
@@ -268,6 +275,7 @@ class UserPreferencesRepository(private val context: Context) {
         language: String?,
         currencyCode: String?,
         userName: String?,
+        cycleStartDay: Int? = 1,
         railOnRight: Boolean?,
         shakeToSwap: Boolean?,
         knockSensitivity: String?,
@@ -280,6 +288,7 @@ class UserPreferencesRepository(private val context: Context) {
             language?.let { prefs[PreferencesKeys.LANGUAGE] = it }
             currencyCode?.let { prefs[PreferencesKeys.CURRENCY_CODE] = it }
             userName?.let { prefs[PreferencesKeys.USER_NAME] = it }
+            cycleStartDay?.let { prefs[PreferencesKeys.CYCLE_START_DAY] = it.coerceIn(1, 28) }
             railOnRight?.let { prefs[PreferencesKeys.RAIL_ON_RIGHT] = it }
             shakeToSwap?.let { prefs[PreferencesKeys.SHAKE_TO_SWAP] = it }
             knockSensitivity?.let { prefs[PreferencesKeys.KNOCK_SENSITIVITY] = it }

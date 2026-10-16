@@ -109,8 +109,31 @@ This log is kept up to date after every step. Any AI assistant or developer read
     - `WorldCurrenciesSheet`: Searchable world currencies with converted totals.
     - `WeatherDetailSheet`: Privacy location selector (~1 km approx, city search, off).
   - [x] Verified end-to-end on Android 14 AVD (`CashJournal_Pixel`), captured 11 screenshots covering all screens, privacy vault masking, sheet input, category detection, and atomic transaction persistence.
-- [ ] **Phase 6: Services**
-- [ ] **Phase 7: Motion and Behavior**
-- [ ] **Phase 8: Verification & Delivery**
+- [x] **Phase 6: Services**
+- [x] **Phase 7: Motion and Behavior**
+- [x] **Phase 8: Verification & Delivery**
+- [x] **Phase 9: Foundational Financial Architecture & Zero-Drift Ledger**
+  - [x] **Sub-Phase 9A: Core Ledger Integrity, Full CRUD & Balance Reconciliation**
+    - Room database migration v1 -> v2 (`initialBalance: Long = 0L`).
+    - Derived balance calculation engine (`currentBalance = initialBalance + SUM(incomes) - SUM(expenses) + SUM(transfersIn) - SUM(transfersOut)`).
+    - Retroactive backdating support with automatic balance recalculation across affected accounts.
+    - `TransactionEditSheet`: Full editing capabilities (title, amount, category, type, source, destination, date) and safe deletion dialog.
+    - Balance Reconciliation sheet ("Escape Hatch"): Sets actual real balance and generates audited ADJUSTMENT transaction.
+    - Comprehensive unit test suite in `LedgerIntegrityTest.kt` (100% pass).
+  - [x] **Sub-Phase 9B: Local Data Survival (JSON Backup & Restore)**
+    - Strict, versioned JSON data contract `BackupPayload` with Kotlinx Serialization.
+    - Android Storage Access Framework (SAF) integration via `CreateDocument` and `OpenDocument` in `SettingsScreen`.
+    - Atomic database restore wrapped inside Room's `database.withTransaction {}` with zero-drift recalculation.
+    - Confirmation dialog preventing accidental data overwrite.
+    - Unit tests in `BackupRestoreTest.kt` (100% pass).
+  - [x] **Sub-Phase 9C: Customization Flexibility & Preset Categorization**
+    - Custom payday/cycle start day (1..28) stored in DataStore and backed up in JSON.
+    - `SafeToSpendCalculator.getCycleRange` computing cycle start/end timestamps, date-range labels ("25 Sep – 24 Oct 2026"), and days remaining.
+    - Interactive 1..28 slider and live range preview in Settings.
+    - Cycle-filtered metrics across Analytics spending donut and Dashboard runway card.
+    - Expanded category presets (`GROCERIES`, `HEALTH`, `ENTERTAINMENT`, `EDUCATION`) with bilingual localized names.
+    - Interactive category selection modal picker in both `LogTransactionSheet` and `TransactionEditSheet`.
+    - Unit tests in `SafeToSpendTest.kt` (100% pass).
+
 
 

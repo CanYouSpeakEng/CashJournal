@@ -167,7 +167,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val recentTx = rawTransactions.take(5)
 
         // Calculate Safe to Spend
-        val safeState = calculateSafeToSpend(plan, rawTransactions, totalWorth, rawAccounts.isNotEmpty())
+        val safeState = calculateSafeToSpend(plan, rawTransactions, totalWorth, rawAccounts.isNotEmpty(), prefs.cycleStartDay)
 
         MainUiState(
             currentScreen = screen,
@@ -215,14 +215,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         plan: MonthlyPlan,
         transactions: List<Transaction>,
         totalNetWorth: Long = 0L,
-        hasAccounts: Boolean = true
+        hasAccounts: Boolean = true,
+        cycleStartDay: Int = 1
     ): SafeToSpendState {
         return SafeToSpendCalculator.calculate(
             plan = plan,
             transactions = transactions,
             totalNetWorth = totalNetWorth,
-            hasAccounts = hasAccounts
+            hasAccounts = hasAccounts,
+            cycleStartDay = cycleStartDay
         )
+    }
+
+    fun updateCycleStartDay(day: Int) {
+        viewModelScope.launch {
+            preferencesRepository.updateCycleStartDay(day)
+        }
     }
 
 
@@ -295,7 +303,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         destAccountId: String?,
         note: String,
         amount: Long,
-        date: Long = System.currentTimeMillis()
+        date: Long = System.currentTimeMillis(),
+        category: Category? = null
     ) {
         if (amount <= 0) {
             showToast("Enter an amount")
@@ -312,26 +321,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        val detectedCategory = Category.detectFromNote(note)
+        val finalCategory = category ?: Category.detectFromNote(note)
 
         viewModelScope.launch {
             val sourceAcc = database.accountDao().getAccountById(sourceAccountId)
             val destAcc = destAccountId?.let { database.accountDao().getAccountById(it) }
 
             val title = when (type) {
-                TransactionType.EXPENSE -> note.ifBlank { detectedCategory.defaultName }
+                TransactionType.EXPENSE -> note.ifBlank { finalCategory.defaultName }
                 TransactionType.INCOME -> note.ifBlank { "Income" }
                 TransactionType.TRANSFER -> "${sourceAcc?.name ?: "Source"} \u2192 ${destAcc?.name ?: "Destination"}"
             }
 
-            val txCategory = if (type == TransactionType.TRANSFER) "TRANSFER" else detectedCategory.key
+            val txCategory = if (type == TransactionType.TRANSFER) "TRANSFER" else finalCategory.key
             val iconKey = when (type) {
-                TransactionType.EXPENSE -> detectedCategory.key
+                TransactionType.EXPENSE -> finalCategory.key
                 TransactionType.INCOME -> "ArrowDownLeft"
                 TransactionType.TRANSFER -> "ArrowsLeftRight"
             }
             val accentKey = when (type) {
-                TransactionType.EXPENSE -> sourceAcc?.accentKey ?: "COBALT"
+                TransactionType.EXPENSE -> finalCategory.defaultAccent.name
                 TransactionType.INCOME -> "EMERALD"
                 TransactionType.TRANSFER -> "COBALT"
             }

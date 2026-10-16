@@ -9,9 +9,13 @@ import com.adamglin.phosphoricons.regular.Coffee
 import com.adamglin.phosphoricons.regular.House
 import com.adamglin.phosphoricons.regular.Lightning
 import com.adamglin.phosphoricons.regular.Money
+import com.adamglin.phosphoricons.regular.Receipt
+import com.adamglin.phosphoricons.regular.ShieldCheck
 import com.adamglin.phosphoricons.regular.ShoppingBag
+import com.adamglin.phosphoricons.regular.SquaresFour
 import com.adamglin.phosphoricons.regular.Tag
 import com.adamglin.phosphoricons.regular.Train
+import com.adamglin.phosphoricons.regular.Wallet
 
 enum class Category(
     val key: String,
@@ -25,14 +29,21 @@ enum class Category(
         defaultName = "Food & Dining",
         indonesianName = "Makanan & Minuman",
         defaultAccent = AccentKey.PERSIMMON,
-        keywords = listOf("coffee", "kopi", "food", "eat", "makan", "mie", "warung", "resto", "lunch", "dinner")
+        keywords = listOf("coffee", "kopi", "food", "eat", "makan", "mie", "warung", "resto", "lunch", "dinner", "cafe")
+    ),
+    GROCERIES(
+        key = "GROCERIES",
+        defaultName = "Groceries",
+        indonesianName = "Belanja Harian",
+        defaultAccent = AccentKey.EMERALD,
+        keywords = listOf("groceries", "supermarket", "pasar", "sayur", "buah", "indomaret", "alfamart", "hypermart", "sembako")
     ),
     TRANSPORT(
         key = "TRANSPORT",
         defaultName = "Transport",
         indonesianName = "Transportasi",
         defaultAccent = AccentKey.IRIS,
-        keywords = listOf("transport", "gojek", "grab", "bensin", "fuel", "gas", "train", "bus", "parking", "parkir", "toll", "tol")
+        keywords = listOf("transport", "gojek", "grab", "bensin", "fuel", "gas", "train", "bus", "parking", "parkir", "toll", "tol", "mrt", "lrt")
     ),
     SHOPPING(
         key = "SHOPPING",
@@ -55,6 +66,27 @@ enum class Category(
         defaultAccent = AccentKey.COBALT,
         keywords = listOf("house", "rent", "sewa", "kos", "kontrakan", "mortgage", "cicilan", "maintenance", "repair")
     ),
+    HEALTH(
+        key = "HEALTH",
+        defaultName = "Health & Medical",
+        indonesianName = "Kesehatan",
+        defaultAccent = AccentKey.PERSIMMON,
+        keywords = listOf("health", "doctor", "dokter", "obat", "apotek", "hospital", "rumah sakit", "dental", "gigi", "medis", "clinic", "klinik", "vitamin")
+    ),
+    ENTERTAINMENT(
+        key = "ENTERTAINMENT",
+        defaultName = "Entertainment",
+        indonesianName = "Hiburan",
+        defaultAccent = AccentKey.IRIS,
+        keywords = listOf("movie", "cinema", "bioskop", "game", "steam", "netflix", "spotify", "concert", "konser", "hobby", "hobi", "tiket", "travel", "liburan")
+    ),
+    EDUCATION(
+        key = "EDUCATION",
+        defaultName = "Education",
+        indonesianName = "Pendidikan",
+        defaultAccent = AccentKey.COBALT,
+        keywords = listOf("course", "kursus", "book", "buku", "school", "sekolah", "kuliah", "tuition", "spp", "training", "belajar")
+    ),
     INVESTMENT(
         key = "INVESTMENT",
         defaultName = "Investment",
@@ -67,7 +99,7 @@ enum class Category(
         defaultName = "Salary",
         indonesianName = "Gaji",
         defaultAccent = AccentKey.EMERALD,
-        keywords = listOf("salary", "gaji", "bonus", "freelance", "side", "project", "dividend", "dividen", "interest", "bunga")
+        keywords = listOf("salary", "gaji", "bonus", "freelance", "side", "project", "dividend", "dividen", "interest", "bunga", "income")
     ),
     OTHER(
         key = "OTHER",
@@ -80,14 +112,22 @@ enum class Category(
     val icon: ImageVector
         get() = when (this) {
             FOOD -> PhosphorIcons.Regular.Coffee
+            GROCERIES -> PhosphorIcons.Regular.Receipt
             TRANSPORT -> PhosphorIcons.Regular.Train
             SHOPPING -> PhosphorIcons.Regular.ShoppingBag
             UTILITIES -> PhosphorIcons.Regular.Lightning
             HOUSING -> PhosphorIcons.Regular.House
+            HEALTH -> PhosphorIcons.Regular.ShieldCheck
+            ENTERTAINMENT -> PhosphorIcons.Regular.SquaresFour
+            EDUCATION -> PhosphorIcons.Regular.Tag
             INVESTMENT -> PhosphorIcons.Regular.ChartLineUp
             SALARY -> PhosphorIcons.Regular.Money
             OTHER -> PhosphorIcons.Regular.Tag
         }
+
+    fun localizedName(languageCode: String): String {
+        return if (languageCode.equals("in", ignoreCase = true)) indonesianName else defaultName
+    }
 
     companion object {
         fun fromKey(key: String?): Category {

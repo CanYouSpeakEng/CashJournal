@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -109,6 +110,7 @@ fun TransactionEditSheet(
     var selectedDateMillis by remember { mutableLongStateOf(transaction.date) }
     var showDatePickerDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showCategoryPicker by remember { mutableStateOf(false) }
 
     val currency = Currency.findByCode(currencyCode)
 
@@ -218,6 +220,87 @@ fun TransactionEditSheet(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text(
+                        text = strings.cancelAction,
+                        fontFamily = PlusJakartaSansFamily,
+                        color = Slate500
+                    )
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(18.dp)
+        )
+    }
+
+    if (showCategoryPicker) {
+        val availableCategories = remember(selectedType) {
+            if (selectedType == TransactionType.INCOME) {
+                listOf(Category.SALARY, Category.INVESTMENT, Category.OTHER)
+            } else {
+                Category.entries.filter { it != Category.SALARY }
+            }
+        }
+
+        AlertDialog(
+            onDismissRequest = { showCategoryPicker = false },
+            title = {
+                Text(
+                    text = strings.selectCategoryTitle,
+                    fontFamily = SpaceGroteskFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Charcoal
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    availableCategories.forEach { cat ->
+                        val isSelected = cat == selectedCategory
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isSelected) cat.defaultAccent.color.copy(alpha = 0.15f) else Color.Transparent)
+                                .clickable {
+                                    selectedCategory = cat
+                                    showCategoryPicker = false
+                                }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(cat.defaultAccent.color.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = cat.icon,
+                                    contentDescription = cat.defaultName,
+                                    tint = cat.defaultAccent.color,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                            Text(
+                                text = cat.localizedName(languageCode),
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                                fontSize = 14.sp,
+                                color = if (isSelected) cat.defaultAccent.color else Charcoal,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showCategoryPicker = false }) {
                     Text(
                         text = strings.cancelAction,
                         fontFamily = PlusJakartaSansFamily,
@@ -398,23 +481,24 @@ fun TransactionEditSheet(
                         modifier = Modifier.weight(1f)
                     )
 
-                    // Category Pill
+                    // Category Selection Pill
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
                             .background(selectedCategory.defaultAccent.color.copy(alpha = 0.12f))
+                            .clickable { showCategoryPicker = true }
                             .padding(horizontal = 8.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(selectedCategory.defaultAccent.color)
+                        Icon(
+                            imageVector = selectedCategory.icon,
+                            contentDescription = selectedCategory.defaultName,
+                            tint = selectedCategory.defaultAccent.color,
+                            modifier = Modifier.size(14.dp)
                         )
                         Text(
-                            text = if (languageCode == "in") selectedCategory.indonesianName else selectedCategory.defaultName,
+                            text = selectedCategory.localizedName(languageCode),
                             fontFamily = PlusJakartaSansFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp,

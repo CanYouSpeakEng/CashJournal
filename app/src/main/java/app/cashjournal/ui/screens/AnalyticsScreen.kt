@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cashjournal.domain.model.Category
 import app.cashjournal.domain.model.Currency
+import app.cashjournal.domain.model.SafeToSpendCalculator
 import app.cashjournal.domain.model.TransactionType
 import app.cashjournal.ui.MainUiState
 import app.cashjournal.ui.SafeToSpendStatus
@@ -128,24 +129,21 @@ fun AnalyticsScreen(
     }
 
     // Compute Spending Donut Categories
-    val (categorySpends, totalMonthExpense) = remember(state.transactions) {
-        val cal = Calendar.getInstance()
-        val currentYear = cal.get(Calendar.YEAR)
-        val currentMonth = cal.get(Calendar.MONTH)
+    val cycleRange = remember(state.userPreferences.cycleStartDay) {
+        SafeToSpendCalculator.getCycleRange(state.userPreferences.cycleStartDay)
+    }
 
-        val thisMonthExpenses = state.transactions.filter { tx ->
-            val txCal = Calendar.getInstance().apply { timeInMillis = tx.date }
-            txCal.get(Calendar.YEAR) == currentYear &&
-                    txCal.get(Calendar.MONTH) == currentMonth &&
-                    tx.type == TransactionType.EXPENSE
+    val (categorySpends, totalMonthExpense) = remember(state.transactions, cycleRange) {
+        val thisCycleExpenses = state.transactions.filter { tx ->
+            tx.type == TransactionType.EXPENSE && tx.date >= cycleRange.startMillis && tx.date <= cycleRange.endMillis
         }
 
-        val total = thisMonthExpenses.sumOf { it.amount }
+        val total = thisCycleExpenses.sumOf { it.amount }
 
         if (total == 0L) {
             Pair(emptyList<CategorySpend>(), 0L)
         } else {
-            val grouped = thisMonthExpenses.groupBy { it.category }
+            val grouped = thisCycleExpenses.groupBy { it.category }
                 .mapValues { (_, txs) -> txs.sumOf { it.amount } }
                 .toList()
                 .sortedByDescending { it.second }
@@ -373,6 +371,15 @@ fun AnalyticsScreen(
                             fontSize = 14.sp,
                             color = Charcoal
                         )
+                        if (safe.cycleLabel.isNotEmpty()) {
+                            Text(
+                                text = safe.cycleLabel,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 11.sp,
+                                color = Slate500
+                            )
+                        }
                     }
 
                     Column(horizontalAlignment = Alignment.End) {

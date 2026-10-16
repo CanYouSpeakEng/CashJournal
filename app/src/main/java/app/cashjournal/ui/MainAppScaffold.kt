@@ -331,7 +331,8 @@ fun MainAppScaffold(
                         onLockAppNow = onLockApp,
                         onResetOnboarding = { viewModel.resetOnboarding() },
                         onExportBackup = { uri -> viewModel.exportBackup(uri) },
-                        onRestoreBackup = { uri -> viewModel.restoreBackup(uri) }
+                        onRestoreBackup = { uri -> viewModel.restoreBackup(uri) },
+                        onCycleStartDayChange = { viewModel.updateCycleStartDay(it) }
                     )
                 }
             }
@@ -390,8 +391,8 @@ fun MainAppScaffold(
                     ActiveSheet.LOG_TRANSACTION -> LogTransactionSheet(
                         accounts = state.accounts,
                         currencyCode = state.userPreferences.currencyCode,
-                        onSaveTransaction = { type, src, dst, note, amount, date ->
-                            viewModel.logTransaction(type, src, dst, note, amount, date)
+                        onSaveTransaction = { type, src, dst, note, amount, date, cat ->
+                            viewModel.logTransaction(type, src, dst, note, amount, date, cat)
                         },
                         onDismiss = { viewModel.dismissSheet() },
                         soundEffectsEnabled = state.userPreferences.soundEffectsEnabled,

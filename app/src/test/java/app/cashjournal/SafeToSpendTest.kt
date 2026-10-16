@@ -133,4 +133,91 @@ class SafeToSpendTest {
         val result = SafeToSpendCalculator.calculate(plan, emptyList(), cal)
         assertEquals(SafeToSpendStatus.SET_BUDGET, result.status)
     }
+
+    @Test
+    fun testCycleRangeDay1() {
+        val cal = createUtcCalendar(2026, Calendar.OCTOBER, 14)
+        val cycle = SafeToSpendCalculator.getCycleRange(cycleStartDay = 1, calendar = cal)
+        assertEquals("October 2026", cycle.label)
+        assertEquals(17, cycle.daysLeft)
+        assertFalse(cycle.isLastDay)
+    }
+
+    @Test
+    fun testCycleRangeMidMonthBeforeCycleDay() {
+        // Current day: 14 Oct 2026, Cycle start: 25th -> Cycle is 25 Sep - 24 Oct 2026
+        val cal = createUtcCalendar(2026, Calendar.OCTOBER, 14)
+        val cycle = SafeToSpendCalculator.getCycleRange(cycleStartDay = 25, calendar = cal)
+        assertEquals("25 Sep \u2013 24 Oct 2026", cycle.label)
+        assertEquals(10, cycle.daysLeft) // 24 - 14 = 10
+        assertFalse(cycle.isLastDay)
+    }
+
+    @Test
+    fun testCycleRangeMidMonthAfterCycleDay() {
+        // Current day: 26 Oct 2026, Cycle start: 25th -> Cycle is 25 Oct - 24 Nov 2026
+        val cal = createUtcCalendar(2026, Calendar.OCTOBER, 26)
+        val cycle = SafeToSpendCalculator.getCycleRange(cycleStartDay = 25, calendar = cal)
+        assertEquals("25 Oct \u2013 24 Nov 2026", cycle.label)
+        assertEquals(29, cycle.daysLeft)
+        assertFalse(cycle.isLastDay)
+    }
+
+    @Test
+    fun testCycleRangeClamping() {
+        val cal = createUtcCalendar(2026, Calendar.OCTOBER, 14)
+        val cycleMin = SafeToSpendCalculator.getCycleRange(cycleStartDay = 0, calendar = cal)
+        assertEquals("October 2026", cycleMin.label)
+
+        val cycleMax = SafeToSpendCalculator.getCycleRange(cycleStartDay = 31, calendar = cal)
+        assertEquals("28 Sep \u2013 27 Oct 2026", cycleMax.label)
+    }
+
+    @Test
+    fun testCustomCycleExpensesFiltering() {
+        // Cycle starts on 25th. Today is 14 Oct 2026.
+        // Active range: 25 Sep 2026 - 24 Oct 2026
+        val cal = createUtcCalendar(2026, Calendar.OCTOBER, 14)
+
+        val plan = MonthlyPlan(
+            monthKey = "2026-10",
+            budget = 5000000L
+        )
+
+        // Tx 1: 20 Sep (before cycle) -> should be excluded
+        val txBefore = Transaction(
+            title = "Old Tx",
+            amount = 1000000L,
+            type = TransactionType.EXPENSE,
+            date = createUtcCalendar(2026, Calendar.SEPTEMBER, 20).timeInMillis
+        )
+        // Tx 2: 28 Sep (in cycle) -> should be included
+        val txInCycle1 = Transaction(
+            title = "Groceries",
+            amount = 500000L,
+            type = TransactionType.EXPENSE,
+            date = createUtcCalendar(2026, Calendar.SEPTEMBER, 28).timeInMillis
+        )
+        // Tx 3: 10 Oct (in cycle) -> should be included
+        val txInCycle2 = Transaction(
+            title = "Utilities",
+            amount = 300000L,
+            type = TransactionType.EXPENSE,
+            date = createUtcCalendar(2026, Calendar.OCTOBER, 10).timeInMillis
+        )
+
+        val result = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = listOf(txBefore, txInCycle1, txInCycle2),
+            calendar = cal,
+            cycleStartDay = 25
+        )
+
+        assertEquals(800000L, result.spentThisMonth)
+        assertEquals(4200000L, result.remaining)
+        assertEquals(10, result.daysLeft)
+        // 4,200,000 / 10 = 420,000 per day
+        assertEquals(420000L, result.safeToSpendToday)
+        assertEquals(SafeToSpendStatus.SAFE, result.status)
+    }
 }
