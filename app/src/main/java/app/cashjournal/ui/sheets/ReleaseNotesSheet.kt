@@ -27,13 +27,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.cashjournal.BuildConfig
 import app.cashjournal.ui.components.GlassCard
 import app.cashjournal.ui.i18n.AppStrings
+import app.cashjournal.util.AppVersionProvider
 import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Cobalt
 import app.cashjournal.ui.theme.Emerald
@@ -69,6 +70,8 @@ fun ReleaseNotesSheet(
     languageCode: String = "en",
     hapticsEnabled: Boolean = true
 ) {
+    val context = LocalContext.current
+    val currentVersion = AppVersionProvider.getVersionName(context)
     val view = LocalView.current
     val isIndonesian = languageCode.equals("in", ignoreCase = true)
     val strings = AppStrings.get(languageCode)
@@ -123,7 +126,7 @@ fun ReleaseNotesSheet(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = if (isIndonesian) "Yang Baru di v${BuildConfig.VERSION_NAME}" else "What's New in v${BuildConfig.VERSION_NAME}",
+                    text = if (isIndonesian) "Yang Baru di v$currentVersion" else "What's New in v$currentVersion",
                     fontFamily = SpaceGroteskFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,

@@ -46,10 +46,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.cashjournal.BuildConfig
 import app.cashjournal.data.update.AppReleaseInfo
 import app.cashjournal.data.update.UpdateState
 import app.cashjournal.ui.components.SubtleGlassCard
+import app.cashjournal.util.AppVersionProvider
 import app.cashjournal.ui.i18n.AppStrings
 import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Cobalt
@@ -83,6 +83,7 @@ fun UpdateSheet(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val currentVersion = AppVersionProvider.getVersionName(context)
     val activity = context as? Activity
     val strings = AppStrings.get(languageCode)
     var showUnknownSourcesDialog by remember { mutableStateOf(false) }
@@ -222,7 +223,7 @@ fun UpdateSheet(
                     )
 
                     Text(
-                        text = "v${BuildConfig.VERSION_NAME}",
+                        text = "v$currentVersion",
                         fontFamily = SpaceGroteskFamily,
                         fontSize = 12.sp,
                         color = Slate500
@@ -326,7 +327,7 @@ fun UpdateSheet(
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     // Version info badge
                     VersionTransitionBadge(
-                        currentVersion = BuildConfig.VERSION_NAME,
+                        currentVersion = currentVersion,
                         targetVersion = info.versionName
                     )
 
@@ -583,10 +584,12 @@ private fun ReleaseDetailsContent(
     onSecondaryAction: () -> Unit,
     secondaryActionText: String
 ) {
+    val context = LocalContext.current
+    val currentVersion = AppVersionProvider.getVersionName(context)
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         // Version transition badge
         VersionTransitionBadge(
-            currentVersion = BuildConfig.VERSION_NAME,
+            currentVersion = currentVersion,
             targetVersion = info.versionName
         )
 

@@ -227,16 +227,24 @@ This log is kept up to date after every step. Any AI assistant or developer read
   - Tag: `v1.0.20-dev`
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.20-dev
   - Artifacts: `app-debug.apk` (17.5 MB), `app-release.apk` (12.3 MB).
-- [ ] **Phase 17: OTA Architecture & Lock Isolation Polish**
-  - [ ] **Item 80: Dynamic Runtime Version Name Resolution (`PackageManager.getPackageInfo`) & Clean Build Execution**:
+- [x] **Phase 17: OTA Architecture & Lock Isolation Polish**
+  - [x] **Item 80: Dynamic Runtime Version Name Resolution (`PackageManager.getPackageInfo`) & Clean Build Execution**:
     - **Root Cause**: Disassembly of `classes2.dex` confirmed that Kotlin compiler inlined the compile-time constant `BuildConfig.VERSION_NAME` as static literals (`"CashJournal v1.0.19-dev"`, `"What's New in v1.0.19-dev"`) during earlier builds, and Kotlin incremental compilation skipped recompilation of unchanged source files when bumping `versionName`. Consequently, `SettingsScreen` displayed stale `1.0.19-dev`, and `MainViewModel` compared `"1.0.19-dev"` against GitHub's `"v1.0.20-dev"`, causing an infinite update loop.
-    - **Method**: Implement `AppVersionProvider.getVersionName(context)` reading dynamically from `packageManager.getPackageInfo(context.packageName, 0).versionName`, eliminate direct `BuildConfig.VERSION_NAME` inlining in UI and update checks, and enforce `./gradlew clean` on version releases.
-  - [ ] **Item 81: Lock/Veil Gate for Modal Bottom Sheets in `MainAppScaffold`**:
+    - **Method**: Implemented `AppVersionProvider.getVersionName(context)` reading dynamically from `packageManager.getPackageInfo(context.packageName, 0).versionName`, eliminated direct `BuildConfig.VERSION_NAME` inlining across `SettingsScreen.kt`, `UpdateSheet.kt`, `ReleaseNotesSheet.kt`, `MainViewModel.kt`, and `MainActivity.kt`, and performed a full `./gradlew clean` build to eradicate stale inlined bytecode literals.
+    - **Verification**: Verified via bytecode inspection of `classes2.dex` that stale `"1.0.19-dev"` and `"1.0.20-dev"` strings are absent, unit tests pass (70/70), and `aapt dump badging` outputs `versionName='1.0.21-dev'`.
+  - [x] **Item 81: Lock/Veil Gate for Modal Bottom Sheets in `MainAppScaffold`**:
     - **Root Cause**: In Jetpack Compose Material 3, `ModalBottomSheet` renders inside an independent Android `DialogWindow` (WindowManager popup layer). When the app is veiled or locked, `Modifier.alpha(0f)` on `MainAppScaffold` only hid the base layout, leaving the floating `UpdateSheet` dialog visible on top of `AppLockScreen`.
-    - **Method**: Gate `ModalBottomSheet` rendering in `MainAppScaffold.kt` with `if (!isAppLocked && !isVeiled)` so all modal sheet windows are immediately dismissed from the WindowManager when locked or backgrounded.
-  - [ ] **Item 82: Seamless Update Installation Window & Samsung FileProvider Permissions**:
+    - **Method**: Gated `ModalBottomSheet` rendering in `MainAppScaffold.kt` with `if (!isLocked)` and passed `isLocked = locked` from `MainActivity.kt` so all modal sheet windows are immediately dismissed from the WindowManager when locked or backgrounded.
+    - **Verification**: Verified in `MainAppScaffold.kt` that `ModalBottomSheet` is destroyed on lock/veil, preventing bleed-through onto `AppLockScreen`.
+  - [x] **Item 82: Seamless Update Installation Window & Samsung FileProvider Permissions**:
     - **Root Cause**: Launching Android's package installer or app chooser pauses `MainActivity`, triggering `onAppBackgrounded()` and immediately locking the screen behind the installer dialog.
-    - **Method**: Add `isInstallingUpdate` state in `MainViewModel` to bypass veiling during installation hand-off with a 45-second grace window, auto-dismiss the update bottom sheet prior to intent launch, grant `FLAG_GRANT_WRITE_URI_PERMISSION`, and explicitly invoke `grantUriPermission()` for all resolved installer packages for Samsung One UI compatibility.
+    - **Method**: Added `isInstallingUpdate` state in `MainViewModel` to bypass veiling during installation hand-off with a 60-second grace window, auto-dismissed the update bottom sheet prior to intent launch, added `FLAG_GRANT_WRITE_URI_PERMISSION`, root cache paths in `file_paths.xml`, and explicitly invoked `grantUriPermission()` for all resolved installer packages for Samsung One UI compatibility.
+    - **Verification**: Clean build and test execution; verified `file_paths.xml` declarations and `MainViewModel` state transitions.
+- [x] **Release v1.0.21-dev (Phase 17: Dynamic Runtime Versioning, Sheet Lock Isolation & Seamless OTA Installation)**
+  - Tag: `v1.0.21-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.21-dev
+  - Artifacts: `app-debug.apk` (17.5 MB), `app-release.apk` (12.3 MB).
+
 
 
 

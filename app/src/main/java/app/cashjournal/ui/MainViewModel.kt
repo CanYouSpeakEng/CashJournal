@@ -3,6 +3,7 @@ package app.cashjournal.ui
 import android.app.Activity
 import android.app.Application
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
@@ -13,6 +14,7 @@ import app.cashjournal.data.backup.BackupManager
 import app.cashjournal.data.update.AppReleaseInfo
 import app.cashjournal.data.update.AppUpdateService
 import app.cashjournal.data.update.UpdateState
+import app.cashjournal.util.AppVersionProvider
 import java.io.File
 import java.util.TimeZone
 import app.cashjournal.data.ExampleDataSeeder
@@ -147,6 +149,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val isAppLocked = _isAppLocked.asStateFlow()
     val isVeiled = _isVeiled.asStateFlow()
     private var lastBackgroundTimestamp: Long = 0L
+    private var isInstallingUpdate: Boolean = false
+    private var installHandOffTimestamp: Long = 0L
 
     val currentScreen = _currentScreen.asStateFlow()
     val activeSheet = _activeSheet.asStateFlow()
@@ -251,7 +255,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (prefs.weatherOption != "not_now") {
                 refreshWeather()
             }
-            if (prefs.onboardingComplete && prefs.lastSeenVersion != app.cashjournal.BuildConfig.VERSION_NAME) {
+            val currentRuntimeVersion = AppVersionProvider.getVersionName(application)
+            if (prefs.onboardingComplete && prefs.lastSeenVersion != currentRuntimeVersion) {
                 _activeSheet.value = ActiveSheet.RELEASE_NOTES
             }
             checkDailyUpdateQuietly()
@@ -319,8 +324,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onAppForegrounded(hasPin: Boolean) {
-        if (hasPin && lastBackgroundTimestamp > 0L) {
-            val elapsed = System.currentTimeMillis() - lastBackgroundTimestamp
+        val now = System.currentTimeMillis()
+        val inGracePeriod = isInstallingUpdate && (now - installHandOffTimestamp < 60_000L)
+        if (isInstallingUpdate && !inGracePeriod) {
+            isInstallingUpdate = false
+        }
+
+        if (hasPin && lastBackgroundTimestamp > 0L && !inGracePeriod) {
+            val elapsed = now - lastBackgroundTimestamp
             if (elapsed > 15_000L) {
                 _isAppLocked.value = true
             }
@@ -332,7 +343,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun onAppBackgrounded(hasPin: Boolean) {
         lastBackgroundTimestamp = System.currentTimeMillis()
         if (hasPin) {
-            _isVeiled.value = true
+            if (!isInstallingUpdate) {
+                _isVeiled.value = true
+            }
         }
     }
 
@@ -358,7 +371,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun dismissReleaseNotes() {
         viewModelScope.launch {
-            preferencesRepository.updateLastSeenVersion(app.cashjournal.BuildConfig.VERSION_NAME)
+            val currentRuntimeVersion = AppVersionProvider.getVersionName(getApplication())
+            preferencesRepository.updateLastSeenVersion(currentRuntimeVersion)
         }
         dismissSheet()
     }
@@ -369,8 +383,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _activeSheet.value = ActiveSheet.UPDATE_INFO
             }
             _updateState.value = UpdateState.Checking
+            val currentRuntimeVersion = AppVersionProvider.getVersionName(getApplication())
             val result = appUpdateService.fetchLatestRelease(
-                currentVersion = BuildConfig.VERSION_NAME,
+                currentVersion = currentRuntimeVersion,
                 isDebugBuild = BuildConfig.DEBUG
             )
             result.onSuccess { info ->
@@ -426,6 +441,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val current = _updateState.value
         val file = (current as? UpdateState.ReadyToInstall)?.apkFile ?: return
         try {
+            isInstallingUpdate = true
+            installHandOffTimestamp = System.currentTimeMillis()
+            dismissSheet()
+
             val uri = FileProvider.getUriForFile(
                 activity,
                 "${activity.packageName}.fileprovider",
@@ -433,10 +452,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(uri, "application/vnd.android.package-archive")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
             }
+
+            val resInfoList = activity.packageManager.queryIntentActivities(
+                intent,
+                PackageManager.MATCH_DEFAULT_ONLY
+            )
+            for (resolveInfo in resInfoList) {
+                val pkgName = resolveInfo.activityInfo.packageName
+                activity.grantUriPermission(
+                    pkgName,
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+            }
+
             activity.startActivity(intent)
         } catch (e: Exception) {
+            isInstallingUpdate = false
             showToast("Failed to launch package installer: ${e.message}")
         }
     }

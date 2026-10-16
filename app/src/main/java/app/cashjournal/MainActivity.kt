@@ -115,7 +115,7 @@ class MainActivity : FragmentActivity() {
                                 prefs.updateKnockSensitivity(knockSensitivity)
                                 prefs.updateWeatherOption(weatherOptionKey, cityName, cityLat, cityLon)
                                 prefs.updateOnboardingComplete(true)
-                                prefs.updateLastSeenVersion(BuildConfig.VERSION_NAME)
+                                prefs.updateLastSeenVersion(app.cashjournal.util.AppVersionProvider.getVersionName(applicationContext))
                             }
                             if (loadExample) {
                                 viewModel.seedExampleData()
@@ -132,6 +132,7 @@ class MainActivity : FragmentActivity() {
                                     viewModel.lockAppNow()
                                 }
                             },
+                            isLocked = locked,
                             modifier = if (locked) Modifier.alpha(0f) else Modifier
                         )
 

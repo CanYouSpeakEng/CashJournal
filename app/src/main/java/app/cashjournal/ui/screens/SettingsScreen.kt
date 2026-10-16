@@ -31,6 +31,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import app.cashjournal.BuildConfig
+import app.cashjournal.util.AppVersionProvider
 import app.cashjournal.domain.model.SafeToSpendCalculator
 import kotlin.math.roundToInt
 import androidx.compose.runtime.Composable
@@ -972,8 +973,10 @@ fun SettingsScreen(
                         fontSize = 12.sp,
                         color = Slate600
                     )
+                    val context = LocalContext.current
+                    val currentVersionName = remember(context) { AppVersionProvider.getVersionName(context) }
                     Text(
-                        text = "CashJournal v${BuildConfig.VERSION_NAME} (Native Android Build)",
+                        text = "CashJournal v$currentVersionName (Native Android Build)",
                         fontFamily = SpaceGroteskFamily,
                         fontSize = 11.sp,
                         color = Slate500

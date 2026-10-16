@@ -82,7 +82,8 @@ import kotlin.math.roundToInt
 fun MainAppScaffold(
     viewModel: MainViewModel,
     modifier: Modifier = Modifier,
-    onLockApp: () -> Unit = {}
+    onLockApp: () -> Unit = {},
+    isLocked: Boolean = false
 ) {
     val state by viewModel.uiState.collectAsState()
     val railOnRight = state.userPreferences.railOnRight
@@ -399,15 +400,16 @@ fun MainAppScaffold(
                 .padding(top = 48.dp)
         )
 
-        // Modal Bottom Sheets
-        state.activeSheet?.let { sheet ->
-            ModalBottomSheet(
-                onDismissRequest = { viewModel.dismissSheet() },
-                sheetState = sheetState,
-                containerColor = Color.White,
-                scrimColor = Color(0x4D0F172A), // 30% Charcoal per brief section 5
-                dragHandle = null
-            ) {
+        // Modal Bottom Sheets (suppressed when app is locked/veiled to prevent WindowManager bleed-through)
+        if (!isLocked) {
+            state.activeSheet?.let { sheet ->
+                ModalBottomSheet(
+                    onDismissRequest = { viewModel.dismissSheet() },
+                    sheetState = sheetState,
+                    containerColor = Color.White,
+                    scrimColor = Color(0x4D0F172A), // 30% Charcoal per brief section 5
+                    dragHandle = null
+                ) {
                 when (sheet) {
                     ActiveSheet.LOG_TRANSACTION -> LogTransactionSheet(
                         accounts = state.accounts,
@@ -544,6 +546,7 @@ fun MainAppScaffold(
                     )
                 }
             }
+        }
         }
     }
 }
