@@ -27,6 +27,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import app.cashjournal.BuildConfig
 import app.cashjournal.domain.model.SafeToSpendCalculator
 import kotlin.math.roundToInt
 import androidx.compose.runtime.Composable
@@ -952,7 +953,7 @@ fun SettingsScreen(
                         color = Slate600
                     )
                     Text(
-                        text = "CashJournal v1.0.13-dev (Native Android Build)",
+                        text = "CashJournal v${BuildConfig.VERSION_NAME} (Native Android Build)",
                         fontFamily = SpaceGroteskFamily,
                         fontSize = 11.sp,
                         color = Slate500

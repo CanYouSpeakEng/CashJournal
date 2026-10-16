@@ -23,7 +23,7 @@ class BackupRestoreTest {
     fun testBackupPayloadSerializationRoundTrip() {
         val originalPayload = BackupPayload(
             version = 1,
-            appVersion = "1.0.13",
+            appVersion = "1.0.14",
             exportedAt = 1760000000000L,
             accounts = listOf(
                 AccountBackupDto(

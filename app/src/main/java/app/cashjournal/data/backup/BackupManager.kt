@@ -14,10 +14,12 @@ import kotlinx.serialization.json.Json
 import java.io.InputStream
 import java.io.OutputStream
 
+import app.cashjournal.BuildConfig
+
 @Serializable
 data class BackupPayload(
     val version: Int = 1,
-    val appVersion: String = "1.0.13",
+    val appVersion: String = BuildConfig.VERSION_NAME,
     val exportedAt: Long = System.currentTimeMillis(),
     val accounts: List<AccountBackupDto> = emptyList(),
     val transactions: List<TransactionBackupDto> = emptyList(),
@@ -178,7 +180,7 @@ class BackupManager(
 
         BackupPayload(
             version = 1,
-            appVersion = "1.0.13",
+            appVersion = BuildConfig.VERSION_NAME,
             exportedAt = System.currentTimeMillis(),
             accounts = accounts,
             transactions = transactions,
