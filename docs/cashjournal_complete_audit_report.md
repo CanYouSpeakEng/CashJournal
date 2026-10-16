@@ -1,44 +1,71 @@
-# CashJournal — Complete Application Audit & Feature Reference Report
+# CashJournal — Complete Application Audit & Feature Reference Report (v2.0)
 
 > [!NOTE]
-> **Audit Scope & Verification**: This audit covers 100% of the source files, build scripts, database schemas, domain algorithms, UI screens, modal sheets, sensory engines, security configurations, and unit tests in the `CashJournal` repository (`v1.0.14-dev`). All 9 automated unit test suites (`./gradlew testDebugUnitTest`) were executed and verified passing during this audit.
+> **Audit Revision v2.0 (`2026-10-16 19:42 UTC+07:00`)**: This report updates the initial `v1.0.14-dev` audit (`15:54 UTC+07:00`) to reflect all engineering changes delivered across **Phases 10 through 15** (`v1.0.15-dev` $\rightarrow$ `v1.0.18-dev`). All **16 findings** from the initial audit (`CRITICAL-1`, `HIGH-1..4`, `MED-1..5`, `LOW-1..6`) have been verified resolved, and all **10 automated JUnit4 test suites** (`./gradlew testDebugUnitTest`) pass cleanly.
 
 ---
 
-## 1. Executive Summary & Product Overview
+## 1. Chronological Audit & Engineering Time Log
 
-**CashJournal** (`app.cashjournal`) is a native, offline-first personal finance and cash-flow telemetry application for Android (`minSdk 26` / Android 8.0 through `targetSdk 34` / Android 14). It is built with **Kotlin 2.0**, **Jetpack Compose (Material 3 infrastructure with a bespoke Daylight Frosted-Glass Design System)**, **Room SQLite (v2)**, **Jetpack DataStore**, **Kotlinx Serialization**, **OkHttp**, and **Phosphor Icons**.
+All timestamps are recorded in local project time (`2026-10-16`, `UTC+07:00`):
+
+| Timestamp (`+07:00`) | Version / Commit | Phase / Milestone | Summary of Changes & Audit Events |
+| :--- | :--- | :--- | :--- |
+| `2026-10-15 22:00` | `d08e35a` (`v1.0.9`) | Phase 8 Stabilization | Fixed onboarding permission launcher crash (`fragment-ktx:1.8.1`), clarified local storage sandbox, refined 4-dot cellular signal cluster. |
+| `2026-10-15 23:17` | `54d66d5` (`v1.0.10`) | Brand Identity | Integrated official CashJournal Logo v1 across adaptive launcher icons (`mdpi`–`xxxhdpi`) and in-app branding. |
+| `2026-10-16 12:52` | `91f3803` (`v1.0.11-dev`) | Stabilization & Sensory | Bilingual localization groundwork, knock/shake detector calibration, and audio chime synthesis. |
+| `2026-10-16 13:20` | `337ba09` (`v1.0.12-dev`) | Layout & Lock Lifecycle | Calibrated typography hierarchy, layout geometry, 15s background auto-lock lifecycle, and wave mask performance. |
+| `2026-10-16 14:09` | `f1ce18c` | Sub-Phase 9A | Room v1 $\rightarrow$ v2 migration (`initialBalance`), zero-drift SQL balance derivation, backdating, full transaction CRUD (`TransactionEditSheet`), and balance reconciliation (`ReconcileBalanceSheet`). |
+| `2026-10-16 14:22` | `10b8967` | Sub-Phase 9B | Versioned JSON backup export & atomic restore via Storage Access Framework (`BackupManager`). |
+| `2026-10-16 14:49` | `10c5ec1` (`v1.0.13-dev`) | Sub-Phase 9C | Custom payday cycle start day (`1..28`), expanded 12 preset categories, and manual category picker modal. |
+| `2026-10-16 15:43` | `28eaece` (`v1.0.14-dev`) | Pre-Audit Baseline | Synchronized `BuildConfig.VERSION_NAME` display in Settings. |
+| **`2026-10-16 15:54`** | **`v1.0.14-dev`** | **Audit Report v1.0** | **Initial full-codebase audit completed.** Identified 1 Critical (`CRITICAL-1`), 4 High (`HIGH-1..4`), 5 Medium (`MED-1..5`), and 6 Low (`LOW-1..6`) findings. Generated `docs/cashjournal_complete_audit_report.{md,pdf}`. |
+| `2026-10-16 16:21` | `7bb6203` | **Phase 10 Remediation** | Fixed `CRITICAL-1` (`initialBalance` conversion on currency switch), `HIGH-1` (live `selectedAccount` resolution), `HIGH-2` (`selectedWorldCurrency` sync & conversion math), `HIGH-4` (custom cycle `startingSpent` persistence), and `LOW-5` (New Year `"Yesterday"` & DST-safe `daysLeft`). |
+| `2026-10-16 16:31` | `5dcca0d` | **Phase 11 Remediation** | Fixed `HIGH-3` (weather `"Off"` hides widget; pending shows `Thermometer` + `"--"`), `MED-1` (word-boundary regex `\b` in `Category.detectFromNote`), `MED-2` (buffered budget slider `onValueChangeFinished`), and `MED-3` (`SALARY` in income picker, manual category preservation on note edit, expense accent preservation). |
+| `2026-10-16 17:08` | `7259a0b` | **Phase 12 Remediation** | Fixed `MED-4` (10,000-round salted SHA-256 PIN hashing + `PinSecurityTest.kt`), `MED-5` (full Bahasa Indonesia localization across UI & ViewModel toasts), `LOW-1` (expanded `PreferencesBackupDto`), `LOW-2` (`DailyReminderScheduler` + `DailyReminderReceiver` at 20:00), `LOW-3`/`LOW-4` (haptics & chime gating, duplicate toast removal), and `LOW-6` (removed unused `gitCommitCount` & `onPinChange`). |
+| `2026-10-16 17:33` | `3d3233d` (`v1.0.15-dev`) | Release `v1.0.15-dev` | Tagged & published post-audit remediation release (`v1.0.15-dev`). |
+| `2026-10-16 17:49` | `3edae55` (`v1.0.16-dev`) | **Phase 13 Polish** | Added `isPreferencesLoaded` cold-start gate (eliminating Frame-0 onboarding flash) and centered bidirectional spring morph between Status Ring and Back Button in `RailStatusCluster.kt`. |
+| `2026-10-16 18:37` | `19ff083` (`v1.0.17-dev`) | **Phase 14 Features** | Added sticky immersive fullscreen (`immersiveModeEnabled`), interactive `PhoneSilhouettePreview` in Onboarding Step 7, auto-triggered `ReleaseNotesSheet` (`lastSeenVersion` check), and live runtime localization for side rail long-press tooltips. |
+| `2026-10-16 19:31` | `2c112d3` (`v1.0.18-dev`) | **Phase 15 Polish** | Fixed `AccountDetailScreen` back button gesture closure (`pointerInput(isNestedScreen)`), prevented balance card line wrapping via 2-row header + single-line auto-scaling in `MaskedAmount.kt`, overhauled EN/ID copywriting to natural everyday phrasing, reshaped onboarding phone silhouette to `118×236.dp` (`1:2`) with upright `0°` idle rail, and added inline Knock Sensitivity selector to Onboarding Step 7. |
+| **`2026-10-16 19:42`** | **`v1.0.18-dev`** | **Audit Report v2.0** | **Post-Phase-15 re-audit completed.** Verified all 16 initial findings resolved, documented Phases 10–15 features, verified 10/10 JUnit test suites passing, and regenerated `docs/cashjournal_complete_audit_report.{md,pdf}`. |
+
+---
+
+## 2. Executive Summary & Architectural Overview
+
+**CashJournal** (`app.cashjournal`, current version **`1.0.18-dev`**) is a native, offline-first personal finance and cash-flow application for Android (`minSdk 26` / Android 8.0 through `targetSdk 34` / Android 14). It is built with **Kotlin 2.0**, **Jetpack Compose (Material 3 base with a custom Daylight Frosted-Glass Design System)**, **Room SQLite (v2)**, **Jetpack DataStore**, **Kotlinx Serialization**, **OkHttp 4.12**, and **Phosphor Icons**.
 
 ### Core Architectural Pillars
-1. **100% Free & Keyless**: Zero paid SDKs, zero user accounts, and zero API keys. External telemetry uses keyless open endpoints (Open-Meteo for weather/geocoding and ExchangeRate-API Open Access for daily FX rates).
+1. **100% Free & Keyless**: Zero paid libraries, zero user accounts, and zero API keys. External telemetry uses keyless open endpoints (Open-Meteo for weather/geocoding and ExchangeRate-API Open Access for daily FX rates).
 2. **100% Local & Private**: All financial records reside strictly within the device's internal sandbox. Cloud auto-backup and device-to-device extraction are disabled at the OS manifest level (`allowBackup="false"`).
-3. **Zero-Drift Mathematical Integrity**: Monetary values are stored exclusively as 64-bit integer minor units (`Long`). Account balances are dynamically derived in SQLite from `initialBalance + SUM(inflows) - SUM(outflows)`, preventing incremental drift across retroactive edits, deletions, and atomic transfers.
-4. **Dual-Layer Network Lockdown**: Both Android's `network_security_config.xml` and a runtime OkHttp [`HostAllowlistInterceptor`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/data/network/HostAllowlistInterceptor.kt) restrict outbound HTTPS traffic to exactly three hosts: `api.open-meteo.com`, `geocoding-api.open-meteo.com`, and `open.er-api.com`.
-5. **Ergonomic One-Handed UI & Sensory Feedback**: Features a spring-animated floating [`SideRail`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/SideRail.kt) that can swap between left and right screen edges via UI toggle or physical device knock/shake ([`ShakeDetector`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sensory/ShakeDetector.kt)), paired with procedurally synthesized dual-sine audio chimes ([`ChimeGenerator`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sensory/ChimeGenerator.kt)) and dynamic GPU-rendered background blobs ([`AmbientField`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/AmbientField.kt)).
+3. **Zero-Drift Mathematical Integrity**: Monetary values are stored exclusively as 64-bit integer minor units (`Long`). Account balances are dynamically derived in SQLite from `initialBalance + SUM(inflows) - SUM(outflows)`, preventing incremental drift across retroactive edits, deletions, currency conversions, and atomic transfers.
+4. **Dual-Layer Network Lockdown**: Both Android's [`network_security_config.xml`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/res/xml/network_security_config.xml) and a runtime OkHttp [`HostAllowlistInterceptor`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/data/network/HostAllowlistInterceptor.kt) restrict outbound HTTPS traffic to exactly three hosts: `api.open-meteo.com`, `geocoding-api.open-meteo.com`, and `open.er-api.com`.
+5. **Ergonomic One-Handed UI & Sensory Feedback**: Features a spring-animated floating [`SideRail`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/SideRail.kt) that swaps between left and right screen edges via UI toggle or physical device knock/shake ([`ShakeDetector`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sensory/ShakeDetector.kt)), paired with procedurally synthesized dual-sine audio chimes ([`ChimeGenerator`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sensory/ChimeGenerator.kt)), sticky immersive fullscreen mode, and dynamic GPU-rendered background blobs ([`AmbientField`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/AmbientField.kt)).
 
 ```mermaid
 flowchart TD
     subgraph UI["UI Layer (Jetpack Compose)"]
-        MA["MainActivity (FragmentActivity)"]
-        OB["OnboardingScreen (8 Steps)"]
-        AL["AppLockScreen (PIN + Biometric)"]
+        MA["MainActivity (FragmentActivity + Immersive + Cold-Start Gate)"]
+        OB["OnboardingScreen (8 Steps + 1:2 Phone Silhouette)"]
+        AL["AppLockScreen (Salted SHA-256 PIN + Biometric)"]
         MS["MainAppScaffold"]
-        SR["SideRail + RailStatusCluster"]
+        SR["SideRail + RailStatusCluster (Battery/Signal/Clock/Back Morph)"]
         AF["AmbientField + GreetingBar"]
-        SC["6 Core Screens (Dashboard, Ledger, Accounts, AccountDetail, Analytics, Settings)"]
-        SH["8 Modal Bottom Sheets (Log, Edit, Reconcile, NewAccount, MainCurrency, WorldCurrencies, Weather, PinSetup)"]
+        SC["6 Core Screens (Dashboard, Transactions, Accounts, AccountDetail, Analytics, Settings)"]
+        SH["9 Modal Bottom Sheets (Log, Edit, Reconcile, NewAccount, MainCurrency, WorldCurrencies, Weather, PinSetup, ReleaseNotes)"]
     end
 
-    subgraph VM["State & Orchestration"]
+    subgraph VM["State, Receivers & Orchestration"]
         MVM["MainViewModel (Single Reactive MainUiState)"]
-        STS["SafeToSpendCalculator"]
+        STS["SafeToSpendCalculator (DST-Safe + Cycle-Aware)"]
         CC["CurrencyConverter"]
         CG["ChimeGenerator & ShakeDetector"]
+        DRS["DailyReminderScheduler & DailyReminderReceiver (20:00 Alarm)"]
     end
 
     subgraph DATA["Data & Persistence Layer"]
         DB[("Room Database v2 (cashjournal_db)")]
-        DS[("Preferences DataStore (user_preferences)")]
+        DS[("Preferences DataStore (20 Prefs + 11 Cache Keys)")]
         BM["BackupManager (Versioned JSON SAF)"]
         EDS["ExampleDataSeeder (Demo Mode)"]
     end
@@ -53,6 +80,7 @@ flowchart TD
     MA --> OB
     MA --> AL
     MA --> MS
+    MA --> DRS
     MS --> SR
     MS --> AF
     MS --> SC
@@ -75,21 +103,20 @@ flowchart TD
 
 ---
 
-## 2. Complete Feature & Functional Reference
+## 3. Complete Feature & Functional Reference (`v1.0.18-dev`)
 
-### 2.1 Entry Point, App Lock & Lifecycle ([`MainActivity.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/MainActivity.kt))
-* **Edge-to-Edge Portrait Shell**: Extends `FragmentActivity` (enabling `BiometricPrompt` support) and calls `enableEdgeToEdge()`. Locked to portrait orientation.
-* **ADB / Intent Demo Seeding**: Passing `--ez seed true` via intent extra in `onCreate` ([L38-L40](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/MainActivity.kt#L38-L40)) or `onNewIntent` ([L131-L137](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/MainActivity.kt#L131-L137)) invokes `viewModel.seedExampleData()`.
-* **Screen Privacy (`FLAG_SECURE`)**: Observes `state.userPreferences.screenPrivacyEnabled` ([L51-L60](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/MainActivity.kt#L51-L60)) and applies `WindowManager.LayoutParams.FLAG_SECURE` to block screenshots, screen recording, and recent-apps thumbnails.
-* **15-Second Background Auto-Lock**:
-  * Starts locked (`isAppLocked = true`) whenever `pinEnabled && pinHash.isNotEmpty()`.
-  * Records `lastBackgroundTimestamp` in `onStop()` ([L126-L129](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/MainActivity.kt#L126-L129)).
-  * Upon `onStart()` ([L116-L124](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/MainActivity.kt#L116-L124)), if the app was backgrounded for more than `15,000 ms`, `isAppLocked.value` is reset to `true`, gating access behind [`AppLockScreen`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/AppLockScreen.kt).
+### 3.1 Entry Point, Immersive Mode, App Lock & Lifecycle ([`MainActivity.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/MainActivity.kt))
+* **Cold-Start Initialization Gate ([L94-L100](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/MainActivity.kt#L94-L100))**: Wait for `state.isPreferencesLoaded` before choosing between `OnboardingScreen`, `AppLockScreen`, or `MainAppScaffold`, rendering a clean `Slate100` background on Frame 0 so existing users never see a momentary onboarding flash on cold start.
+* **Sticky Immersive Fullscreen ([L80-L92](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/MainActivity.kt#L80-L92))**: Uses `WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE` to hide system status and navigation bars by default (`immersiveModeEnabled = true`), allowing users to reveal them temporarily with an edge swipe or toggle them permanently in Settings.
+* **Daily Reminder Alarm Sync ([L71-L78](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/MainActivity.kt#L71-L78))**: Reactively schedules or cancels the 20:00 daily reminder via [`DailyReminderScheduler`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/receiver/DailyReminderScheduler.kt) whenever `dailyReminderEnabled` changes.
+* **Screen Privacy (`FLAG_SECURE`, [L59-L69](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/MainActivity.kt#L59-L69))**: Dynamically applies or clears `WindowManager.LayoutParams.FLAG_SECURE` to block screenshots, screen recording, and recent-app previews.
+* **15-Second Background Auto-Lock ([L159-L172](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/MainActivity.kt#L159-L172))**: Re-engages [`AppLockScreen`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/AppLockScreen.kt) whenever the app returns from the background after more than `15,000 ms`.
+* **Automatic What's New Trigger ([`MainViewModel.kt:217-219`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/MainViewModel.kt#L217-L219))**: On startup, if `onboardingComplete` is true and `prefs.lastSeenVersion != BuildConfig.VERSION_NAME`, automatically presents [`ReleaseNotesSheet`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/ReleaseNotesSheet.kt) and updates `lastSeenVersion` upon dismissal.
 
 ---
 
-### 2.2 First-Run Onboarding Flow ([`OnboardingScreen.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/onboarding/OnboardingScreen.kt))
-A full-screen, 8-step guided setup over the animated [`AmbientField`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/AmbientField.kt) with an 8-segment progress bar, spring horizontal page transitions (`320ms`), and bilingual support ([`OnboardingStrings.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/onboarding/OnboardingStrings.kt)):
+### 3.2 First-Run Onboarding Flow ([`OnboardingScreen.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/onboarding/OnboardingScreen.kt))
+An 8-step guided flow over the animated [`AmbientField`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/AmbientField.kt) with an 8-segment progress bar, spring horizontal slide transitions (`320ms`), tactile haptics gated on `hapticsEnabled`, and natural English/Indonesian copywriting ([`OnboardingStrings.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/onboarding/OnboardingStrings.kt)):
 
 | Step | Title (EN / ID) | Functionality & Interactive Controls |
 | :--- | :--- | :--- |
@@ -97,274 +124,141 @@ A full-screen, 8-step guided setup over the animated [`AmbientField`](file:///c:
 | **Step 2** | *Choose your language* | Instant selection between **English** and **Bahasa Indonesia**; immediately crossfades all onboarding text. |
 | **Step 3** | *Where are you from?* | Live-searchable country/currency selector ([`Country.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/domain/model/Country.kt)) with vector [`CountryFlag`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/CountryFlag.kt) icons and currency code badges (`IDR`, `USD`, `EUR`, `GBP`, `SGD`, `JPY`, `AUD`, `MYR`). |
 | **Step 4** | *What should we call you?* | Optional name input (`max 40 chars`) with a live `SpaceGrotesk` character counter (`N / 40`) and a **Skip** action. |
-| **Step 5** | *Show local weather?* | Three privacy-tiered modes: **Approximate location** (~1 km rounded coordinates), **Search for my city** (8 quick-pick city chips: Bandung, Jakarta, Surabaya, Medan, Singapore, Tokyo, London, New York + custom text input), or **Not now**. |
-| **Step 6** | *Transparent Privacy* | Interactive permission request cards for **Approximate Location** (`ACCESS_COARSE_LOCATION`) and **Daily Reminders** (`POST_NOTIFICATIONS` on Android 13+), plus a read-only **Local Data Storage** card explaining the isolated `Device Sandbox` (zero storage permissions needed). |
-| **Step 7** | *Where should the menu sit?* | Left vs. Right [`SegmentedControl`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/SegmentedControl.kt) with an interactive mini phone wireframe that animates the rail position in real time, plus a **Shake to swap sides** toggle. |
-| **Step 8** | *How would you like to start?* | Choose between **Load Demo Mode** (default; populates 4 sample accounts, 10 transactions, and a 7.5M IDR budget via [`ExampleDataSeeder`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/data/ExampleDataSeeder.kt)) or **Start from scratch**. |
-| **Done** | *You're all set.* | Animated `CheckCircle` confirmation screen transitioning into the main [`DashboardScreen`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/DashboardScreen.kt). |
+| **Step 5** | *Show local weather?* | Three privacy-tiered modes: **Approximate location** (~1 km rounded coordinates), **Search for my city** (8 popular city chips: Bandung, Jakarta, Surabaya, Medan, Singapore, Tokyo, London, New York + custom query), or **Not now**. |
+| **Step 6** | *Transparent Privacy* | Interactive permission request cards for **Approximate Location** (`ACCESS_COARSE_LOCATION`) and **Daily Reminders** (`POST_NOTIFICATIONS` on Android 13+), plus a read-only **Local Data Storage** card explaining the isolated `Device Sandbox`. |
+| **Step 7** | *Where should the menu sit?* | Interactive `118×236.dp` (`1:2` portrait ratio) [`PhoneSilhouettePreview`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/onboarding/OnboardingScreen.kt#L1534-L1765) wireframe that simulates device shake/knock on tap and glides the miniature rail across sides (settling at `0°` upright when idle); Left/Right `SegmentedControl`; **Shake to swap sides** toggle with an inline expandable **Knock Sensitivity** (`Low` / `Medium` / `High`) selector. |
+| **Step 8** | *How would you like to start?* | Choose between **Load Demo Mode** (default; populates 4 sample accounts, 10 transactions, and a 7.5M IDR budget via [`ExampleDataSeeder`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/data/ExampleDataSeeder.kt)) or **Start from scratch**, followed by the animated `CheckCircle` completion screen. |
 
 ---
 
-### 2.3 Main Scaffold, Side Rail & Shared Components ([`MainAppScaffold.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/MainAppScaffold.kt))
+### 3.3 Main Scaffold, Side Rail & Shared Components ([`MainAppScaffold.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/MainAppScaffold.kt))
 
 * **Dynamic Content Margins & Rail Physics**:
   * Content padding dynamically mirrors based on rail placement (`20.dp` on the non-rail side, `78.dp` on the rail side) using `spring(stiffness = 320f, dampingRatio = 0.65f)`.
   * When swapping sides (via Settings or physical device knock/shake), the floating rail leaps across the screen while tilting `±18°` (`tiltAngle`) and firing a tactile haptic tick.
 * **Floating [`SideRail.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/SideRail.kt) & [`RailStatusCluster.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/RailStatusCluster.kt)**:
   * **Unified Status Ring (`42.dp`)**: Custom `Canvas` ring displaying:
-    * **270° Battery Arc**: Polls `BatteryManager.BATTERY_PROPERTY_CAPACITY` every 60s. Color-coded Emerald (`>30%`), Saffron (`11–30%`), or Berry (`≤10%`), with a Charcoal depleted track.
+    * **270° Battery Arc**: Polls `BatteryManager.BATTERY_PROPERTY_CAPACITY` every 30s. Color-coded Emerald (`>30%`), Saffron (`11–30%`), or Berry (`≤10%`), with a Charcoal depleted track.
     * **4-Dot Cellular Signal Cluster**: Polls `TelephonyManager.signalStrength` every 30s and normalizes 4-bar and 5-bar OEM scales via [`SignalStrengthHelper`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/util/SignalStrengthHelper.kt) into 4 polar dots at `60°, 80°, 100°, 120°`.
     * **Center Privacy Vault Button**: Toggles `hideBalances` (`Eye` when visible, `EyeSlash` in Cobalt when masked).
-    * **Live Clock**: Displays `HH:mm` (ID) or `h:mm` (EN) below the status ring, updating every 30s.
-    * **Nested Back Button**: On `AccountDetailScreen`, the status cluster smoothly morphs (`scaleIn` + `fadeIn`) into a `CaretLeft` back button.
-  * **Liquid Tab Drip Indicator**: Switching between the 5 tabs (`Dashboard`, `Ledger`, `Accounts`, `Analytics`, `Settings`) animates a Cobalt droplet over `420ms` that stretches vertically (`+14.dp`) and narrows horizontally (`-6.dp`) mid-flight.
-  * **Long-Press Tooltips & Shockwave**: Holding any rail button floats a frosted glass tooltip label inward (`±66.dp`). If the user shakes the phone while holding a button, a shockwave collapse/re-bloom animation transfers the tooltip to the opposite side.
+    * **Live Clock**: Displays `HH:mm` (24h) or `h:mm` (12h) below the status ring, updating every 30s.
+    * **Centered Spring Morph to Back Button**: On `AccountDetailScreen`, the `42.dp` status ring shrinks (`scaleOut` to `0.15f` over `130ms`) and pops in (`scaleIn` with bouncy spring) as a centered `CaretLeft` back button with `.pointerInput(isNestedScreen)` closure re-binding.
+  * **Liquid Tab Drip Indicator**: Switching between the 5 tabs (`Dashboard`, `Transactions`, `Accounts`, `Analytics`, `Settings`) animates a Cobalt droplet over `420ms` that stretches vertically (`+14.dp`) and narrows horizontally (`-6.dp`) mid-flight.
+  * **Reactive Localized Long-Press Tooltips & Shockwave**: Holding any rail button floats a frosted glass tooltip label inward (`±66.dp`) using `rememberUpdatedState` so runtime language switches immediately translate tooltips (*"Dasbor"*, *"Transaksi"*, *"Akun"*, *"Analisis"*, *"Pengaturan"*, *"Tambah Transaksi"*, *"Privasi Layar"*).
   * **Quick-Add (`+`) Button**: Anchored at the bottom of the rail to open [`LogTransactionSheet`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/LogTransactionSheet.kt) from any screen.
-* **Per-Digit Wave Privacy Masking ([`MaskedAmount.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/MaskedAmount.kt))**:
-  * Toggling privacy mode triggers a staggered wave (`32ms` per character, right-to-left when hiding, left-to-right when revealing) where each digit shrinks, fades, translates vertically, and morphs into 7 dots (`•••••••` with `0.12em` letter spacing) while preserving the currency symbol on hero totals.
-* **Ambient Background Field ([`AmbientField.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/AmbientField.kt))**:
-  * Renders up to 6 radial-gradient color blobs matching the user's accounts, sorted by balance. Blob diameter scales non-linearly with account share:
-    $$\text{Diameter} = \left(0.28 + 0.42 \times \left(\frac{\text{balance}}{\text{maxBalance}}\right)^{0.8}\right) \times \text{ScreenWidth}$$
-  * Drifts on a 30-second sinusoidal trajectory in isolated GPU layers (`graphicsLayer`) and shifts `±16px` in response to rail side changes.
+* **Per-Digit Wave Privacy Masking & Single-Line Auto-Scaling ([`MaskedAmount.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/MaskedAmount.kt))**:
+  * Toggling privacy mode triggers a staggered wave (`32ms` per character, right-to-left when hiding, left-to-right when revealing) where each digit shrinks, fades, translates vertically, and morphs into 7 dots (`•••••••`).
+  * For large hero figures (`fontSize >= 24.sp`), `MaskedAmount` automatically scales font size (`0.82x` for $\ge 11$ chars, `0.70x` for $\ge 14$ chars) with `maxLines = 1` and `softWrap = false` so multi-million Rupiah balances never wrap across lines.
 
 ---
 
-### 2.4 Primary Screens (`ui/screens/`)
+### 3.4 Primary Screens (`ui/screens/`)
 
-#### 1. [`DashboardScreen.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/DashboardScreen.kt)
-* **Total Net Worth Hero**: Displays the primary currency symbol in Cobalt (`24.sp`), the aggregated balance across all accounts (`30.sp` extra-bold `SpaceGrotesk`), and `{N} accounts · all in {CODE}`.
-* **Safe-to-Spend Today Card (`28.dp` GlassCard)**:
-  * Shows the daily allowance (`{symbol} X / day`), status badge (`Safe` in Emerald, `Near Limit` in Saffron, `Recalibrate` in `#F87171`, `No Funds Available` or `Set a monthly budget` in Slate), and remaining cycle telemetry (`{daysLeft} days left · {remaining} remaining`).
-  * **64dp Circular Gauge**: Custom `Canvas` arc showing `displayPercent% spent` (capped at `100%`).
-* **Active Accounts Carousel**: Horizontal scrolling list of `130.dp × 96.dp` glass cards with account accent radial haze, colored dot, uppercase name, and balance, masked on the right by a `48.dp` horizontal fade gradient. Shows an empty-state CTA card when no accounts exist.
-* **Recent Activity**: Displays the 5 newest transactions in a `24.dp` `GlassCard`. Tapping any row opens [`TransactionEditSheet`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/TransactionEditSheet.kt).
-* **Monthly Budget Runway Card (`16.dp` SubtleGlassCard)**: Displays the active cycle date label (e.g., `25 Sep – 24 Oct 2026`), total budget, status-colored `LinearProgressIndicator`, total spent, and days left.
-* **Bottom Mist Mask & [`ScrollForMorePill.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/ScrollForMorePill.kt)**: Applies an offscreen `BlendMode.DstIn` alpha fade over the bottom `64.dp` of the viewport and floats a bobbing `"Scroll for more"` pill that scrolls down 65% of the viewport height on tap.
-
-#### 2. [`LedgerScreen.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/LedgerScreen.kt)
-* **Filter Pills**: Horizontal row of 4 pills (`All`, `Expense`, `Income`, `Transfer`), each displaying its live count from `state.transactions`.
-* **Real-Time Search**: Filters transactions instantaneously by matching `title`, `category.defaultName`, `category.indonesianName`, or unformatted `amount` digits.
-* **Chronological Day Grouping**: Groups transactions by calendar day under uppercase headers (`TODAY`/`HARI INI`, `YESTERDAY`/`KEMARIN`, or `EEEE, MMM d`) inside a `LazyColumn`.
-* **Interactive Editing**: Tapping any [`TransactionRow`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/TransactionRow.kt) opens [`TransactionEditSheet`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/TransactionEditSheet.kt) for full retroactive CRUD.
-
-#### 3. [`AccountsScreen.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/AccountsScreen.kt)
-* **World Currencies Telemetry Card**:
-  * Converts Total Net Worth into a selected foreign currency, displaying the converted total, `1 {TARGET} = {RATE} {MAIN}` cross-rate, online/offline indicator dot with elapsed minutes since last sync, and a manual refresh button (`ArrowsClockwise`).
-  * **Quick Currency Chips**: 8 flag-badged chips (`USD`, `EUR`, `SGD`, `JPY`, `GBP`, `MYR`, `SAR`, `THB`, excluding the active main currency) plus a `+ World` button that opens [`WorldCurrenciesSheet`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/WorldCurrenciesSheet.kt).
-* **Account Glass Cards (`24.dp`)**:
-  * Renders each account with a `4.dp` left accent border, radial accent background glow, `% of total` tinted pill, large balance, and a `3.dp` bottom bar proportional to the largest account balance (`min 2%`).
-* **Reorder Mode**: Tapping `Edit` transforms the card chevrons into `ArrowUp` / `ArrowDown` reorder controls, persisting new `sortIndex` positions in Room.
-
-#### 4. [`AccountDetailScreen.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/AccountDetailScreen.kt)
-* **Account Balance & Reconciliation**: Shows the account's `% of total` share, a `24.dp` balance card with a `Reconcile Balance` action button (opening [`ReconcileBalanceSheet`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/ReconcileBalanceSheet.kt)), and two telemetry tiles:
-  * **Inflow (`Emerald`)**: Sum of `INCOME` into this account + incoming `TRANSFER`s (`destinationAccountId == account.id`).
-  * **Outflow (`Charcoal`)**: Sum of `EXPENSE`s from this account + outgoing `TRANSFER`s (`sourceAccountId == account.id`).
-* **Account Activity**: Chronological list of all transactions involving this account as source or destination.
-
-#### 5. [`AnalyticsScreen.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/AnalyticsScreen.kt)
-* **Last 6 Months Cash Flow Bar Chart**:
-  * Aggregates monthly `INCOME` and `EXPENSE` totals across the last 6 calendar months (strictly excluding `TRANSFER`s).
-  * Renders paired `7.dp` bars (`Emerald` Inflow, `Persimmon` Outflow) normalized to the 6-month peak (`90.dp` max height), or a `4.dp` baseline dot for zero-activity months.
-* **Monthly Spending Runway Calibrator**:
-  * Interactive `−` / `Slider` / `+` controls to adjust the monthly budget (step size `500,000` for zero-decimal currencies like IDR, or `5,000` minor units / `50.00` for decimal currencies).
-  * Displays real-time daily safe-to-spend impact or a `Recalibrate` warning when spending exceeds the budget.
-* **Top Spending Categories Donut Chart**:
-  * Filters expenses strictly within the active billing cycle (`cycleRange.startMillis..cycleRange.endMillis`), ranks categories by spend, takes the top 4 + aggregates the remainder into `Other`, and draws an `80.dp` multi-segment `Canvas` ring with center total spent and a percentage legend.
-
-#### 6. [`SettingsScreen.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/SettingsScreen.kt)
-Organized into 8 cards:
-1. **Language**: Instant switch between `English` and `Bahasa Indonesia`.
-2. **Main Currency**: Displays current currency and opens [`MainCurrencySheet`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/MainCurrencySheet.kt).
-3. **Payday / Cycle Start Day**: Opens an interactive dialog with a `1..28` slider and live billing-cycle range preview (`SafeToSpendCalculator.getCycleRange`).
-4. **Security & Access**:
-   * **PIN Lock**: Opens [`PinSetupSheet`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/PinSetupSheet.kt) to create/confirm a 4-digit PIN, or `PinVerifyOrRemoveSheet` to verify the existing PIN before removal.
-   * **Biometric Unlock**: Gated on PIN setup; prompts hardware biometric verification via [`BiometricAuthHelper`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/security/BiometricAuthHelper.kt) before enabling.
-   * **Screen Privacy**: Toggles `WindowManager.LayoutParams.FLAG_SECURE`.
-   * **Lock App Now**: Immediately engages [`AppLockScreen`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/AppLockScreen.kt).
-5. **Sensory & Feedback**: Toggles for **Sound Effects**, **Tactile Haptics**, and **Daily Reminder**.
-6. **Sidebar Placement**: Left/Right segmented control, **Knock / Shake to Swap** toggle, and a 3-level **Knock Sensitivity** selector (`Gentle`, `Balanced`, `Firm`).
-7. **Weather**: Opens [`WeatherDetailSheet`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/WeatherDetailSheet.kt), toggles `°C` / `°F`, and shows relative time since last weather sync.
-8. **Data & Portability + About**:
-   * **Export Backup (JSON)**: Exports full database & preferences via Android Storage Access Framework (`CreateDocument`).
-   * **Restore Backup (JSON)**: Shows overwrite confirmation dialog, then imports & recalculates balances via SAF (`OpenDocument`).
-   * **Export Excel**: Placeholder button (`"Coming soon"` toast).
-   * **Replay Onboarding Flow**: Resets `onboardingComplete = false`.
-   * **Clear All Data**: Destructive confirmation dialog that wipes all accounts, transactions, and monthly plans while preserving user preferences.
-   * **About**: Official logo, clickable attributions (`Open-Meteo.com` & `ExchangeRate-API`), and `BuildConfig.VERSION_NAME`.
-
-#### 7. [`AppLockScreen.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/AppLockScreen.kt)
-* Full-screen security gate featuring 4 animated PIN dots, a 3×4 numeric keypad, automatic biometric prompt on launch (`300ms` delay), and horizontal shake + `HapticFeedbackConstants.REJECT` feedback on incorrect PIN entry.
+| Screen File | Key Features, Telemetry & Interactive Flows |
+| :--- | :--- |
+| [`DashboardScreen.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/DashboardScreen.kt) | **Total Net Worth** hero header; `28.dp` **Safe-to-Spend Today** glass card with `64.dp` circular `% spent` gauge and status pill (`Safe`, `Near Limit`, `Over Budget`, `Set Budget`, `No Funds`); **Active Accounts** horizontal carousel (`130×96.dp` cards with radial accent haze); **Recent Activity** (top 5 transactions); **Monthly Budget** progress card; bottom mist gradient and [`ScrollForMorePill`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/ScrollForMorePill.kt). |
+| [`LedgerScreen.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/LedgerScreen.kt) | **Transactions** screen (*"Riwayat Transaksi"*) with 4 live-count filter pills (`All`, `Expense`, `Income`, `Transfer`); instant search bar matching notes, EN/ID category names, and raw amount digits; chronological day grouping (`TODAY`/`HARI INI`, `YESTERDAY`/`KEMARIN` with year-boundary support, or weekday/date headers); tap any row to open [`TransactionEditSheet`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/TransactionEditSheet.kt). |
+| [`AccountsScreen.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/AccountsScreen.kt) | **World Currencies** card synchronized with `userPreferences.selectedWorldCurrency`, showing converted Net Worth via `CurrencyConverter.convertMinorUnits`, 1-unit cross-rate, online/offline status dot, manual refresh, 8 flag chips (`USD`, `EUR`, `SGD`, `JPY`, `GBP`, `MYR`, `SAR`, `THB`), and `+ World` button; `24.dp` account glass cards with `4.dp` left accent border, `% of total` pill, and relative balance bar; interactive **Reorder Mode** (`ArrowUp`/`ArrowDown`). |
+| [`AccountDetailScreen.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/AccountDetailScreen.kt) | Live-updating single-account view with `% of total` badge; `24.dp` **Balance Card** with 2-row layout (`BALANCE` label + `Edit Balance` / `Ubah Saldo` pill on top, full-width auto-scaling `MaskedAmount` below); side-by-side **Money In** (`Emerald`: income + transfers in) and **Money Out** (`Charcoal`: expense + transfers out) tiles; filtered account transaction history. |
+| [`AnalyticsScreen.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/AnalyticsScreen.kt) | **Last 6 Months** Money In / Money Out paired bar chart (transfers excluded); interactive **Monthly Budget** calibrator with `−` / buffered `Slider` (`onValueChangeFinished` DB commit & chime) / `+` step buttons (`500k` IDR steps); cycle-filtered **Top Spending Categories** Donut Chart (top 4 categories + `Other`). |
+| [`SettingsScreen.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/SettingsScreen.kt) | 8 configuration cards: **Language** (`EN`/`ID`), **Main Currency**, **Monthly Reset Day** (`1..28` slider dialog with live cycle preview), **Security & Access** (`PIN Lock`, `Biometric Unlock`, `FLAG_SECURE Screen Privacy`, `Lock App Now`), **Sensory & Feedback** (`Sound Effects`, `Tactile Haptics`, `Daily Reminder` at 20:00), **Menu Position** (`Left`/`Right`, `Full Screen Mode`, `Knock / Shake to Swap`, `Knock Sensitivity`), **Weather** (`Approximate`, `City`, `Off`, `°C`/`°F`), and **Data & Backup** (SAF JSON `Back Up Data` / `Restore Data`, `Export Excel`, `Replay Welcome Guide`, `Delete All Data`, `About` + `What's New`). |
+| [`AppLockScreen.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/AppLockScreen.kt) | Full-screen security gate verifying 4-digit PIN against 10,000-round salted SHA-256 hash (`UserPreferencesRepository.verifyPin`), with 4 spring-animated PIN dots, horizontal error shake + reject haptics, 3×4 keypad, and automatic localized `BiometricPrompt` trigger (`300ms` after launch). |
 
 ---
 
-### 2.5 Modal Bottom Sheets (`ui/sheets/`)
+### 3.5 Modal Bottom Sheets (`ui/sheets/` — 9 Sheets)
 
 | Sheet File | Purpose & Key Capabilities |
 | :--- | :--- |
-| [`LogTransactionSheet.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/LogTransactionSheet.kt) | Segmented type picker (`Expense` Persimmon, `Income` Emerald, `Transfer` Cobalt), backdating chips (`Today`, `Yesterday`, `Custom Date` via `DatePickerDialog`), source/destination account chips, note input with live keyword category detection + manual category picker modal, `36.sp` cash-style amount entry, [`CustomNumericKeypad`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/CustomNumericKeypad.kt), and [`SaveSplash`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/SaveSplash.kt) 14-droplet particle burst on save. |
-| [`TransactionEditSheet.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/TransactionEditSheet.kt) | Full retroactive editing of any existing transaction (type, backdated timestamp, source/destination accounts, note, category, amount) plus safe deletion with confirmation dialog and automatic multi-account balance recalculation. |
-| [`ReconcileBalanceSheet.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/ReconcileBalanceSheet.kt) | The "Escape Hatch" for manual balance reconciliation. Shows current app balance and live-computed adjustment delta (`+` Emerald / `−` Persimmon) as the user types their real-world balance, then logs an audited `INCOME` or `EXPENSE` adjustment transaction. |
-| [`NewAccountSheet.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/NewAccountSheet.kt) | Creates a new account with name (`max 28 chars`), starting `initialBalance`, and 6 `AccentKey` color swatches (`Cobalt`, `Emerald`, `Persimmon`, `Saffron`, `Iris`, `Berry`). |
-| [`MainCurrencySheet.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/MainCurrencySheet.kt) | Searchable country/currency selector with confirmation dialog that converts all existing accounts, transactions, and monthly budget into the new currency using cached exchange rates. |
+| [`LogTransactionSheet.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/LogTransactionSheet.kt) | Segmented type picker (`Expense` Persimmon, `Income` Emerald, `Transfer` Cobalt), backdating chips (`Today`, `Yesterday`, `Custom Date` via `DatePickerDialog`), source/destination account chips, note input with word-boundary regex category detection + type-aware manual category picker modal (includes `Salary` for `Income`), `36.sp` cash-style amount entry, [`CustomNumericKeypad`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/CustomNumericKeypad.kt), and [`SaveSplash`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/components/SaveSplash.kt) 14-droplet particle burst. |
+| [`TransactionEditSheet.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/TransactionEditSheet.kt) | Full retroactive editing of any existing transaction (type, backdated timestamp, source/destination accounts, note, manual/auto category, amount) plus safe deletion with confirmation dialog and multi-account balance recalculation. |
+| [`ReconcileBalanceSheet.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/ReconcileBalanceSheet.kt) | **Edit Account Balance** (*"Ubah Saldo Akun"*). Displays `Current App Balance` and live-computed `Difference` (*"Selisih"*, `+` Emerald / `−` Persimmon) as the user types their `Actual Real Balance`, then logs an audited `INCOME` or `EXPENSE` adjustment transaction (*"Balance Adjustment"* / *"Penyesuaian Saldo"*). |
+| [`NewAccountSheet.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/NewAccountSheet.kt) | Creates a new account with localized labels, name (`max 28 chars`), starting `initialBalance`, and 6 `AccentKey` color swatches (`Cobalt`, `Emerald`, `Persimmon`, `Saffron`, `Iris`, `Berry`). |
+| [`MainCurrencySheet.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/MainCurrencySheet.kt) | Searchable country/currency selector with confirmation dialog that converts all existing accounts (`balance` and `initialBalance`), transactions, and monthly budget into the new currency and runs `recalculateAllAccountBalances()`. |
 | [`WorldCurrenciesSheet.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/WorldCurrenciesSheet.kt) | Searchable list of 16 world currencies with vector flags, live/offline sync status badge, 1-unit exchange rates, and converted Net Worth previews. |
-| [`WeatherDetailSheet.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/WeatherDetailSheet.kt) | Configures weather location mode (`Approximate location`, `Search city` with live Open-Meteo geocoding results, or `Off`). |
-| [`PinSetupSheet.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/PinSetupSheet.kt) | Houses both `PinSetupSheet` (2-step create & confirm 4-digit PIN) and `PinVerifyOrRemoveSheet` (verifies current PIN before disabling lock). |
+| [`WeatherDetailSheet.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/WeatherDetailSheet.kt) | Bilingual sheet configuring weather location mode (`Use approximate location`, `Search for a city` with live Open-Meteo geocoding results, or `Turn off weather`). |
+| [`PinSetupSheet.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/PinSetupSheet.kt) | Houses both `PinSetupSheet` (2-step create & confirm 4-digit PIN, stored via 10,000-round salted SHA-256) and `PinVerifyOrRemoveSheet` (verifies current PIN before disabling lock). |
+| [`ReleaseNotesSheet.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/ReleaseNotesSheet.kt) | **What's New in v1.0.18-dev** (*"Yang Baru di v1.0.18-dev"*). Bilingual modal sheet presenting icon-badged release highlights automatically on version upgrade or manually from Settings. |
 
 ---
 
-## 3. Data Architecture, Schemas & Mathematical Formulas
+## 4. Data Architecture, Security & Mathematical Engine
 
-### 3.1 Room Database Schema (`cashjournal_db`, Version 2)
-Defined in [`AppDatabase.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/data/local/AppDatabase.kt) with `MIGRATION_1_2` adding `initialBalance` and 3 query indices.
+### 4.1 Room Database Schema (`cashjournal_db`, Version 2)
+Defined in [`AppDatabase.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/data/local/AppDatabase.kt) with `MIGRATION_1_2` adding `initialBalance` and 3 query indices (`index_transactions_sourceAccountId`, `index_transactions_destinationAccountId`, `index_transactions_date`).
 
-```mermaid
-erDiagram
-    ACCOUNTS {
-        String id PK "UUID"
-        String name "Max 28 chars"
-        String accentKey "COBALT | EMERALD | PERSIMMON | SAFFRON | IRIS | BERRY"
-        Long balance "Derived minor units"
-        Long initialBalance "Starting minor units (Added in v2)"
-        Int sortIndex "Display order"
-        Long updatedAt "Epoch ms"
-    }
-    TRANSACTIONS {
-        String id PK "UUID (Single shared ID for transfers)"
-        String title "Note or Source -> Destination"
-        String category "12 Category keys or TRANSFER"
-        String type "EXPENSE | INCOME | TRANSFER"
-        Long amount "Positive minor units"
-        Long date "Transaction timestamp (Epoch ms)"
-        String iconKey "Phosphor icon key"
-        String accentKey "AccentKey name"
-        String sourceAccountId FK "Indexed"
-        String destinationAccountId FK "Indexed (Nullable)"
-        Long updatedAt "Epoch ms"
-    }
-    MONTHLY_PLANS {
-        String id PK "'primary_plan'"
-        Long budget "Minor units"
-        Long startingSpent "Pre-existing spend (Minor units)"
-        String monthKey "'yyyy-MM'"
-    }
-
-    ACCOUNTS ||--o{ TRANSACTIONS : "sourceAccountId"
-    ACCOUNTS ||--o{ TRANSACTIONS : "destinationAccountId"
-```
-
-### 3.2 Zero-Drift Ledger Formula ([`AccountDao.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/data/local/dao/AccountDao.kt#L41-L78))
-Every account's `balance` is dynamically recomputed in SQLite inside a `@Transaction` block whenever a transaction is created, edited, deleted, reconciled, seeded, or restored from backup:
+### 4.2 Zero-Drift Ledger Formula ([`AccountDao.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/data/local/dao/AccountDao.kt#L41-L78))
+Every account's `balance` is dynamically recomputed in SQLite inside a `@Transaction` block whenever a transaction is created, edited, deleted, reconciled, converted to a new main currency, seeded, or restored from backup:
 
 $$\text{Balance}_A = \text{InitialBalance}_A + \sum_{\substack{t \in \text{INCOME} \\ \text{src}(t) = A}} \text{amount}_t + \sum_{\substack{t \in \text{TRANSFER} \\ \text{dst}(t) = A}} \text{amount}_t - \sum_{\substack{t \in \text{EXPENSE} \\ \text{src}(t) = A}} \text{amount}_t - \sum_{\substack{t \in \text{TRANSFER} \\ \text{src}(t) = A}} \text{amount}_t$$
 
-### 3.3 Safe-to-Spend & Custom Cycle Engine ([`SafeToSpendCalculator.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/domain/model/SafeToSpendCalculator.kt))
+### 4.3 Safe-to-Spend & DST-Safe Custom Cycle Engine ([`SafeToSpendCalculator.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/domain/model/SafeToSpendCalculator.kt))
 Given a custom payday `cycleStartDay` $d \in [1, 28]$:
-1. **Cycle Window**:
-   * If $d = 1$: runs from the 1st of the current month (`00:00:00.000`) to the last millisecond of the current month (`23:59:59.999`).
-   * If $d > 1$: runs from day $d$ of the current month (if `today >= d`) or day $d$ of the previous month (if `today < d`) to day $d - 1$ of the following month at `23:59:59.999`.
-2. **Spend & Allowance Math**:
-   $$\text{TotalSpent} = \text{StartingSpent}_{\text{active}} + \sum_{\substack{t \in \text{EXPENSE} \\ t.\text{date} \in [\text{start}, \text{end}]}} \text{amount}_t$$
-   $$\text{Remaining} = \max(0, \text{Budget} - \text{TotalSpent})$$
-   $$\text{SafePerDay} = \begin{cases} 0 & \text{if } \neg\text{hasAccounts} \lor \text{TotalNetWorth} \le 0 \\ \left\lfloor \dfrac{\text{Remaining}}{\max(1, \text{DaysLeft})} \right\rfloor & \text{otherwise} \end{cases}$$
-   $$\text{DisplayPercent} = \min\left(100, \text{round}\left(\frac{\text{TotalSpent}}{\text{Budget}} \times 100\right)\right)$$
-3. **Status Priority Evaluation**:
-   * `NO_FUNDS` (if no accounts or $\text{TotalNetWorth} \le 0$) $\rightarrow$ `SET_BUDGET` (if $\text{Budget} \le 0$) $\rightarrow$ `RECALIBRATE` (if $\text{Remaining} \le 0$) $\rightarrow$ `NEAR_LIMIT` (if $\text{Percent} \ge 0.70$) $\rightarrow$ `SAFE`.
+* **DST-Safe Remaining Days ([L90-L91](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/domain/model/SafeToSpendCalculator.kt#L90-L91))**:
+  $$\text{DaysLeft} = \max\left(0, \text{round}\left(\frac{\text{endDayMidnight} - \text{todayMidnight}}{86,400,000}\right)\right)$$
+* **Cycle-Aware Starting Spend ([L136-L146](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/domain/model/SafeToSpendCalculator.kt#L136-L146))**: Matches `plan.monthKey` against both `cycleMonthKey` (derived from `cycle.startMillis`) and `todayMonthKey` so `startingSpent` never drops to `0` mid-cycle when a custom billing cycle spans two calendar months.
+* **Daily Safe-to-Spend Allowance**:
+  $$\text{SafePerDay} = \begin{cases} 0 & \text{if } \neg\text{hasAccounts} \lor \text{TotalNetWorth} \le 0 \\ \left\lfloor \dfrac{\max(0, \text{Budget} - \text{TotalSpent})}{\max(1, \text{DaysLeft})} \right\rfloor & \text{otherwise} \end{cases}$$
 
-### 3.4 Cross-Currency Minor-Unit Conversion ([`CurrencyConverter.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/data/currency/CurrencyConverter.kt))
-When converting minor units between currencies with different decimal scales ($D_{\text{src}}, D_{\text{dst}} \in \{0, 2\}$):
-$$\text{Amount}_{\text{dst}} = \text{round}\left( \frac{\text{Amount}_{\text{src}}}{10^{D_{\text{src}}}} \times \frac{\text{Rate}_{\text{dst}}}{\text{Rate}_{\text{src}}} \times 10^{D_{\text{dst}}} \right)$$
+### 4.4 Salted SHA-256 PIN Hashing ([`UserPreferencesRepository.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/data/preferences/UserPreferencesRepository.kt#L332-L392))
+* Generates a cryptographically random 16-byte salt via `SecureRandom` (`32` hex chars).
+* Computes `10,000` rounds of iterated `SHA-256(current + salt)` and stores `"$saltHex:$hashHex"`.
+* Verifies PINs in constant time via `MessageDigest.isEqual()`, with automatic fallback verification for legacy 64-character unsalted hashes.
+
+### 4.5 Complete Preferences & Backup Coverage ([`BackupManager.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/data/backup/BackupManager.kt))
+`PreferencesBackupDto` now serializes and restores all **18 non-sensitive preferences**: `language`, `currencyCode`, `userName`, `cycleStartDay`, `railOnRight`, `shakeToSwap`, `knockSensitivity`, `temperatureUnit`, `soundEffectsEnabled`, `tactileHapticsEnabled`, `dailyReminderEnabled`, `screenPrivacyEnabled`, `weatherOption`, `weatherCityLabel`, `weatherCityLat`, `weatherCityLon`, `selectedWorldCurrency`, and `immersiveModeEnabled` (excluding only security credentials `pinEnabled`, `pinHash`, and `biometricsEnabled`).
 
 ---
 
-## 4. Automated Unit Test Suite Audit
+## 5. Automated Unit Test Suite Audit (10 Test Suites)
 
-All 9 test suites in `app/src/test/java/app/cashjournal/` pass cleanly (`BUILD SUCCESSFUL`):
+All 10 JVM JUnit4 test classes in `app/src/test/java/app/cashjournal/` pass cleanly (`BUILD SUCCESSFUL`):
 
 | Test File | What It Verifies | Status |
 | :--- | :--- | :--- |
 | [`AcceptanceCheckTest.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/test/java/app/cashjournal/AcceptanceCheckTest.kt) | Build Brief Section 16 acceptance numbers (`Rp 18.450.000` net worth, `Rp 150.294 / day` on Oct 14, 66% ring, `Rp 1M` expense $\rightarrow$ `Rp 91.470 / day` & 79% Near Limit, transfer isolation, knock sensitivity, 7-dot mask). | PASS |
-| [`LedgerIntegrityTest.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/test/java/app/cashjournal/LedgerIntegrityTest.kt) | Zero-drift balance derivation on retroactive edits/deletes, atomic transfer net-worth conservation, manual balance reconciliation delta math, and backdating. | PASS |
-| [`SafeToSpendTest.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/test/java/app/cashjournal/SafeToSpendTest.kt) | Leap-year February handling, status thresholds, last-day-of-month clamping, custom `cycleStartDay` (`1`, `25`, boundary clamping `0` & `31`), and cycle expense filtering. | PASS |
-| [`BackupRestoreTest.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/test/java/app/cashjournal/BackupRestoreTest.kt) | `BackupPayload` JSON round-trip serialization, corrupted JSON failure handling, `version <= 0` rejection, and zero-drift recalculation after restore. | PASS |
+| [`LedgerIntegrityTest.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/test/java/app/cashjournal/LedgerIntegrityTest.kt) | Zero-drift balance derivation on retroactive edits/deletes, atomic transfer net-worth conservation, manual balance reconciliation delta math, backdating, and **`initialBalance` currency conversion zero-drift** (`testCurrencySwitchInitialBalanceConversionZeroDrift`). | PASS |
+| [`SafeToSpendTest.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/test/java/app/cashjournal/SafeToSpendTest.kt) | Leap-year February handling, status thresholds, last-day-of-month clamping, custom `cycleStartDay` (`1`, `25`, boundary clamping `0` & `31`), cross-month cycle expense filtering, and **cross-month `startingSpent` persistence**. | PASS |
+| [`BackupRestoreTest.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/test/java/app/cashjournal/BackupRestoreTest.kt) | `BackupPayload` JSON round-trip serialization (including all 18 `PreferencesBackupDto` fields), corrupted JSON failure handling, `version <= 0` rejection, and zero-drift recalculation after restore. | PASS |
+| [`PinSecurityTest.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/test/java/app/cashjournal/PinSecurityTest.kt) | **New in Phase 12**: Verifies `saltHex:hashHex` format (`32:64` hex chars), per-call salt randomness, 10,000-round salted verification, legacy 64-hex unsalted fallback compatibility, and malformed hash safety. | PASS |
+| [`CategoryDetectorTest.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/test/java/app/cashjournal/CategoryDetectorTest.kt) | Keyword detection across all categories plus **word-boundary negative tests** confirming `"theater"`/`"sweater"` do not match `FOOD`, `"chair"`/`"repair"` do not match `UTILITIES`, and `"cost"` does not match `HOUSING`. | PASS |
 | [`CurrencyConverterTest.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/test/java/app/cashjournal/CurrencyConverterTest.kt) | Same-currency identity, `USD` $\leftrightarrow$ `IDR` decimal scaling (`2` vs `0` decimals), `EUR` $\rightarrow$ `JPY` cross-rates, and missing-rate fallback. | PASS |
-| [`CategoryDetectorTest.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/test/java/app/cashjournal/CategoryDetectorTest.kt) | Keyword detection across `FOOD`, `TRANSPORT`, `SHOPPING`, `UTILITIES`, `HOUSING`, `INVESTMENT`, `SALARY`, and `OTHER`. | PASS |
 | [`HostAllowlistTest.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/test/java/app/cashjournal/HostAllowlistTest.kt) | Verifies `HostAllowlistInterceptor` permits the 3 allowed hosts and throws `SecurityException` on unauthorized hosts. | PASS |
 | [`SignalStrengthHelperTest.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/test/java/app/cashjournal/SignalStrengthHelperTest.kt) | Monotonic mapping of 4-bar and 5-bar cellular signal scales into 4 UI dots. | PASS |
 | [`WeatherIconMapperTest.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/test/java/app/cashjournal/WeatherIconMapperTest.kt) | WMO weather code mapping across day/night variants to Phosphor icons. | PASS |
 
 ---
 
-## 5. Comprehensive Audit Findings: Bugs, Edge Cases & Risks
+## 6. Audit Findings Resolution Ledger & Residual Observations
 
-> [!CAUTION]
-> **Critical Finding (`CRITICAL-1`)**: Changing the main currency converts `AccountEntity.balance` but **does not convert `AccountEntity.initialBalance`**. Because `AccountDao.recalculateAccountBalance()` recomputes `balance = initialBalance + SUM(net_flows)` whenever a transaction is logged, edited, or deleted, the account balance will suddenly revert its starting base back to the unconverted old currency value on the very next transaction!
+### 6.1 Resolution Ledger of Initial Audit Findings (Phases 10–12)
 
-### 5.1 Summary Matrix of Identified Issues
-
-| ID | Severity | Category | Location | Summary |
-| :--- | :--- | :--- | :--- | :--- |
-| **CRITICAL-1** | **Critical** | Data Integrity / Currency | [`MainViewModel.kt:708-719`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/MainViewModel.kt#L708-L719) | `changeMainCurrency()` converts `acc.balance` but omits `acc.initialBalance`, corrupting balances on the next transaction recalculation. |
-| **HIGH-1** | **High** | State / UI Sync | [`MainViewModel.kt:109,158,250`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/MainViewModel.kt#L158) | `_selectedAccount` stores a static snapshot; `AccountDetailScreen` balance card and `% of total` do not update after editing/deleting transactions or reconciling balance. |
-| **HIGH-2** | **High** | State / Currency | [`AccountsScreen.kt:88-119`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/AccountsScreen.kt#L88-L119) | `AccountsScreen` uses local `remember { mutableStateOf("USD") }` instead of `state.userPreferences.selectedWorldCurrency`, ignoring selections made in `WorldCurrenciesSheet`. Also uses hardcoded IDR division when `cachedRates == null`. |
-| **HIGH-3** | **High** | UI / Privacy | [`MainAppScaffold.kt:197-240`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/MainAppScaffold.kt#L197-L240) | Selecting `"Not now"` / `"Off"` for weather never hides the weather widget in `GreetingBar`; it permanently shows a hardcoded `24°C` (`75°F`) Sun icon. |
-| **HIGH-4** | **High** | Domain Logic | [`SafeToSpendCalculator.kt:132-137`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/domain/model/SafeToSpendCalculator.kt#L132-L137) | `MonthlyPlan.startingSpent` checks `plan.monthKey == todayMonthKey` (calendar month), causing `startingSpent` to drop to `0` mid-cycle when `cycleStartDay > 1` crosses a month boundary. |
-| **MED-1** | **Medium** | Keyword Detection | [`Category.kt:32-102,137-148`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/domain/model/Category.kt#L137-L148) | Substring matching (`lower.contains(keyword)`) causes false positives on short keywords (`"theater"`/`"sweater"` match `"eat"` $\rightarrow$ `FOOD`; `"repair"`/`"chair"` match `"air"` $\rightarrow$ `UTILITIES`). |
-| **MED-2** | **Medium** | Performance / Audio | [`AnalyticsScreen.kt:443-454`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/AnalyticsScreen.kt#L443-L454) | Dragging the budget `Slider` calls `viewModel.updateBudget()` on every frame, spawning dozens of concurrent `AudioTrack` instances and Room DB writes. |
-| **MED-3** | **Medium** | UX / Consistency | [`LogTransactionSheet.kt:204`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/LogTransactionSheet.kt#L204), [`TransactionEditSheet.kt:471`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/TransactionEditSheet.kt#L471), [`MainViewModel.kt:410`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/MainViewModel.kt#L410) | (a) `SALARY` is filtered out of `LogTransactionSheet` even when logging `INCOME`; (b) typing a note in `TransactionEditSheet` overwrites manual category selection; (c) `editTransaction` overwrites expense category accent with account accent. |
-| **MED-4** | **Medium** | Security / Build | [`UserPreferencesRepository.kt:303`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/data/preferences/UserPreferencesRepository.kt#L303), [`app/build.gradle.kts:55-56`](file:///c:/Users/Yahya/Projects/CashJournal/app/build.gradle.kts#L55-L56) | 4-digit PIN is hashed with unsalted SHA-256; release build type uses `debug.keystore` and `isMinifyEnabled = false`. |
-| **MED-5** | **Medium** | Localization (i18n) | Multiple UI & ViewModel files | Numerous strings in `GreetingBar`, `DashboardScreen`, `AccountsScreen`, `AccountDetailScreen`, `AnalyticsScreen`, sheets, and `MainViewModel` toasts remain hardcoded in English when Bahasa Indonesia (`"in"`) is active. |
-| **LOW-1** | **Low** | Backup Completeness | [`BackupManager.kt:133-145`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/data/backup/BackupManager.kt#L133-L145) | `PreferencesBackupDto` omits `screenPrivacyEnabled`, `weatherOption`, `weatherCityLabel`, `weatherCityLat`, `weatherCityLon`, and `selectedWorldCurrency`. |
-| **LOW-2** | **Low** | Unimplemented Stub | [`SettingsScreen.kt:624`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/SettingsScreen.kt#L624), [`OnboardingScreen.kt:1171`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/onboarding/OnboardingScreen.kt#L1171) | Onboarding requests `POST_NOTIFICATIONS` and Settings toggles `dailyReminderEnabled`, but no `AlarmManager`/`WorkManager` notification scheduler exists. |
-| **LOW-3** | **Low** | Sensory Consistency | Multiple UI Components | `tactileHapticsEnabled` preference is bypassed in `SegmentedControl`, `SettingToggleRow`, `CustomNumericKeypad` call sites, `OnboardingScreen`, and `PinSetupSheet`. |
-| **LOW-4** | **Low** | Audio / Toast Glitch | [`MainViewModel.kt:564`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/MainViewModel.kt#L564), [`SettingsScreen.kt:532,969`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/SettingsScreen.kt#L532) | Turning Sound Effects *off* plays a chime before the preference updates; PIN/Biometric actions trigger duplicate toast calls in ViewModel and `SettingsScreen`. |
-| **LOW-5** | **Low** | Date Boundary Math | [`LedgerScreen.kt:143`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/LedgerScreen.kt#L143), [`SafeToSpendCalculator.kt:90`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/domain/model/SafeToSpendCalculator.kt#L90) | `"Yesterday"` check uses `nowYear == selYear && nowDay - 1 == selDay` (fails on Jan 1 for Dec 31); `diffMillis / 86_400_000L` integer division can truncate 1 day across DST spring-forward transitions. |
-| **LOW-6** | **Low** | Dead Code / Cleanup | `app/build.gradle.kts:11`, `ui/preview/*`, `AppStrings.kt` | Unused `gitCommitCount` task in Gradle, unreferenced preview screens (`FoundationPreviewScreen`, `Phase3ComponentsScreen`), unused `onPinChange` callback, and 9 unused localized string fields in `AppStrings`. |
+| ID | Original Severity | Original Issue Summary | Resolution Status & Verification |
+| :--- | :--- | :--- | :--- |
+| **CRITICAL-1** | **Critical** | `changeMainCurrency()` converted `acc.balance` but omitted `acc.initialBalance`. | **RESOLVED (Phase 10)** — [`MainViewModel.kt:744-802`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/MainViewModel.kt#L744-L802) converts `initialBalance` and runs `recalculateAllAccountBalances()`. Verified in `LedgerIntegrityTest`. |
+| **HIGH-1** | **High** | `_selectedAccount` held a static snapshot on `AccountDetailScreen`. | **RESOLVED (Phase 10)** — [`MainViewModel.kt:161-166`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/MainViewModel.kt#L161-L166) resolves live `selectedAccount` and `selectedReconcileAccount` from `rawAccounts`. |
+| **HIGH-2** | **High** | `AccountsScreen` ignored `userPreferences.selectedWorldCurrency` and used hardcoded IDR division. | **RESOLVED (Phase 10)** — [`AccountsScreen.kt:88-115`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/AccountsScreen.kt#L88-L115) binds to `selectedWorldCurrency` and uses `CurrencyConverter.convertMinorUnits`. |
+| **HIGH-3** | **High** | Weather `"Off"` (`not_now`) never hid the weather widget in `GreetingBar`. | **RESOLVED (Phase 11)** — [`MainAppScaffold.kt:194-250`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/MainAppScaffold.kt#L194-L250) passes `weatherEnabled = isWeatherEnabled`, shows `Thermometer` + `"--"` when pending, and wires `onWeatherClick`. |
+| **HIGH-4** | **High** | `MonthlyPlan.startingSpent` dropped to `0` mid-cycle when `cycleStartDay > 1` crossed a month boundary. | **RESOLVED (Phase 10)** — [`SafeToSpendCalculator.kt:136-146`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/domain/model/SafeToSpendCalculator.kt#L136-L146) checks `plan.monthKey == cycleMonthKey`. Verified in `SafeToSpendTest`. |
+| **MED-1** | **Medium** | Substring matching in `Category.detectFromNote` caused false positives (`theater`, `chair`, `cost`). | **RESOLVED (Phase 11)** — [`Category.kt:133-157`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/domain/model/Category.kt#L133-L157) uses pre-compiled word-boundary regex `\b`. Verified in `CategoryDetectorTest`. |
+| **MED-2** | **Medium** | Dragging the budget `Slider` spammed Room DB writes and `AudioTrack` chimes on every frame. | **RESOLVED (Phase 11)** — [`AnalyticsScreen.kt:445-465`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/AnalyticsScreen.kt#L445-L465) buffers `sliderBudget` locally and commits on `onValueChangeFinished`. |
+| **MED-3** | **Medium** | `SALARY` hidden in `LogTransactionSheet`; manual category wiped on note edit in `TransactionEditSheet`; expense accent overwritten on edit. | **RESOLVED (Phase 11)** — Fixed in [`LogTransactionSheet.kt:205`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/LogTransactionSheet.kt#L205), [`TransactionEditSheet.kt:475`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/TransactionEditSheet.kt#L475), and [`MainViewModel.kt:431`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/MainViewModel.kt#L431). |
+| **MED-4** | **Medium** | Unsalted SHA-256 PIN hashing in `UserPreferencesRepository`. | **RESOLVED (Phase 12)** — [`UserPreferencesRepository.kt:351-391`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/data/preferences/UserPreferencesRepository.kt#L351-L391) implements 10,000-round salted SHA-256 with `SecureRandom` salt. Verified in `PinSecurityTest`. |
+| **MED-5** | **Medium** | Incomplete Bahasa Indonesia (`"in"`) localization across screens, sheets, and ViewModel toasts. | **RESOLVED (Phases 12, 14, 15)** — Full bilingual strings and natural phrasing wired across `AppStrings.kt`, `OnboardingStrings.kt`, `MainViewModel.kt`, screens, tooltips, and sheets. |
+| **LOW-1** | **Low** | `PreferencesBackupDto` omitted 6 user preferences. | **RESOLVED (Phase 12 & 14)** — [`BackupManager.kt:133-152`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/data/backup/BackupManager.kt#L133-L152) backs up and restores all 18 non-sensitive preferences. |
+| **LOW-2** | **Low** | `dailyReminderEnabled` toggle had no alarm/notification scheduler. | **RESOLVED (Phase 12)** — Implemented [`DailyReminderScheduler.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/receiver/DailyReminderScheduler.kt) and [`DailyReminderReceiver.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/receiver/DailyReminderReceiver.kt). |
+| **LOW-3** | **Low** | `tactileHapticsEnabled` bypassed in several controls. | **RESOLVED (Phase 12)** — Enforced across `SegmentedControl`, `CustomNumericKeypad`, `SettingToggleRow`, `PinSetupSheet`, `AppLockScreen`, and `ReleaseNotesSheet`. |
+| **LOW-4** | **Low** | Chime played when turning Sound Effects off; duplicate PIN/Biometric toasts. | **RESOLVED (Phase 12)** — Fixed in `MainViewModel.updatePreferences` and `SettingsScreen`. |
+| **LOW-5** | **Low** | `"Yesterday"` check failed across Jan 1 / Dec 31; `daysLeft` integer division truncated across DST. | **RESOLVED (Phase 10)** — Fixed via `Calendar.add(DAY_OF_YEAR, -1)` and `Math.round(diffMillis / 86_400_000.0)`. |
+| **LOW-6** | **Low** | Unused `gitCommitCount` in `app/build.gradle.kts` and unused `onPinChange` parameter. | **RESOLVED (Phase 12)** — Removed from `app/build.gradle.kts`, `SettingsScreen.kt`, and `MainAppScaffold.kt`. |
 
 ---
 
-### 5.2 Detailed Breakdown of Key Findings
+### 6.2 Residual Minor Observations in `v1.0.18-dev` (Low Priority)
 
-#### 1. `CRITICAL-1`: Unconverted `initialBalance` During Main Currency Change
-In [`MainViewModel.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/MainViewModel.kt#L707-L720):
-```kotlin
-val convertedAccounts = currentAccounts.map { acc ->
-    val newBal = CurrencyConverter.convertMinorUnits(
-        amountMinor = acc.balance,
-        sourceCode = currentCode,
-        targetCode = targetCode,
-        baseCode = cached.baseCode,
-        rates = cached.rates,
-        sourceDecimals = sourceDecimals,
-        targetDecimals = targetDecimals
-    )
-    acc.copy(balance = newBal, updatedAt = System.currentTimeMillis())
-}
-```
-* **Why it breaks**: In Phase 9A, the database migrated to a zero-drift model where `balance` is recalculated from `initialBalance + SUM(net_flows)` via [`AccountDao.recalculateAccountBalance()`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/data/local/dao/AccountDao.kt#L41-L59). Because `changeMainCurrency()` only converts `acc.balance` and leaves `acc.initialBalance` in the old currency (e.g., `12,500,000` IDR), logging or editing any transaction after switching to `USD` will cause `recalculateAccountBalance()` to add `12,500,000` (now interpreted as `$125,000.00` USD) to the converted USD transactions.
-* **Fix**: Convert `acc.initialBalance` alongside `acc.balance` using `CurrencyConverter.convertMinorUnits`, and call `database.accountDao().recalculateAllAccountBalances()` inside the `withTransaction` block.
-
-#### 2. `HIGH-1`: Stale `selectedAccount` State on `AccountDetailScreen`
-In [`MainViewModel.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/MainViewModel.kt#L158-L185):
-* `_selectedAccount` is set once in `openAccountDetail(account)` ([L250-L253](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/MainViewModel.kt#L250-L253)) and passed directly into `MainUiState(selectedAccount = account)`.
-* **Fix**: In the `combine` block of `uiState` ([L158](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/MainViewModel.kt#L158)), resolve the live account from `rawAccounts`:
-  ```kotlin
-  val account = (group3[1] as? Account)?.let { sel -> rawAccounts.find { it.id == sel.id } ?: sel }
-  ```
-
-#### 3. `HIGH-2`: Desynchronized World Currency Card on `AccountsScreen`
-In [`AccountsScreen.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/screens/AccountsScreen.kt#L88-L119):
-* Line 88 defines `var selectedWorldCurrency by remember { mutableStateOf("USD") }` instead of reading `state.userPreferences.selectedWorldCurrency`. When a user opens [`WorldCurrenciesSheet`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/WorldCurrenciesSheet.kt) via the `+ World` button and selects a currency (e.g., `CHF` or `CAD`), DataStore updates `selectedWorldCurrency`, but `AccountsScreen` ignores it.
-* Furthermore, when `cachedRates == null`, lines 93–100 and 116–119 divide `state.totalNetWorth` by hardcoded IDR constants (`15700.0` for USD) and multiply by `100` regardless of what `mainCurrencyCode` or `targetCurrency.decimalDigits` actually are.
-
-#### 4. `HIGH-3`: Weather "Off" (`not_now`) Still Shows Fake `24°C` Weather in `GreetingBar`
-In [`MainAppScaffold.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/MainAppScaffold.kt#L197-L240):
-* When `weatherOption == "not_now"` or `weather == null`, `MainAppScaffold` computes `TemperatureConverter.format(24.0, ...)` and calls `GreetingBar(...)` without passing `weatherEnabled = state.userPreferences.weatherOption != "not_now"`.
-* Additionally, before the first weather reading arrives when weather *is* enabled (`weather == null`), Build Brief Section 7 specifies showing `Thermometer` and `"--"`, whereas `MainAppScaffold` shows `Sun` and `"24°C"`.
-
-#### 5. `MED-1`: Substring Collisions in `Category.detectFromNote`
-In [`Category.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/domain/model/Category.kt#L137-L148):
-* Because `lower.contains(keyword)` checks raw substrings:
-  * `"eat"` (`Category.FOOD`) matches `"theater"`, `"sweater"`, `"weather"`, `"create"`, `"meat"`, `"seat"`, `"heating"`.
-  * `"air"` (`Category.UTILITIES`) matches `"chair"`, `"repair"`, `"haircut"`, `"airline"`, `"stairs"`.
-  * `"kos"` (`Category.HOUSING`) matches `"cost"`, `"costume"`.
-* **Fix**: Use word-boundary matching (`Regex("\\b${Regex.escape(keyword)}\\b")`) for single-word tokens.
+| ID | Severity | Location | Observation & Recommendation |
+| :--- | :--- | :--- | :--- |
+| **NEW-LOW-1** | **Low** | [`AndroidManifest.xml:33-40`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/AndroidManifest.xml#L33-L40) | `DailyReminderReceiver` is declared with `android:exported="true"` and an unguarded custom intent filter (`app.cashjournal.ACTION_DAILY_REMINDER`). Because `DailyReminderScheduler` uses an explicit component intent (`Intent(context, DailyReminderReceiver::class.java)`), setting `android:exported="false"` (or adding a signature-level permission) prevents third-party apps from spoofing reminder broadcasts while still receiving `BOOT_COMPLETED` and `AlarmManager` intents. |
+| **NEW-LOW-2** | **Low** | [`MainAppScaffold.kt:480`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/MainAppScaffold.kt#L480), [`MainCurrencySheet.kt`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/sheets/MainCurrencySheet.kt) | Selecting a world currency in `MainAppScaffold.kt:480` calls `viewModel.showToast("Currency changed to $code")` instead of `AppStrings.get(state.userPreferences.language).currencyChangedToast.format(code)`, and `MainCurrencySheet.kt` dialog/header strings remain in English. |
+| **NEW-LOW-3** | **Low** | [`app/build.gradle.kts:41-48`](file:///c:/Users/Yahya/Projects/CashJournal/app/build.gradle.kts#L41-L48) | `release` build type uses `sharedDebug` signing config and `isMinifyEnabled = false` to support seamless in-place APK upgrades across development builds. Before public Play Store distribution, configure a dedicated release keystore and enable R8 minification. |
+| **NEW-LOW-4** | **Low** | [`ui/preview/`](file:///c:/Users/Yahya/Projects/CashJournal/app/src/main/java/app/cashjournal/ui/preview/FoundationPreviewScreen.kt) | `FoundationPreviewScreen.kt` and `Phase3ComponentsScreen.kt` are historical Phase 2–3 development galleries that are no longer referenced in production navigation and can be moved to `debug` source sets or removed when desired. |

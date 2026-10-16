@@ -22,6 +22,7 @@ import app.cashjournal.data.weather.WeatherData
 import app.cashjournal.data.weather.WeatherService
 import app.cashjournal.domain.model.AccentKey
 import app.cashjournal.domain.model.Account
+import app.cashjournal.domain.model.AccountType
 import app.cashjournal.domain.model.Category
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.domain.model.MonthlyPlan
@@ -68,7 +69,8 @@ enum class ActiveSheet {
     WEATHER_DETAIL,
     EDIT_TRANSACTION,
     RECONCILE_BALANCE,
-    RELEASE_NOTES
+    RELEASE_NOTES,
+    EDIT_ACCOUNT
 }
 
 typealias SafeToSpendStatus = app.cashjournal.domain.model.SafeToSpendStatus
@@ -82,6 +84,7 @@ data class MainUiState(
     val activeSheet: ActiveSheet? = null,
     val selectedTransaction: Transaction? = null,
     val selectedReconcileAccount: Account? = null,
+    val selectedEditAccount: Account? = null,
     val hideBalances: Boolean = false,
     val accounts: List<Account> = emptyList(),
     val transactions: List<Transaction> = emptyList(),
@@ -113,12 +116,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _activeSheet = MutableStateFlow<ActiveSheet?>(null)
     private val _selectedTransaction = MutableStateFlow<Transaction?>(null)
     private val _selectedReconcileAccount = MutableStateFlow<Account?>(null)
+    private val _selectedEditAccount = MutableStateFlow<Account?>(null)
     private val _hideBalances = MutableStateFlow(false)
     private val _isReorderMode = MutableStateFlow(false)
     private val _toastMessage = MutableStateFlow<String?>(null)
     private val _isRatesOffline = MutableStateFlow(false)
     private val _citySearchResults = MutableStateFlow<List<GeocodingCity>>(emptyList())
     private val _isSearchingCity = MutableStateFlow(false)
+
+    // App Lock & Privacy Veil Lifecycle State
+    private val _isAppLocked = MutableStateFlow(true)
+    private val _isVeiled = MutableStateFlow(false)
+    val isAppLocked = _isAppLocked.asStateFlow()
+    val isVeiled = _isVeiled.asStateFlow()
+    private var lastBackgroundTimestamp: Long = 0L
 
     val currentScreen = _currentScreen.asStateFlow()
     val activeSheet = _activeSheet.asStateFlow()
@@ -147,6 +158,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _activeSheet,
             _selectedTransaction,
             _selectedReconcileAccount,
+            _selectedEditAccount,
             _hideBalances,
             _isReorderMode,
             _toastMessage
@@ -164,9 +176,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val selectedTx = group3[3] as? Transaction
         val rawReconcileAcc = group3[4] as? Account
         val reconcileAcc = rawReconcileAcc?.let { sel -> rawAccounts.find { it.id == sel.id } ?: sel }
-        val hideBal = group3[5] as Boolean
-        val reorder = group3[6] as Boolean
-        val toast = group3[7] as? String
+        val rawEditAcc = group3[5] as? Account
+        val editAcc = rawEditAcc?.let { sel -> rawAccounts.find { it.id == sel.id } ?: sel }
+        val hideBal = group3[6] as Boolean
+        val reorder = group3[7] as Boolean
+        val toast = group3[8] as? String
 
         val totalWorth = rawAccounts.sumOf { it.balance }
         val recentTx = rawTransactions.take(5)
@@ -181,6 +195,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             activeSheet = sheet,
             selectedTransaction = selectedTx,
             selectedReconcileAccount = reconcileAcc,
+            selectedEditAccount = editAcc,
             hideBalances = hideBal,
             accounts = rawAccounts,
             transactions = rawTransactions,
@@ -276,7 +291,45 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _activeSheet.value = null
         _selectedTransaction.value = null
         _selectedReconcileAccount.value = null
+        _selectedEditAccount.value = null
         _citySearchResults.value = emptyList()
+    }
+
+    fun onAppForegrounded(hasPin: Boolean) {
+        if (hasPin && lastBackgroundTimestamp > 0L) {
+            val elapsed = System.currentTimeMillis() - lastBackgroundTimestamp
+            if (elapsed > 15_000L) {
+                _isAppLocked.value = true
+            }
+        }
+        _isVeiled.value = false
+    }
+
+    fun onAppBackgrounded(hasPin: Boolean) {
+        lastBackgroundTimestamp = System.currentTimeMillis()
+        if (hasPin) {
+            _isVeiled.value = true
+        }
+    }
+
+    fun lockAppNow() {
+        _isAppLocked.value = true
+        _isVeiled.value = false
+    }
+
+    fun unlockApp() {
+        _isAppLocked.value = false
+        _isVeiled.value = false
+    }
+
+    fun hasPinConfigured(): Boolean {
+        val prefs = uiState.value.userPreferences
+        return prefs.pinEnabled && prefs.pinHash.isNotEmpty()
+    }
+
+    fun openEditAccount(account: Account) {
+        _selectedEditAccount.value = account
+        _activeSheet.value = ActiveSheet.EDIT_ACCOUNT
     }
 
     fun dismissReleaseNotes() {
@@ -527,7 +580,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun createAccount(name: String, startingBalance: Long, accentKey: AccentKey) {
+    fun createAccount(
+        name: String,
+        startingBalance: Long,
+        accentKey: AccentKey,
+        accountType: AccountType = AccountType.BANK_DEBIT
+    ) {
         val strings = currentStrings()
         if (name.isBlank()) {
             showToast(strings.toastAccountNameRequired)
@@ -539,6 +597,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 id = UUID.randomUUID().toString(),
                 name = name.take(28),
                 accentKey = accentKey.name,
+                accountType = accountType.name,
                 balance = startingBalance.coerceAtLeast(0L),
                 initialBalance = startingBalance.coerceAtLeast(0L),
                 sortIndex = (uiState.value.accounts.size),
@@ -547,6 +606,53 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             database.accountDao().insert(account)
             dismissSheet()
             showToast(strings.toastAccountCreatedFormat.format(name.take(28)))
+        }
+    }
+
+    fun updateAccountDetails(
+        accountId: String,
+        name: String,
+        accountType: AccountType,
+        accentKey: AccentKey
+    ) {
+        val strings = currentStrings()
+        if (name.isBlank()) {
+            showToast(strings.toastAccountNameRequired)
+            return
+        }
+
+        viewModelScope.launch {
+            val existing = database.accountDao().getAccountById(accountId) ?: return@launch
+            val updated = existing.copy(
+                name = name.take(28),
+                accountType = accountType.name,
+                accentKey = accentKey.name,
+                updatedAt = System.currentTimeMillis()
+            )
+            database.accountDao().update(updated)
+            dismissSheet()
+            showToast(strings.accountUpdatedToast)
+        }
+    }
+
+    fun deleteAccount(accountId: String) {
+        val strings = currentStrings()
+        if (uiState.value.accounts.size <= 1) {
+            showToast(strings.deleteAccountCannotDeleteLast)
+            return
+        }
+
+        viewModelScope.launch {
+            val existing = database.accountDao().getAccountById(accountId) ?: return@launch
+            database.withTransaction {
+                database.accountDao().delete(existing)
+            }
+            dismissSheet()
+            if (_selectedAccount.value?.id == accountId) {
+                _selectedAccount.value = null
+                _currentScreen.value = AppScreen.ACCOUNTS
+            }
+            showToast(strings.accountDeletedToast)
         }
     }
 

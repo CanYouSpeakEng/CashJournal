@@ -60,6 +60,7 @@ import app.cashjournal.ui.screens.LedgerScreen
 import app.cashjournal.ui.screens.SettingsScreen
 import app.cashjournal.ui.sensory.KnockSensitivity
 import app.cashjournal.ui.sensory.ShakeDetector
+import app.cashjournal.ui.sheets.EditAccountSheet
 import app.cashjournal.ui.sheets.LogTransactionSheet
 import app.cashjournal.ui.sheets.MainCurrencySheet
 import app.cashjournal.ui.sheets.NewAccountSheet
@@ -304,7 +305,8 @@ fun MainAppScaffold(
                                 account = acc,
                                 state = state,
                                 onTransactionClick = { viewModel.showEditTransaction(it) },
-                                onReconcileClick = { viewModel.showReconcileSheet(acc) }
+                                onReconcileClick = { viewModel.showReconcileSheet(acc) },
+                                onEditAccountClick = { viewModel.openEditAccount(acc) }
                             )
                         }
                     }
@@ -453,12 +455,32 @@ fun MainAppScaffold(
 
                     ActiveSheet.NEW_ACCOUNT -> NewAccountSheet(
                         currencyCode = state.userPreferences.currencyCode,
-                        onCreateAccount = { name, bal, accent ->
-                            viewModel.createAccount(name, bal, accent)
+                        onCreateAccount = { name, bal, accent, type ->
+                            viewModel.createAccount(name, bal, accent, type)
                         },
                         onDismiss = { viewModel.dismissSheet() },
                         languageCode = state.userPreferences.language
                     )
+
+                    ActiveSheet.EDIT_ACCOUNT -> {
+                        state.selectedEditAccount?.let { acc ->
+                            EditAccountSheet(
+                                account = acc,
+                                onSave = { name, accountType, accentKey ->
+                                    viewModel.updateAccountDetails(acc.id, name, accountType, accentKey)
+                                },
+                                onDelete = {
+                                    viewModel.deleteAccount(acc.id)
+                                },
+                                onDismiss = { viewModel.dismissSheet() },
+                                canDelete = state.accounts.size > 1,
+                                onCannotDeleteToast = {
+                                    viewModel.showToast(AppStrings.get(state.userPreferences.language).deleteAccountCannotDeleteLast)
+                                },
+                                languageCode = state.userPreferences.language
+                            )
+                        }
+                    }
 
                     ActiveSheet.MAIN_CURRENCY -> MainCurrencySheet(
                         currentCurrencyCode = state.userPreferences.currencyCode,

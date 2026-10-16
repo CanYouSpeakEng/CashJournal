@@ -20,7 +20,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         TransactionEntity::class,
         MonthlyPlanEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -62,6 +62,38 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. Add accountType column to accounts table
+                db.execSQL("ALTER TABLE accounts ADD COLUMN accountType TEXT NOT NULL DEFAULT 'BANK_DEBIT'")
+
+                // 2. Automatically infer types for existing accounts based on name keywords
+                db.execSQL("""
+                    UPDATE accounts 
+                    SET accountType = 'CASH' 
+                    WHERE LOWER(name) LIKE '%cash%' OR LOWER(name) LIKE '%tunai%' OR LOWER(name) LIKE '%dompet%' OR LOWER(name) LIKE '%pocket%' OR LOWER(name) LIKE '%saku%' OR LOWER(name) LIKE '%wallet%'
+                """.trimIndent())
+
+                db.execSQL("""
+                    UPDATE accounts 
+                    SET accountType = 'E_WALLET' 
+                    WHERE LOWER(name) LIKE '%gopay%' OR LOWER(name) LIKE '%ovo%' OR LOWER(name) LIKE '%dana%' OR LOWER(name) LIKE '%shopeepay%' OR LOWER(name) LIKE '%linkaja%' OR LOWER(name) LIKE '%ewallet%' OR LOWER(name) LIKE '%e-wallet%' OR LOWER(name) LIKE '%paypal%'
+                """.trimIndent())
+
+                db.execSQL("""
+                    UPDATE accounts 
+                    SET accountType = 'CREDIT_CARD' 
+                    WHERE LOWER(name) LIKE '%credit%' OR LOWER(name) LIKE '%kredit%' OR LOWER(name) LIKE '% cc %' OR LOWER(name) LIKE 'cc %' OR LOWER(name) LIKE '% cc' OR LOWER(name) = 'cc'
+                """.trimIndent())
+
+                db.execSQL("""
+                    UPDATE accounts 
+                    SET accountType = 'SAVINGS' 
+                    WHERE LOWER(name) LIKE '%saving%' OR LOWER(name) LIKE '%tabungan%' OR LOWER(name) LIKE '%invest%' OR LOWER(name) LIKE '%bibit%' OR LOWER(name) LIKE '%deposito%' OR LOWER(name) LIKE '%darurat%' OR LOWER(name) LIKE '%vault%' OR LOWER(name) LIKE '%emergency%' OR LOWER(name) LIKE '%fund%'
+                """.trimIndent())
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -69,7 +101,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "cashjournal_db"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .fallbackToDestructiveMigrationOnDowngrade()
                     .build()
                 INSTANCE = instance

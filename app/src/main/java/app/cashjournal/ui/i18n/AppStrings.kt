@@ -214,7 +214,15 @@ data class ScreenStrings(
     val weatherOffTitle: String,
     val weatherOffSubtitle: String,
     val weatherAttribution: String,
-    val selectCityAction: String
+    val selectCityAction: String,
+    val accountTypeLabel: String,
+    val editAccountTitle: String,
+    val deleteAccountAction: String,
+    val deleteAccountConfirmTitle: String,
+    val deleteAccountConfirmMessage: String,
+    val deleteAccountCannotDeleteLast: String,
+    val accountUpdatedToast: String,
+    val accountDeletedToast: String
 )
 
 object AppStrings {
@@ -424,7 +432,15 @@ object AppStrings {
         weatherOffTitle = "Off",
         weatherOffSubtitle = "Hide weather from the greeting bar",
         weatherAttribution = "Weather data provided by Open-Meteo.com (100% free, no key)",
-        selectCityAction = "Select"
+        selectCityAction = "Select",
+        accountTypeLabel = "ACCOUNT TYPE",
+        editAccountTitle = "Edit Account",
+        deleteAccountAction = "Delete Account",
+        deleteAccountConfirmTitle = "Delete this account?",
+        deleteAccountConfirmMessage = "Transactions linked to this account will remain in your history. This cannot be undone.",
+        deleteAccountCannotDeleteLast = "You must keep at least one account.",
+        accountUpdatedToast = "Account updated",
+        accountDeletedToast = "Account deleted"
     )
 
     val IN = ScreenStrings(
@@ -633,7 +649,15 @@ object AppStrings {
         weatherOffTitle = "Mati",
         weatherOffSubtitle = "Sembunyikan cuaca dari bilah sapaan",
         weatherAttribution = "Data cuaca disediakan oleh Open-Meteo.com (100% gratis, tanpa API key)",
-        selectCityAction = "Pilih"
+        selectCityAction = "Pilih",
+        accountTypeLabel = "TIPE AKUN",
+        editAccountTitle = "Ubah Akun",
+        deleteAccountAction = "Hapus Akun",
+        deleteAccountConfirmTitle = "Hapus akun ini?",
+        deleteAccountConfirmMessage = "Transaksi yang terhubung ke akun ini akan tetap tersimpan di riwayat. Tindakan ini tidak dapat dibatalkan.",
+        deleteAccountCannotDeleteLast = "Anda harus memiliki minimal satu akun.",
+        accountUpdatedToast = "Akun berhasil diperbarui",
+        accountDeletedToast = "Akun berhasil dihapus"
     )
 
     fun get(languageCode: String): ScreenStrings {

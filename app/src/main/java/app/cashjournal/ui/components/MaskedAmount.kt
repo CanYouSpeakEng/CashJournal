@@ -114,7 +114,7 @@ fun MaskedAmountText(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
-            .wrapContentWidth()
+            .wrapContentWidth(Alignment.Start)
             .animateContentSize(animationSpec = tween(durationMillis = 480, easing = easing))
     ) {
         if (keepSymbolVisible && currencySymbol.isNotEmpty()) {

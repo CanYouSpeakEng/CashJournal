@@ -518,8 +518,15 @@ fun AccountsScreen(
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
+                                    Icon(
+                                        imageVector = account.accountType.icon,
+                                        contentDescription = account.accountType.localizedTitle(state.userPreferences.language),
+                                        tint = account.accentKey.color,
+                                        modifier = Modifier.size(15.dp)
+                                    )
+
                                     Text(
                                         text = account.name.uppercase(),
                                         fontFamily = PlusJakartaSansFamily,

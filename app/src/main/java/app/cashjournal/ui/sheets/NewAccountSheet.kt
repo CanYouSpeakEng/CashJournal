@@ -43,6 +43,7 @@ import app.cashjournal.ui.theme.CashColors
 import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Cobalt
 import app.cashjournal.ui.theme.PlusJakartaSansFamily
+import app.cashjournal.ui.theme.Slate100
 import app.cashjournal.ui.theme.Slate200
 import app.cashjournal.ui.theme.Slate400
 import app.cashjournal.ui.theme.Slate500
@@ -53,15 +54,20 @@ import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Check
 import com.adamglin.phosphoricons.regular.X
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import app.cashjournal.domain.model.AccountType
+
 @Composable
 fun NewAccountSheet(
     currencyCode: String,
-    onCreateAccount: (name: String, startingBalance: Long, accentKey: AccentKey) -> Unit,
+    onCreateAccount: (name: String, startingBalance: Long, accentKey: AccentKey, accountType: AccountType) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     languageCode: String = "en"
 ) {
     val strings = AppStrings.get(languageCode)
+    var selectedType by remember { mutableStateOf(AccountType.BANK_DEBIT) }
     var name by remember { mutableStateOf("") }
     var rawBalance by remember { mutableStateOf("") }
     var selectedAccent by remember { mutableStateOf(AccentKey.COBALT) }
@@ -100,6 +106,55 @@ fun NewAccountSheet(
             )
         }
 
+        // Account Category / Type Selector
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                text = strings.accountTypeLabel,
+                fontFamily = SpaceGroteskFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp,
+                letterSpacing = 0.8.sp,
+                color = Slate500
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                AccountType.entries.forEach { type ->
+                    val isSelected = type == selectedType
+                    val chipBg = if (isSelected) Cobalt else Slate100
+                    val contentColor = if (isSelected) Color.White else Charcoal
+
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(chipBg)
+                            .clickable { selectedType = type }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = type.icon,
+                            contentDescription = type.localizedTitle(languageCode),
+                            tint = contentColor,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = type.localizedTitle(languageCode),
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp,
+                            color = contentColor
+                        )
+                    }
+                }
+            }
+        }
+
         // Account Name Input
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
@@ -126,7 +181,7 @@ fun NewAccountSheet(
                         decorationBox = { innerTextField ->
                             if (name.isEmpty()) {
                                 Text(
-                                    text = strings.accountNamePlaceholder,
+                                    text = selectedType.localizedPlaceholder(languageCode),
                                     fontFamily = PlusJakartaSansFamily,
                                     fontSize = 14.sp,
                                     color = Slate400
@@ -236,7 +291,7 @@ fun NewAccountSheet(
         Button(
             onClick = {
                 val balance = rawBalance.toLongOrNull() ?: 0L
-                onCreateAccount(name, balance, selectedAccent)
+                onCreateAccount(name, balance, selectedAccent, selectedType)
             },
             colors = ButtonDefaults.buttonColors(containerColor = Cobalt),
             shape = RoundedCornerShape(16.dp),

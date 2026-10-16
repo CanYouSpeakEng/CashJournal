@@ -182,6 +182,37 @@ This log is kept up to date after every step. Any AI assistant or developer read
   - Tag: `v1.0.18-dev`
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.18-dev
   - Artifacts: `app-debug.apk` (17.4 MB), `app-release.apk` (12.2 MB).
+- [ ] **Phase 16: GitHub OTA In-App Updater, PIN Lock Screen Flash Fix, Account Categories/Edit & Balance Left-Alignment**
+  - **Execution Methodology (Two-Stage Staggered Architecture)**:
+    - **Rationale**: To maintain peak code quality, prevent AI context-window pressure, and eliminate subtle regressions, Phase 16 is divided into two focused stages separated by a hard compile, unit test (`./gradlew test`), and git commit checkpoint. This isolates Room SQLite schema migrations and UI form sheets (Stage 1) from network allowlisting, Android package installer permissions, and OTA background streaming (Stage 2).
+    - **Stage 1 (Phase 16A — Core Fixes, Account Categories & Edit Account Details)**: Execute Item 78, Item 76, and Item 77 -> Run unit tests & build verification -> Commit Stage 1 checkpoint.
+    - **Stage 2 (Phase 16B — GitHub OTA In-App Update System & Release)**: Execute Item 75 -> Switch GitHub repository visibility to Public -> Run full unit tests & assemble signed APKs -> Tag and publish `v1.0.19-dev`.
+  - [x] **Item 78 (Stage 1): Fix Account Detail Hero Balance Center-Alignment**:
+    - **Root Cause**: Passing `Modifier.fillMaxWidth()` from `AccountDetailScreen.kt` into `MaskedAmount.kt` chained `.wrapContentWidth()`, whose default `Alignment.CenterHorizontally` centered the text inside the full card width.
+    - **Method**: Update `MaskedAmountText` in `MaskedAmount.kt` to use `.wrapContentWidth(Alignment.Start)` so hero balances remain strictly left-aligned across all cards.
+  - [x] **Item 76 (Stage 1): Fix Previous Screen Flash Before PIN Lock Screen on Phone Unlock**:
+    - **Root Cause**: `MainActivity.onStop()` only recorded `lastBackgroundTimestamp` without updating UI state, leaving the last-rendered frame of `MainAppScaffold` cached in the Android Window Manager's GPU surface buffer while the phone was locked. On phone unlock, Android displayed that stale frame at Frame 0 for 50-200ms before `onStart()` triggered Compose to recompose `AppLockScreen`. Storing lock state in `MainActivity` fields also risked state loss on display/inset configuration changes during wake.
+    - **Method**: Move `isAppLocked`, `isInBackground`, and `lastBackgroundTimestamp` into `MainViewModel`. Immediately activate a lock/privacy veil in `onPause()`/`onStop()` (plus a 15-second background coroutine timer) so the window surface buffer is overwritten *before* the screen turns back on, and render `AppLockScreen` as a full-screen overlay above `MainAppScaffold` (`Modifier.alpha(0f)` when veiled/locked) for zero-latency Frame 0 lock display.
+  - [x] **Item 77 (Stage 1): Account Categories (`AccountType`) & Edit Account Details Sheet**:
+    - **Method**:
+      1. Create `AccountType` enum (`CASH` - Cash / Wallet, `BANK_DEBIT` - Bank / Debit, `E_WALLET` - E-Wallet, `CREDIT_CARD` - Credit Card, `SAVINGS` - Savings / Invest) with Phosphor icons and bilingual English/Indonesian labels.
+      2. Upgrade `AppDatabase.kt` from `version = 2` to `version = 3` via non-destructive `MIGRATION_2_3` (`ALTER TABLE accounts ADD COLUMN accountType TEXT NOT NULL DEFAULT 'BANK_DEBIT'`), automatically inferring categories for existing accounts from their names (`cash`/`tunai`/`dompet`, `gopay`/`ovo`/`dana`, `credit`/`kredit`, `saving`/`tabungan`). Update `BackupManager.kt` JSON export/import with backward-compatible defaults.
+      3. Add interactive `AccountType` pill selector and dynamic name placeholders to `NewAccountSheet.kt`.
+      4. Render category icon and type badge on account cards in `AccountsScreen.kt` and header in `AccountDetailScreen.kt`.
+      5. Add Edit Account button (`PencilSimple`) on `AccountDetailScreen.kt` launching `EditAccountSheet.kt` to edit the account's Name, Account Category/Type, and Accent Color.
+    - **Verification**: Verified via `AccountTypeTest.kt` covering inference, entity mapping, and JSON round-trips; all 67 unit tests passed (`./gradlew test`) and debug APK assembled successfully (`./gradlew assembleDebug`).
+  - [ ] **Item 75 (Stage 2): GitHub OTA In-App Update System, Background Download, Glowing Settings Icon & Unknown Sources Flow**:
+    - **Method**:
+      1. Switch `CanYouSpeakEng/CashJournal` repository visibility to `PUBLIC` via GitHub CLI so unauthenticated requests to `https://api.github.com/repos/CanYouSpeakEng/CashJournal/releases/latest` and APK downloads succeed without embedded tokens.
+      2. Add `api.github.com`, `github.com`, and `objects.githubusercontent.com` to `HostAllowlistInterceptor.kt`, `HostAllowlistTest.kt`, and `network_security_config.xml`.
+      3. Configure `<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />` and `androidx.core.content.FileProvider` (`res/xml/file_paths.xml` pointing to `cache-path` `updates/`) in `AndroidManifest.xml`.
+      4. Implement `AppUpdateService` & `MainViewModel` state machine (`IDLE`, `CHECKING`, `UPDATE_AVAILABLE`, `DOWNLOADING(progress)`, `READY_TO_INSTALL`, `UP_TO_DATE`, `ERROR`) with semantic version comparison and automatic variant matching (`app-debug.apk` for debug builds, `app-release.apk` for release builds).
+      5. Implement manual `"Check for Updates" / "Periksa Pembaruan"` action in `SettingsScreen.kt` About card + automatic daily check at midnight Western Indonesian Time (`00:00 WIB` / `Asia/Jakarta` calendar day rollover via `DataStore` `lastUpdateCheckDayWib` and scheduled alarm/resume check) that notifies the user without auto-installing.
+      6. Build `UpdateSheet.kt` displaying version transition badge, APK size, formatted GitHub release notes (`body`), live download progress bar (`0% - 100%`), and `"Update Now" / "Perbarui Sekarang"` vs. `"Later" / "Nanti"` actions.
+      7. Support non-blocking background download in `viewModelScope` so users can navigate freely across the app; upon download completion, illuminate the `GearSix` Settings icon on `SideRail.kt` with a breathing **Cobalt Blue** glow and indicator dot.
+      8. Before triggering APK installation, check `packageManager.canRequestPackageInstalls()`. If false, present a bilingual explanation and one-tap button (`Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES`) to enable `"Install unknown apps"` for CashJournal, automatically resuming the Android Package Installer handoff upon return.
+
+
 
 
 

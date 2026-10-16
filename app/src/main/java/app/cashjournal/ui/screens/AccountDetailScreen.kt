@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -52,6 +53,9 @@ import app.cashjournal.ui.theme.Slate500
 import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
 import kotlin.math.roundToInt
+import com.adamglin.PhosphorIcons
+import com.adamglin.phosphoricons.Regular
+import com.adamglin.phosphoricons.regular.PencilSimple
 
 @Composable
 fun AccountDetailScreen(
@@ -59,6 +63,7 @@ fun AccountDetailScreen(
     state: MainUiState,
     onTransactionClick: ((Transaction) -> Unit)? = null,
     onReconcileClick: (() -> Unit)? = null,
+    onEditAccountClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val strings = AppStrings.get(state.userPreferences.language)
@@ -114,33 +119,68 @@ fun AccountDetailScreen(
             .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Header Row: Account Name + Percent of Total Pill
+        // Header Row: Account Category + Name + Percent of Total Pill + Edit Button
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = account.name,
-                fontFamily = PlusJakartaSansFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp,
-                color = account.accentKey.color
-            )
-
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(account.accentKey.color.copy(alpha = 0.12f))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                Icon(
+                    imageVector = account.accountType.icon,
+                    contentDescription = account.accountType.localizedTitle(state.userPreferences.language),
+                    tint = account.accentKey.color,
+                    modifier = Modifier.size(22.dp)
+                )
+
                 Text(
-                    text = strings.accountDetailPctOfTotal.format(pctOfTotal),
-                    fontFamily = SpaceGroteskFamily,
+                    text = account.name,
+                    fontFamily = PlusJakartaSansFamily,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 11.sp,
+                    fontSize = 20.sp,
                     color = account.accentKey.color
                 )
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(account.accentKey.color.copy(alpha = 0.12f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = strings.accountDetailPctOfTotal.format(pctOfTotal),
+                        fontFamily = SpaceGroteskFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        color = account.accentKey.color
+                    )
+                }
+
+                if (onEditAccountClick != null) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(account.accentKey.color.copy(alpha = 0.12f))
+                            .clickable { onEditAccountClick() }
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = PhosphorIcons.Regular.PencilSimple,
+                            contentDescription = "Edit Account",
+                            tint = account.accentKey.color,
+                            modifier = Modifier.size(15.dp)
+                        )
+                    }
+                }
             }
         }
 

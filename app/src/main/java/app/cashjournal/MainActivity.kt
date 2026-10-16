@@ -32,13 +32,12 @@ import app.cashjournal.ui.onboarding.WeatherOption
 import app.cashjournal.ui.screens.AppLockScreen
 import app.cashjournal.ui.security.BiometricAuthHelper
 import app.cashjournal.ui.theme.CashJournalTheme
+import androidx.compose.ui.draw.alpha
 import app.cashjournal.ui.theme.Slate100
 
 class MainActivity : FragmentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
-    private var lastBackgroundTimestamp: Long = 0L
-    private val isAppLocked = mutableStateOf(true)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,10 +50,12 @@ class MainActivity : FragmentActivity() {
         setContent {
             CashJournalTheme {
                 val state by viewModel.uiState.collectAsState()
+                val isAppLocked by viewModel.isAppLocked.collectAsState()
+                val isVeiled by viewModel.isVeiled.collectAsState()
 
                 // Synchronize lock state with PIN configuration
                 val hasPin = state.userPreferences.pinEnabled && state.userPreferences.pinHash.isNotEmpty()
-                val locked = isAppLocked.value && hasPin
+                val locked = (isAppLocked || isVeiled) && hasPin
 
                 // Screen Privacy (FLAG_SECURE)
                 LaunchedEffect(state.userPreferences.screenPrivacyEnabled) {
@@ -122,53 +123,53 @@ class MainActivity : FragmentActivity() {
                             viewModel.refreshWeather()
                         }
                     )
-                } else if (locked) {
-                    AppLockScreen(
-                        pinHash = state.userPreferences.pinHash,
-                        biometricsEnabled = state.userPreferences.biometricsEnabled,
-                        onUnlock = { isAppLocked.value = false },
-                        languageCode = state.userPreferences.language,
-                        hapticsEnabled = state.userPreferences.tactileHapticsEnabled,
-                        onBiometricRequest = if (state.userPreferences.biometricsEnabled) {
-                            {
-                                val isIndonesian = state.userPreferences.language.equals("in", ignoreCase = true)
-                                BiometricAuthHelper.promptBiometric(
-                                    activity = this@MainActivity,
-                                    title = if (isIndonesian) "Buka CashJournal" else "Unlock CashJournal",
-                                    subtitle = if (isIndonesian) "Konfirmasi biometrik untuk membuka" else "Confirm biometric to unlock",
-                                    onSuccess = { isAppLocked.value = false },
-                                    onError = { /* fallback to PIN */ }
-                                )
-                            }
-                        } else null
-                    )
                 } else {
-                    MainAppScaffold(
-                        viewModel = viewModel,
-                        onLockApp = {
-                            if (hasPin) {
-                                isAppLocked.value = true
-                            }
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        MainAppScaffold(
+                            viewModel = viewModel,
+                            onLockApp = {
+                                if (hasPin) {
+                                    viewModel.lockAppNow()
+                                }
+                            },
+                            modifier = if (locked) Modifier.alpha(0f) else Modifier
+                        )
+
+                        if (locked) {
+                            AppLockScreen(
+                                pinHash = state.userPreferences.pinHash,
+                                biometricsEnabled = state.userPreferences.biometricsEnabled,
+                                onUnlock = { viewModel.unlockApp() },
+                                languageCode = state.userPreferences.language,
+                                hapticsEnabled = state.userPreferences.tactileHapticsEnabled,
+                                onBiometricRequest = if (state.userPreferences.biometricsEnabled) {
+                                    {
+                                        val isIndonesian = state.userPreferences.language.equals("in", ignoreCase = true)
+                                        BiometricAuthHelper.promptBiometric(
+                                            activity = this@MainActivity,
+                                            title = if (isIndonesian) "Buka CashJournal" else "Unlock CashJournal",
+                                            subtitle = if (isIndonesian) "Konfirmasi biometrik untuk membuka" else "Confirm biometric to unlock",
+                                            onSuccess = { viewModel.unlockApp() },
+                                            onError = { /* fallback to PIN */ }
+                                        )
+                                    }
+                                } else null
+                            )
                         }
-                    )
+                    }
                 }
             }
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        if (lastBackgroundTimestamp > 0L) {
-            val elapsed = System.currentTimeMillis() - lastBackgroundTimestamp
-            if (elapsed > 15_000L) {
-                isAppLocked.value = true
-            }
-        }
+    override fun onResume() {
+        super.onResume()
+        viewModel.onAppForegrounded(viewModel.hasPinConfigured())
     }
 
-    override fun onStop() {
-        super.onStop()
-        lastBackgroundTimestamp = System.currentTimeMillis()
+    override fun onPause() {
+        super.onPause()
+        viewModel.onAppBackgrounded(viewModel.hasPinConfigured())
     }
 
     override fun onNewIntent(intent: Intent) {
