@@ -145,7 +145,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val recentTx = rawTransactions.take(5)
 
         // Calculate Safe to Spend
-        val safeState = calculateSafeToSpend(plan, rawTransactions)
+        val safeState = calculateSafeToSpend(plan, rawTransactions, totalWorth, rawAccounts.isNotEmpty())
 
         MainUiState(
             currentScreen = screen,
@@ -187,8 +187,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun calculateSafeToSpend(plan: MonthlyPlan, transactions: List<Transaction>): SafeToSpendState {
-        return SafeToSpendCalculator.calculate(plan, transactions)
+    private fun calculateSafeToSpend(
+        plan: MonthlyPlan,
+        transactions: List<Transaction>,
+        totalNetWorth: Long = 0L,
+        hasAccounts: Boolean = true
+    ): SafeToSpendState {
+        return SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = transactions,
+            totalNetWorth = totalNetWorth,
+            hasAccounts = hasAccounts
+        )
     }
 
 
@@ -595,6 +605,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             setScreen(AppScreen.DASHBOARD)
             showToast("All data deleted")
+        }
+    }
+
+    fun resetOnboarding() {
+        viewModelScope.launch {
+            preferencesRepository.updateOnboardingComplete(false)
         }
     }
 }

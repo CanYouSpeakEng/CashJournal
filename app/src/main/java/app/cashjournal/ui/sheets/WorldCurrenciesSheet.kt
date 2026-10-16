@@ -35,8 +35,10 @@ import androidx.compose.ui.unit.sp
 import app.cashjournal.data.currency.CachedExchangeRates
 import app.cashjournal.data.currency.CurrencyConverter
 import app.cashjournal.domain.model.Currency
+import app.cashjournal.ui.components.CountryFlag
 import app.cashjournal.ui.components.GlassCard
 import app.cashjournal.ui.components.SubtleGlassCard
+import app.cashjournal.ui.i18n.AppStrings
 import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Cobalt
 import app.cashjournal.ui.theme.Emerald
@@ -69,9 +71,11 @@ fun WorldCurrenciesSheet(
     selectedCode: String,
     onSelectCode: (String) -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    languageCode: String = "en"
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    val strings = AppStrings.get(languageCode)
 
     val majorCurrencies = remember {
         listOf(
@@ -121,7 +125,7 @@ fun WorldCurrenciesSheet(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = "World Currencies",
+                    text = strings.worldCurrenciesSheetTitle,
                     fontFamily = PlusJakartaSansFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
@@ -134,8 +138,15 @@ fun WorldCurrenciesSheet(
                 ) {
                     val dotColor = if (isRatesOffline) Saffron else Emerald
                     val statusText = if (cachedRates != null) {
-                        if (isRatesOffline) "Offline · last update ${cachedRates.timeLastUpdateUtc}"
-                        else "Updated daily · ${cachedRates.timeLastUpdateUtc}"
+                        val diffMs = System.currentTimeMillis() - cachedRates.fetchedAt
+                        val diffMin = (diffMs / 60000L).coerceAtLeast(0L)
+                        if (isRatesOffline) {
+                            "${strings.ratesOfflineLabel} · (Daily rates: 00:00 UTC)"
+                        } else if (diffMin < 1) {
+                            "${strings.ratesSyncedJustNow} · (Daily rates: 00:00 UTC)"
+                        } else {
+                            "${String.format(strings.ratesSyncedMinsAgo, diffMin)} · (Daily rates: 00:00 UTC)"
+                        }
                     } else {
                         "No rates yet"
                     }
@@ -195,7 +206,7 @@ fun WorldCurrenciesSheet(
                     decorationBox = { innerTextField ->
                         if (searchQuery.isEmpty()) {
                             Text(
-                                text = "Search currency (USD, JPY, EUR, SGD, GBP...)",
+                                text = strings.searchCurrencyPlaceholder,
                                 fontFamily = PlusJakartaSansFamily,
                                 fontSize = 14.sp,
                                 color = Slate400
@@ -268,7 +279,7 @@ fun WorldCurrenciesSheet(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            // Badge
+                            // Badge with Country Flag
                             Box(
                                 modifier = Modifier
                                     .size(38.dp)
@@ -276,12 +287,10 @@ fun WorldCurrenciesSheet(
                                     .background(Slate100),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = currency.code,
-                                    fontFamily = SpaceGroteskFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp,
-                                    color = Cobalt
+                                CountryFlag(
+                                    currencyCode = currency.code,
+                                    size = 38.dp,
+                                    cornerRadius = 10.dp
                                 )
                             }
 
@@ -312,7 +321,7 @@ fun WorldCurrenciesSheet(
                             )
 
                             Text(
-                                text = if (isSelected) "Active" else "Select",
+                                text = if (isSelected) strings.activeCurrencyBadge else strings.selectCurrencyBadge,
                                 fontFamily = PlusJakartaSansFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp,

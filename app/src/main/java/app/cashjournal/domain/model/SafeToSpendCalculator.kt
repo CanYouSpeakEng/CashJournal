@@ -10,7 +10,8 @@ enum class SafeToSpendStatus {
     SAFE,
     NEAR_LIMIT,
     RECALIBRATE,
-    SET_BUDGET
+    SET_BUDGET,
+    NO_FUNDS
 }
 
 data class SafeToSpendState(
@@ -36,7 +37,9 @@ object SafeToSpendCalculator {
     fun calculate(
         plan: MonthlyPlan,
         transactions: List<Transaction>,
-        calendar: Calendar = Calendar.getInstance()
+        calendar: Calendar = Calendar.getInstance(),
+        totalNetWorth: Long = 100_000_000L,
+        hasAccounts: Boolean = true
     ): SafeToSpendState {
         val year = calendar.get(Calendar.YEAR)
         val month = calendar.get(Calendar.MONTH) + 1
@@ -60,12 +63,14 @@ object SafeToSpendCalculator {
         val isLastDay = daysLeft <= 0
 
         val divisor = if (daysLeft > 0) daysLeft else 1
-        val perDay = floor(remaining.toDouble() / divisor).toLong()
+        val hasNoFunds = !hasAccounts || totalNetWorth <= 0L
+        val perDay = if (hasNoFunds) 0L else floor(remaining.toDouble() / divisor).toLong()
 
         val percent = if (budget > 0) (totalSpent.toFloat() / budget.toFloat()) else 0f
         val displayPct = min(100, (percent * 100).roundToInt())
 
         val status = when {
+            hasNoFunds -> SafeToSpendStatus.NO_FUNDS
             budget <= 0L -> SafeToSpendStatus.SET_BUDGET
             remaining <= 0L -> SafeToSpendStatus.RECALIBRATE
             percent >= 0.70f -> SafeToSpendStatus.NEAR_LIMIT

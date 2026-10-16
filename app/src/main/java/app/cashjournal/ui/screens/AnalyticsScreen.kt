@@ -45,6 +45,7 @@ import app.cashjournal.domain.model.Currency
 import app.cashjournal.domain.model.TransactionType
 import app.cashjournal.ui.MainUiState
 import app.cashjournal.ui.SafeToSpendStatus
+import app.cashjournal.ui.i18n.AppStrings
 import app.cashjournal.ui.components.GlassCard
 import app.cashjournal.ui.components.MaskedAmount
 import app.cashjournal.ui.components.SubtleGlassCard
@@ -94,6 +95,7 @@ fun AnalyticsScreen(
 ) {
     val currencyCode = state.userPreferences.currencyCode
     val currency = Currency.findByCode(currencyCode)
+    val strings = AppStrings.get(state.userPreferences.language)
 
     // Compute Last 6 Months Flows
     val last6Months = remember(state.transactions) {
@@ -208,14 +210,14 @@ fun AnalyticsScreen(
         // Title & Subtitle
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                text = "Analytics",
+                text = strings.analyticsTitle,
                 fontFamily = PlusJakartaSansFamily,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 24.sp,
                 color = Charcoal
             )
             Text(
-                text = "Cash flow, spending burn, and runway telemetry",
+                text = strings.analyticsSubtitle,
                 fontFamily = PlusJakartaSansFamily,
                 fontSize = 13.sp,
                 color = Slate500
@@ -234,7 +236,7 @@ fun AnalyticsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Last 6 Months",
+                        text = strings.last6MonthsTitle,
                         fontFamily = PlusJakartaSansFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
@@ -252,7 +254,7 @@ fun AnalyticsScreen(
                         ) {
                             Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Emerald))
                             Text(
-                                text = "Inflow",
+                                text = strings.inflowLegend,
                                 fontFamily = PlusJakartaSansFamily,
                                 fontSize = 11.sp,
                                 color = Slate600
@@ -265,7 +267,7 @@ fun AnalyticsScreen(
                         ) {
                             Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Persimmon))
                             Text(
-                                text = "Outflow",
+                                text = strings.outflowLegend,
                                 fontFamily = PlusJakartaSansFamily,
                                 fontSize = 11.sp,
                                 color = Slate600
@@ -344,9 +346,11 @@ fun AnalyticsScreen(
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             val safe = state.safeToSpend
             val currentBudget = state.monthlyPlan.budget
-            val stepSize = 500_000L
-            val minBudget = 2_000_000L
-            val maxBudget = 15_000_000L
+            val decimals = Currency.getDecimals(currencyCode)
+            val isZeroDecimal = decimals == 0
+            val stepSize = if (isZeroDecimal) 500_000L else 5_000L
+            val minBudget = 0L
+            val maxBudget = if (isZeroDecimal) 30_000_000L else 500_000L
 
             Column(
                 modifier = Modifier.padding(18.dp),
@@ -358,20 +362,32 @@ fun AnalyticsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Monthly Spending Runway",
+                        text = strings.runwayCardTitle,
                         fontFamily = PlusJakartaSansFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
                         color = Charcoal
                     )
 
-                    Text(
-                        text = Currency.formatMinor(currentBudget, currencyCode),
-                        fontFamily = SpaceGroteskFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = Cobalt
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (currentBudget > 0L) {
+                            Text(
+                                text = Currency.formatMinor(currentBudget, currencyCode),
+                                fontFamily = SpaceGroteskFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = Cobalt
+                            )
+                        } else {
+                            Text(
+                                text = "0 (${strings.statusSetBudget})",
+                                fontFamily = SpaceGroteskFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Slate500
+                            )
+                        }
+                    }
                 }
 
                 // Square "−" button, Slider, and Square "+" button
@@ -440,13 +456,14 @@ fun AnalyticsScreen(
                     SafeToSpendStatus.SAFE -> Emerald
                     SafeToSpendStatus.NEAR_LIMIT -> Saffron
                     SafeToSpendStatus.RECALIBRATE -> Color(0xFFF87171)
-                    SafeToSpendStatus.SET_BUDGET -> Slate500
+                    SafeToSpendStatus.SET_BUDGET, SafeToSpendStatus.NO_FUNDS -> Slate500
                 }
 
-                val feedbackText = if (safe.status == SafeToSpendStatus.RECALIBRATE) {
-                    "Limit reached. Increase budget to recalibrate."
-                } else {
-                    "Safe to spend: ${Currency.formatMinor(safe.safeToSpendToday, currencyCode)} / day"
+                val feedbackText = when (safe.status) {
+                    SafeToSpendStatus.NO_FUNDS -> strings.runwayNoFundsFeedback
+                    SafeToSpendStatus.RECALIBRATE -> strings.runwayLimitFeedback
+                    SafeToSpendStatus.SET_BUDGET -> strings.setMonthlyBudgetAction
+                    else -> String.format(strings.runwaySafeFeedback, Currency.formatMinor(safe.safeToSpendToday, currencyCode))
                 }
 
                 Text(
@@ -466,7 +483,7 @@ fun AnalyticsScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
-                    text = "Spending Breakdown",
+                    text = strings.topCategoriesTitle,
                     fontFamily = PlusJakartaSansFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
@@ -494,7 +511,7 @@ fun AnalyticsScreen(
                             }
                         }
                         Text(
-                            text = "No spending this month",
+                            text = if (state.userPreferences.language == "in") "Belum ada pengeluaran bulan ini" else "No spending this month",
                             fontFamily = PlusJakartaSansFamily,
                             fontSize = 13.sp,
                             color = Slate500

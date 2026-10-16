@@ -5,23 +5,24 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -37,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
@@ -45,25 +47,26 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.cashjournal.ui.i18n.AppStrings
 import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Cobalt
 import app.cashjournal.ui.theme.GlassBorder
+import app.cashjournal.ui.theme.PlusJakartaSansFamily
 import app.cashjournal.ui.theme.Slate200
 import app.cashjournal.ui.theme.Slate500
 import app.cashjournal.ui.theme.SpaceGroteskFamily
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
-import com.adamglin.phosphoricons.regular.CaretLeft
 import com.adamglin.phosphoricons.regular.ChartBar
-import com.adamglin.phosphoricons.regular.EyeSlash
 import com.adamglin.phosphoricons.regular.GearSix
-import com.adamglin.phosphoricons.regular.Lock
 import com.adamglin.phosphoricons.regular.Plus
 import com.adamglin.phosphoricons.regular.Receipt
 import com.adamglin.phosphoricons.regular.SquaresFour
@@ -84,13 +87,7 @@ enum class NavTab {
 }
 
 /**
- * Side Rail with liquid Tab Drip and Clock Arc animations per Build Brief v2 Section 15:
- * - "Rail drip: on tab change, a blue blob leaves the old button, stretches along the rail,
- *   and lands on the new button over 420 ms. The old button loses its fill at the start,
- *   the new one gains it at the end. An approximation is allowed, but it must read as a drip."
- * - "Clock arc: when a nested screen opens, the five characters move from the top arc to the
- *   bottom arc, rotating 180°, with an overshoot ease over 900 ms each. Start delays 270, 180,
- *   150, 90, and 0 ms. The back button scales in from 40% at the top. Reverse on leaving."
+ * Side Rail with liquid Tab Drip, expanding entry reveal animation, and shockwave tooltip physics.
  */
 @Composable
 fun SideRail(
@@ -102,16 +99,37 @@ fun SideRail(
     modifier: Modifier = Modifier,
     isNestedScreen: Boolean = false,
     onBackClick: (() -> Unit)? = null,
-    hapticsEnabled: Boolean = true
+    hapticsEnabled: Boolean = true,
+    railOnRight: Boolean = true,
+    languageCode: String = "en"
 ) {
     val view = LocalView.current
+    val strings = AppStrings.get(languageCode)
 
-    // Clock state updated periodically
-    var timeString by remember { mutableStateOf(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))) }
+    // Entry reveal animation: vertical expansion from center status circle over 450ms
+    val revealProgress = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
-        while (true) {
-            delay(30_000L)
-            timeString = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
+        revealProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(
+                durationMillis = 450,
+                easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
+            )
+        )
+    }
+
+    // Active tooltip pill state: text and vertical position (dp offset from top of rail)
+    var activeTooltip by remember { mutableStateOf<String?>(null) }
+    var activeTooltipY by remember { mutableFloatStateOf(0f) }
+
+    // Shockwave Physics: When rail swaps sides (knock event) while a tooltip is held,
+    // the pill collapses in 120ms (scaleOut + fadeOut) and blooms back out on landing.
+    val pillAnim = remember { Animatable(1f) }
+    LaunchedEffect(railOnRight) {
+        if (activeTooltip != null) {
+            pillAnim.animateTo(0f, tween(durationMillis = 120, easing = FastOutSlowInEasing))
+            delay(160L)
+            pillAnim.animateTo(1f, spring(dampingRatio = 0.75f, stiffness = 500f))
         }
     }
 
@@ -135,7 +153,6 @@ fun SideRail(
                     easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
                 )
             ) {
-                // Liquid stretch calculation: peaks mid-transit
                 val totalDist = abs(target - start)
                 val currentDist = abs(value - start)
                 val normalized = if (totalDist > 0f) (currentDist / totalDist).coerceIn(0f, 1f) else 0f
@@ -145,201 +162,249 @@ fun SideRail(
         }
     }
 
-    // Back button scale animation from 40% per Section 15
-    val backButtonScale by animateFloatAsState(
-        targetValue = if (isNestedScreen) 1f else 0.4f,
-        animationSpec = tween(durationMillis = 350, easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)),
-        label = "backButtonScale"
-    )
-
-    // Side rail container: 54dp pill, translucent white at 88%
-    Surface(
-        modifier = modifier
-            .width(54.dp)
-            .shadow(
-                elevation = 10.dp,
-                shape = RoundedCornerShape(27.dp),
-                ambientColor = Charcoal.copy(alpha = 0.08f),
-                spotColor = Charcoal.copy(alpha = 0.12f)
-            ),
-        shape = RoundedCornerShape(27.dp),
-        color = Color(0xE0FFFFFF), // 88% white per brief section 12
-        border = BorderStroke(1.dp, GlassBorder)
+    Box(
+        modifier = modifier.wrapContentSize(),
+        contentAlignment = if (railOnRight) Alignment.CenterEnd else Alignment.CenterStart
     ) {
-        Column(
-            modifier = Modifier.padding(vertical = 12.dp, horizontal = 6.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Top Zone: Unified Status Ring (Battery Arc + Signal Dots), Privacy Eye Toggle, Clock & Divider
-            RailStatusCluster(
-                balancesVisible = balancesVisible,
-                onToggleBalances = onToggleBalances,
-                isNestedScreen = isNestedScreen,
-                onBackClick = onBackClick,
-                hapticsEnabled = hapticsEnabled
-            )
-
-            // Navigation Area with Liquid Drip Canvas
-            Box(
-                modifier = Modifier
-                    .width(42.dp)
-                    .height(242.dp) // 5 buttons (42dp) + 4 gaps (8dp) = 242dp
-            ) {
-                // Liquid Tab Drip Canvas
-                Canvas(modifier = Modifier.matchParentSize()) {
-                    val stepPx = 50.dp.toPx() // 42dp + 8dp spacing
-                    val buttonRadius = 21.dp.toPx()
-                    val buttonDiameter = 42.dp.toPx()
-
-                    val currentCenterY = buttonRadius + dripAnim.value * stepPx
-                    val stretchExtraPx = stretchFraction * 14.dp.toPx()
-                    val blobHeight = buttonDiameter + stretchExtraPx
-                    val blobWidth = (buttonDiameter - stretchFraction * 6.dp.toPx()).coerceAtLeast(28.dp.toPx())
-
-                    val top = currentCenterY - blobHeight / 2f
-                    val left = (size.width - blobWidth) / 2f
-
-                    drawRoundRect(
-                        color = Cobalt,
-                        topLeft = Offset(left, top),
-                        size = Size(blobWidth, blobHeight),
-                        cornerRadius = CornerRadius(blobWidth / 2f, blobWidth / 2f)
-                    )
-                }
-
-                // The 5 Nav Buttons rendered on top
-                Column(
-                    modifier = Modifier.matchParentSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    RailNavButton(
-                        icon = PhosphorIcons.Regular.SquaresFour,
-                        contentDescription = "Dashboard",
-                        isSelected = currentTab == NavTab.DASHBOARD,
-                        onClick = {
-                            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                            onTabSelected(NavTab.DASHBOARD)
-                        }
-                    )
-
-                    RailNavButton(
-                        icon = PhosphorIcons.Regular.Receipt,
-                        contentDescription = "Ledger",
-                        isSelected = currentTab == NavTab.LEDGER,
-                        onClick = {
-                            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                            onTabSelected(NavTab.LEDGER)
-                        }
-                    )
-
-                    RailNavButton(
-                        icon = PhosphorIcons.Regular.Wallet,
-                        contentDescription = "Accounts",
-                        isSelected = currentTab == NavTab.ACCOUNTS,
-                        onClick = {
-                            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                            onTabSelected(NavTab.ACCOUNTS)
-                        }
-                    )
-
-                    RailNavButton(
-                        icon = PhosphorIcons.Regular.ChartBar,
-                        contentDescription = "Analytics",
-                        isSelected = currentTab == NavTab.ANALYTICS,
-                        onClick = {
-                            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                            onTabSelected(NavTab.ANALYTICS)
-                        }
-                    )
-
-                    RailNavButton(
-                        icon = PhosphorIcons.Regular.GearSix,
-                        contentDescription = "Settings",
-                        isSelected = currentTab == NavTab.SETTINGS,
-                        onClick = {
-                            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                            onTabSelected(NavTab.SETTINGS)
-                        }
-                    )
-                }
+        // Floating Tooltip Capsule Pill (Emerges inward toward the screen center)
+        if (activeTooltip != null) {
+            val pillOffsetModifier = if (railOnRight) {
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = (-66).dp, y = activeTooltipY.dp)
+            } else {
+                Modifier
+                    .align(Alignment.TopStart)
+                    .offset(x = 66.dp, y = activeTooltipY.dp)
             }
 
-            // Divider before Quick Add
-            Box(
-                modifier = Modifier
-                    .width(28.dp)
-                    .height(1.dp)
-                    .background(Slate200)
-            )
-
-            // "+" Button at bottom: 42dp button, opens Log transaction
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(Color.White)
-                    .clickable {
-                        if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                        onQuickAddClick()
-                    },
-                contentAlignment = Alignment.Center
+            Surface(
+                modifier = pillOffsetModifier
+                    .scale(pillAnim.value)
+                    .alpha(pillAnim.value)
+                    .shadow(elevation = 12.dp, shape = RoundedCornerShape(16.dp)),
+                shape = RoundedCornerShape(16.dp),
+                color = Color(0xF5FFFFFF), // Frosted glass 96% white
+                border = BorderStroke(1.dp, GlassBorder)
             ) {
-                Icon(
-                    imageVector = PhosphorIcons.Regular.Plus,
-                    contentDescription = "Log Transaction",
-                    tint = Cobalt,
-                    modifier = Modifier.size(20.dp)
+                Text(
+                    text = activeTooltip ?: "",
+                    fontFamily = PlusJakartaSansFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    color = Charcoal,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                 )
             }
         }
-    }
-}
 
-/**
- * Clock Arc Display with staggered character rotations per Build Brief v2 Section 15:
- * "The five characters move from the top arc to the bottom arc, rotating 180°,
- * with an overshoot ease over 900 ms each. Start delays 270, 180, 150, 90, and 0 ms."
- */
-@Composable
-private fun ClockArcDisplay(
-    timeString: String,
-    isNested: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val delays = listOf(270, 180, 150, 90, 0)
-    val overshootEasing = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1f)
-
-    Box(
-        modifier = modifier
-            .width(42.dp)
-            .height(28.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
+        // Side rail container: 54dp pill, translucent white at 88%
+        Surface(
+            modifier = Modifier
+                .width(54.dp)
+                .shadow(
+                    elevation = 10.dp,
+                    shape = RoundedCornerShape(27.dp),
+                    ambientColor = Charcoal.copy(alpha = 0.08f),
+                    spotColor = Charcoal.copy(alpha = 0.12f)
+                ),
+            shape = RoundedCornerShape(27.dp),
+            color = Color(0xE0FFFFFF), // 88% white per brief section 12
+            border = BorderStroke(1.dp, GlassBorder)
         ) {
-            timeString.forEachIndexed { index, char ->
-                val delayMs = delays.getOrElse(index) { 0 }
-                val rotation by animateFloatAsState(
-                    targetValue = if (isNested) 180f else 0f,
-                    animationSpec = tween(
-                        durationMillis = 900,
-                        delayMillis = delayMs,
-                        easing = overshootEasing
-                    ),
-                    label = "char_rotation_$index"
+            Column(
+                modifier = Modifier.padding(vertical = 12.dp, horizontal = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Top Zone: Status Ring & Privacy Eye Toggle
+                RailStatusCluster(
+                    balancesVisible = balancesVisible,
+                    onToggleBalances = onToggleBalances,
+                    isNestedScreen = isNestedScreen,
+                    onBackClick = onBackClick,
+                    hapticsEnabled = hapticsEnabled,
+                    onLongPressPrivacy = {
+                        activeTooltip = strings.tooltipPrivacyEye
+                        activeTooltipY = 16f
+                    },
+                    onReleasePrivacy = {
+                        activeTooltip = null
+                    }
                 )
 
-                Text(
-                    text = char.toString(),
-                    fontFamily = SpaceGroteskFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 10.sp,
-                    color = Slate500,
-                    modifier = Modifier.rotate(rotation)
-                )
+                // Expanding container: buttons bloom vertically on entry
+                val progress = revealProgress.value
+                Column(
+                    modifier = Modifier
+                        .graphicsLayer {
+                            alpha = progress
+                            scaleY = progress
+                        },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Navigation Area with Liquid Drip Canvas
+                    Box(
+                        modifier = Modifier
+                            .width(42.dp)
+                            .height(242.dp)
+                    ) {
+                        // Liquid Tab Drip Canvas
+                        Canvas(modifier = Modifier.matchParentSize()) {
+                            val stepPx = 50.dp.toPx()
+                            val buttonRadius = 21.dp.toPx()
+                            val buttonDiameter = 42.dp.toPx()
+
+                            val currentCenterY = buttonRadius + dripAnim.value * stepPx
+                            val stretchExtraPx = stretchFraction * 14.dp.toPx()
+                            val blobHeight = buttonDiameter + stretchExtraPx
+                            val blobWidth = (buttonDiameter - stretchFraction * 6.dp.toPx()).coerceAtLeast(28.dp.toPx())
+
+                            val top = currentCenterY - blobHeight / 2f
+                            val left = (size.width - blobWidth) / 2f
+
+                            drawRoundRect(
+                                color = Cobalt,
+                                topLeft = Offset(left, top),
+                                size = Size(blobWidth, blobHeight),
+                                cornerRadius = CornerRadius(blobWidth / 2f, blobWidth / 2f)
+                            )
+                        }
+
+                        // The 5 Nav Buttons rendered on top
+                        Column(
+                            modifier = Modifier.matchParentSize(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            RailNavButton(
+                                icon = PhosphorIcons.Regular.SquaresFour,
+                                contentDescription = strings.tooltipDashboard,
+                                isSelected = currentTab == NavTab.DASHBOARD,
+                                onClick = {
+                                    if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    onTabSelected(NavTab.DASHBOARD)
+                                },
+                                onLongPress = {
+                                    activeTooltip = strings.tooltipDashboard
+                                    activeTooltipY = 82f
+                                },
+                                onRelease = {
+                                    activeTooltip = null
+                                }
+                            )
+
+                            RailNavButton(
+                                icon = PhosphorIcons.Regular.Receipt,
+                                contentDescription = strings.tooltipLedger,
+                                isSelected = currentTab == NavTab.LEDGER,
+                                onClick = {
+                                    if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    onTabSelected(NavTab.LEDGER)
+                                },
+                                onLongPress = {
+                                    activeTooltip = strings.tooltipLedger
+                                    activeTooltipY = 132f
+                                },
+                                onRelease = {
+                                    activeTooltip = null
+                                }
+                            )
+
+                            RailNavButton(
+                                icon = PhosphorIcons.Regular.Wallet,
+                                contentDescription = strings.tooltipAccounts,
+                                isSelected = currentTab == NavTab.ACCOUNTS,
+                                onClick = {
+                                    if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    onTabSelected(NavTab.ACCOUNTS)
+                                },
+                                onLongPress = {
+                                    activeTooltip = strings.tooltipAccounts
+                                    activeTooltipY = 182f
+                                },
+                                onRelease = {
+                                    activeTooltip = null
+                                }
+                            )
+
+                            RailNavButton(
+                                icon = PhosphorIcons.Regular.ChartBar,
+                                contentDescription = strings.tooltipAnalytics,
+                                isSelected = currentTab == NavTab.ANALYTICS,
+                                onClick = {
+                                    if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    onTabSelected(NavTab.ANALYTICS)
+                                },
+                                onLongPress = {
+                                    activeTooltip = strings.tooltipAnalytics
+                                    activeTooltipY = 232f
+                                },
+                                onRelease = {
+                                    activeTooltip = null
+                                }
+                            )
+
+                            RailNavButton(
+                                icon = PhosphorIcons.Regular.GearSix,
+                                contentDescription = strings.tooltipSettings,
+                                isSelected = currentTab == NavTab.SETTINGS,
+                                onClick = {
+                                    if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                    onTabSelected(NavTab.SETTINGS)
+                                },
+                                onLongPress = {
+                                    activeTooltip = strings.tooltipSettings
+                                    activeTooltipY = 282f
+                                },
+                                onRelease = {
+                                    activeTooltip = null
+                                }
+                            )
+                        }
+                    }
+
+                    // Divider before Quick Add
+                    Box(
+                        modifier = Modifier
+                            .width(28.dp)
+                            .height(1.dp)
+                            .background(Slate200)
+                    )
+
+                    // "+" Button at bottom: 42dp button with tap and hold tooltip
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onPress = {
+                                        val released = tryAwaitRelease()
+                                        activeTooltip = null
+                                    },
+                                    onLongPress = {
+                                        if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                        activeTooltip = strings.tooltipLogTransaction
+                                        activeTooltipY = 338f
+                                    },
+                                    onTap = {
+                                        if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                        onQuickAddClick()
+                                    }
+                                )
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = PhosphorIcons.Regular.Plus,
+                            contentDescription = strings.tooltipLogTransaction,
+                            tint = Cobalt,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
             }
         }
     }
@@ -350,19 +415,32 @@ private fun RailNavButton(
     icon: ImageVector,
     contentDescription: String,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongPress: (() -> Unit)? = null,
+    onRelease: (() -> Unit)? = null
 ) {
     val iconColor = if (isSelected) Color.White else Slate500
+    val view = LocalView.current
 
     Box(
         modifier = Modifier
             .size(42.dp)
             .clip(CircleShape)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            ),
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        val released = tryAwaitRelease()
+                        onRelease?.invoke()
+                    },
+                    onLongPress = {
+                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        onLongPress?.invoke()
+                    },
+                    onTap = {
+                        onClick()
+                    }
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
         Icon(

@@ -1,6 +1,8 @@
 package app.cashjournal.ui
 
+import android.app.Activity
 import android.view.HapticFeedbackConstants
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
@@ -28,7 +30,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
@@ -124,7 +129,12 @@ fun MainAppScaffold(
     )
 
     val tiltAngle = remember { Animatable(0f) }
+    var isInitialComposition by remember { mutableStateOf(true) }
     LaunchedEffect(railOnRight) {
+        if (isInitialComposition) {
+            isInitialComposition = false
+            return@LaunchedEffect
+        }
         if (state.userPreferences.tactileHapticsEnabled) {
             view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
         }
@@ -134,6 +144,33 @@ fun MainAppScaffold(
             targetValue = 0f,
             animationSpec = spring(stiffness = 320f, dampingRatio = 0.65f)
         )
+    }
+
+    val activity = context as? Activity
+    var lastBackPressTime by remember { mutableLongStateOf(0L) }
+
+    BackHandler(enabled = true) {
+        when {
+            state.activeSheet != null -> {
+                viewModel.dismissSheet()
+            }
+            state.currentScreen == AppScreen.ACCOUNT_DETAIL -> {
+                viewModel.setScreen(AppScreen.ACCOUNTS)
+            }
+            state.currentScreen != AppScreen.DASHBOARD -> {
+                viewModel.setScreen(AppScreen.DASHBOARD)
+            }
+            else -> {
+                val now = System.currentTimeMillis()
+                if (now - lastBackPressTime < 2000L) {
+                    activity?.finish()
+                } else {
+                    lastBackPressTime = now
+                    val exitMsg = if (state.userPreferences.language == "in") "Tekan sekali lagi untuk keluar" else "Press back again to exit"
+                    viewModel.showToast(exitMsg)
+                }
+            }
+        }
     }
 
     // Map screen to NavTab
@@ -284,7 +321,8 @@ fun MainAppScaffold(
                         onClearAllData = { viewModel.clearAllData() },
                         onSetPin = { pin -> viewModel.setPin(pin) },
                         onRemovePin = { viewModel.removePin() },
-                        onLockAppNow = onLockApp
+                        onLockAppNow = onLockApp,
+                        onResetOnboarding = { viewModel.resetOnboarding() }
                     )
                 }
             }
@@ -314,6 +352,8 @@ fun MainAppScaffold(
                 isNestedScreen = isAccountDetail,
                 onBackClick = if (isAccountDetail) { { viewModel.setScreen(AppScreen.ACCOUNTS) } } else null,
                 hapticsEnabled = state.userPreferences.tactileHapticsEnabled,
+                railOnRight = railOnRight,
+                languageCode = state.userPreferences.language,
                 modifier = Modifier.rotate(tiltAngle.value)
             )
         }
@@ -375,7 +415,8 @@ fun MainAppScaffold(
                             viewModel.dismissSheet()
                             viewModel.showToast("Currency changed to $code")
                         },
-                        onDismiss = { viewModel.dismissSheet() }
+                        onDismiss = { viewModel.dismissSheet() },
+                        languageCode = state.userPreferences.language
                     )
 
                     ActiveSheet.WEATHER_DETAIL -> WeatherDetailSheet(

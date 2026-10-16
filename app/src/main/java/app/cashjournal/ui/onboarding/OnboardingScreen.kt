@@ -1,6 +1,7 @@
 package app.cashjournal.ui.onboarding
 
 import android.view.HapticFeedbackConstants
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -30,6 +31,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -109,13 +112,27 @@ enum class WeatherOption {
 
 @Composable
 fun OnboardingScreen(
-    onFinish: (language: AppLanguage, currencyCode: String, name: String, railOnRight: Boolean, shakeToSwap: Boolean, loadExample: Boolean) -> Unit
+    onFinish: (
+        language: AppLanguage,
+        currencyCode: String,
+        name: String,
+        railOnRight: Boolean,
+        shakeToSwap: Boolean,
+        loadExample: Boolean,
+        weatherOption: WeatherOption,
+        weatherCityName: String,
+        weatherCityLat: Double,
+        weatherCityLon: Double
+    ) -> Unit
 ) {
     var step by remember { mutableIntStateOf(1) }
     var language by remember { mutableStateOf(AppLanguage.ENGLISH) }
     var selectedCountry by remember { mutableStateOf(Country.COUNTRIES[0]) } // Default Indonesia
     var userName by remember { mutableStateOf("") }
     var weatherOption by remember { mutableStateOf(WeatherOption.APPROX_LOCATION) }
+    var weatherCityName by remember { mutableStateOf("Bandung") }
+    var weatherCityLat by remember { mutableDoubleStateOf(-6.9147) }
+    var weatherCityLon by remember { mutableDoubleStateOf(107.6098) }
     var railOnRight by remember { mutableStateOf(true) }
     var shakeToSwap by remember { mutableStateOf(false) }
     var loadExampleData by remember { mutableStateOf(true) }
@@ -124,6 +141,11 @@ fun OnboardingScreen(
     val texts = getOnboardingTexts(language)
     val view = LocalView.current
     val hapticTick = { view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP) }
+
+    BackHandler(enabled = step > 1 && !isCompleted) {
+        hapticTick()
+        step--
+    }
 
     if (isCompleted) {
         // Confirmation Screen (CheckCircle scales in over 600ms)
@@ -156,7 +178,18 @@ fun OnboardingScreen(
 
                 Button(
                     onClick = {
-                        onFinish(language, selectedCountry.currencyCode, userName, railOnRight, shakeToSwap, loadExampleData)
+                        onFinish(
+                            language,
+                            selectedCountry.currencyCode,
+                            userName,
+                            railOnRight,
+                            shakeToSwap,
+                            loadExampleData,
+                            weatherOption,
+                            weatherCityName,
+                            weatherCityLat,
+                            weatherCityLon
+                        )
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Cobalt),
                     shape = RoundedCornerShape(16.dp),
@@ -300,6 +333,13 @@ fun OnboardingScreen(
                                 onSelect = {
                                     hapticTick()
                                     weatherOption = it
+                                },
+                                selectedCity = weatherCityName,
+                                onSelectCity = { name, lat, lon ->
+                                    hapticTick()
+                                    weatherCityName = name
+                                    weatherCityLat = lat
+                                    weatherCityLon = lon
                                 },
                                 texts = texts
                             )
@@ -827,12 +867,29 @@ private fun Step4Name(
 // ----------------------------------------------------------------------------
 // Step 5: Weather
 // ----------------------------------------------------------------------------
+private data class OnboardingCity(val name: String, val lat: Double, val lon: Double)
+
 @Composable
 private fun Step5Weather(
     selectedOption: WeatherOption,
     onSelect: (WeatherOption) -> Unit,
+    selectedCity: String,
+    onSelectCity: (name: String, lat: Double, lon: Double) -> Unit,
     texts: OnboardingTexts
 ) {
+    val popularCities = remember {
+        listOf(
+            OnboardingCity("Bandung", -6.9147, 107.6098),
+            OnboardingCity("Jakarta", -6.2088, 106.8456),
+            OnboardingCity("Surabaya", -7.2575, 112.7521),
+            OnboardingCity("Medan", 3.5952, 98.6722),
+            OnboardingCity("Singapore", 1.3521, 103.8198),
+            OnboardingCity("Tokyo", 35.6762, 139.6503),
+            OnboardingCity("London", 51.5074, -0.1278),
+            OnboardingCity("New York", 40.7128, -74.0060)
+        )
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
             text = texts.weatherTitle,
@@ -861,6 +918,26 @@ private fun Step5Weather(
             onClick = { onSelect(WeatherOption.APPROX_LOCATION) }
         )
 
+        if (selectedOption == WeatherOption.APPROX_LOCATION) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Slate100)
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = if (texts.weatherTitle.contains("Cuaca", ignoreCase = true)) {
+                        "Resolusi GPS: ~1 km (privat) · Cadangan: Jakarta jika GPS nonaktif"
+                    } else {
+                        "GPS resolution: ~1 km (private) · Defaults to Jakarta if GPS is disabled"
+                    },
+                    fontFamily = PlusJakartaSansFamily,
+                    fontSize = 11.sp,
+                    color = Slate500
+                )
+            }
+        }
+
         WeatherCard(
             title = texts.weatherSearchCity,
             subtitle = texts.weatherSearchDesc,
@@ -868,6 +945,55 @@ private fun Step5Weather(
             isSelected = selectedOption == WeatherOption.SEARCH_CITY,
             onClick = { onSelect(WeatherOption.SEARCH_CITY) }
         )
+
+        if (selectedOption == WeatherOption.SEARCH_CITY) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Slate100)
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = if (texts.weatherTitle.contains("Cuaca", ignoreCase = true)) {
+                        "Pilih Kota: $selectedCity"
+                    } else {
+                        "Selected City: $selectedCity"
+                    },
+                    fontFamily = PlusJakartaSansFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    color = Cobalt
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    popularCities.forEach { city ->
+                        val isCitySelected = city.name.equals(selectedCity, ignoreCase = true)
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isCitySelected) Cobalt else Color.White)
+                                .clickable { onSelectCity(city.name, city.lat, city.lon) }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = city.name,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = if (isCitySelected) Color.White else Charcoal
+                            )
+                        }
+                    }
+                }
+            }
+        }
 
         WeatherCard(
             title = texts.weatherNotNow,

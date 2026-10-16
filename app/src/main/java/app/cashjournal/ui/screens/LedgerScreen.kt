@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
 import app.cashjournal.domain.model.Transaction
 import app.cashjournal.domain.model.TransactionType
 import app.cashjournal.ui.MainUiState
@@ -54,6 +55,7 @@ import app.cashjournal.ui.components.GlassCard
 import app.cashjournal.ui.components.ScrollForMorePill
 import app.cashjournal.ui.components.SubtleGlassCard
 import app.cashjournal.ui.components.TransactionRow
+import app.cashjournal.ui.i18n.AppStrings
 import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Cobalt
 import app.cashjournal.ui.theme.PlusJakartaSansFamily
@@ -85,6 +87,8 @@ fun LedgerScreen(
     onLogTransactionClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings = AppStrings.get(state.userPreferences.language)
+    val isIndonesian = state.userPreferences.language.equals("in", ignoreCase = true)
     var selectedFilter by remember { mutableStateOf(LedgerFilter.ALL) }
     var searchQuery by remember { mutableStateOf("") }
 
@@ -120,12 +124,13 @@ fun LedgerScreen(
     }
 
     // Grouping by day
-    val groupedTransactions = remember(filteredTransactions) {
+    val groupedTransactions = remember(filteredTransactions, isIndonesian) {
         val cal = Calendar.getInstance()
         val todayYear = cal.get(Calendar.YEAR)
         val todayDayOfYear = cal.get(Calendar.DAY_OF_YEAR)
 
         val txCal = Calendar.getInstance()
+        val locale = if (isIndonesian) Locale("id", "ID") else Locale.US
 
         filteredTransactions.groupBy { tx ->
             txCal.timeInMillis = tx.date
@@ -133,10 +138,10 @@ fun LedgerScreen(
             val txDayOfYear = txCal.get(Calendar.DAY_OF_YEAR)
 
             when {
-                txYear == todayYear && txDayOfYear == todayDayOfYear -> "TODAY"
-                txYear == todayYear && txDayOfYear == todayDayOfYear - 1 -> "YESTERDAY"
+                txYear == todayYear && txDayOfYear == todayDayOfYear -> if (isIndonesian) "HARI INI" else "TODAY"
+                txYear == todayYear && txDayOfYear == todayDayOfYear - 1 -> if (isIndonesian) "KEMARIN" else "YESTERDAY"
                 else -> {
-                    SimpleDateFormat("EEEE, MMM d", Locale.US).format(Date(tx.date)).uppercase()
+                    SimpleDateFormat("EEEE, MMM d", locale).format(Date(tx.date)).uppercase()
                 }
             }
         }
@@ -176,14 +181,14 @@ fun LedgerScreen(
             item(key = "header", contentType = "header") {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        text = "Activity Ledger",
+                        text = strings.ledgerTitle,
                         fontFamily = PlusJakartaSansFamily,
                         fontWeight = FontWeight.ExtraBold,
                         fontSize = 24.sp,
                         color = Charcoal
                     )
                     Text(
-                        text = "$allCount transactions logged",
+                        text = if (isIndonesian) "$allCount transaksi tercatat" else "$allCount transactions logged",
                         fontFamily = PlusJakartaSansFamily,
                         fontSize = 13.sp,
                         color = Slate500
@@ -200,25 +205,25 @@ fun LedgerScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     FilterPill(
-                        label = "All",
+                        label = strings.filterAll,
                         count = allCount,
                         isSelected = selectedFilter == LedgerFilter.ALL,
                         onClick = { selectedFilter = LedgerFilter.ALL }
                     )
                     FilterPill(
-                        label = "Expense",
+                        label = strings.filterExpense,
                         count = expenseCount,
                         isSelected = selectedFilter == LedgerFilter.EXPENSE,
                         onClick = { selectedFilter = LedgerFilter.EXPENSE }
                     )
                     FilterPill(
-                        label = "Income",
+                        label = strings.filterIncome,
                         count = incomeCount,
                         isSelected = selectedFilter == LedgerFilter.INCOME,
                         onClick = { selectedFilter = LedgerFilter.INCOME }
                     )
                     FilterPill(
-                        label = "Transfer",
+                        label = strings.filterTransfer,
                         count = transferCount,
                         isSelected = selectedFilter == LedgerFilter.TRANSFER,
                         onClick = { selectedFilter = LedgerFilter.TRANSFER }
@@ -254,7 +259,7 @@ fun LedgerScreen(
                             decorationBox = { innerTextField ->
                                 if (searchQuery.isEmpty()) {
                                     Text(
-                                        text = "Search notes, categories, amounts...",
+                                        text = strings.searchLedgerPlaceholder,
                                         fontFamily = PlusJakartaSansFamily,
                                         fontSize = 13.sp,
                                         color = Slate400
@@ -287,11 +292,18 @@ fun LedgerScreen(
                                 modifier = Modifier.size(40.dp)
                             )
                             Text(
-                                text = "No transactions yet",
+                                text = strings.emptyLedgerTitle,
                                 fontFamily = PlusJakartaSansFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
                                 color = Charcoal
+                            )
+                            Text(
+                                text = strings.emptyLedgerDesc,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontSize = 13.sp,
+                                color = Slate500,
+                                textAlign = TextAlign.Center
                             )
                             Button(
                                 onClick = onLogTransactionClick,
@@ -299,7 +311,7 @@ fun LedgerScreen(
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Text(
-                                    text = "Log transaction",
+                                    text = strings.tooltipLogTransaction,
                                     fontFamily = PlusJakartaSansFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp,
@@ -320,7 +332,7 @@ fun LedgerScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "No matching transactions.",
+                                text = if (isIndonesian) "Tidak ada transaksi yang cocok." else "No matching transactions.",
                                 fontFamily = PlusJakartaSansFamily,
                                 fontSize = 14.sp,
                                 color = Slate500

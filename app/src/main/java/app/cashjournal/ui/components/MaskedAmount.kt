@@ -83,17 +83,13 @@ fun MaskedAmountText(
     LaunchedEffect(balancesVisible) {
         val totalDigits = amountText.count { it.isDigit() }
         if (balancesVisible) {
-            if (visualState == MaskVisualState.MASKED_IDLE) {
-                visualState = MaskVisualState.WAVE_REVEALING
-                delay(totalDigits * 32L + 200L)
-                visualState = MaskVisualState.REVEALED_IDLE
-            }
+            visualState = MaskVisualState.WAVE_REVEALING
+            delay(totalDigits * 32L + 200L)
+            visualState = MaskVisualState.REVEALED_IDLE
         } else {
-            if (visualState == MaskVisualState.REVEALED_IDLE) {
-                visualState = MaskVisualState.WAVE_HIDING
-                delay(totalDigits * 32L + 110L)
-                visualState = MaskVisualState.MASKED_IDLE
-            }
+            visualState = MaskVisualState.WAVE_HIDING
+            delay(totalDigits * 32L + 110L)
+            visualState = MaskVisualState.MASKED_IDLE
         }
     }
 

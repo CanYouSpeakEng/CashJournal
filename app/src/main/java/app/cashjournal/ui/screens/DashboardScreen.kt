@@ -66,6 +66,7 @@ import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Wallet
 import androidx.compose.material3.Icon
+import app.cashjournal.ui.i18n.AppStrings
 
 @Composable
 fun DashboardScreen(
@@ -78,6 +79,7 @@ fun DashboardScreen(
     modifier: Modifier = Modifier
 ) {
     val currency = Currency.findByCode(state.userPreferences.currencyCode)
+    val strings = AppStrings.get(state.userPreferences.language)
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
 
@@ -111,7 +113,7 @@ fun DashboardScreen(
         // 1. Total Net Worth Header
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = "TOTAL NET WORTH",
+                text = strings.totalNetWorthTitle,
                 fontFamily = SpaceGroteskFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 11.sp,
@@ -137,7 +139,7 @@ fun DashboardScreen(
             }
 
             Text(
-                text = "${state.accounts.size} accounts · all in ${currency.code}",
+                text = String.format(strings.accountsSubline, state.accounts.size, currency.code),
                 fontFamily = PlusJakartaSansFamily,
                 fontSize = 12.sp,
                 color = Slate500
@@ -154,14 +156,15 @@ fun DashboardScreen(
                 SafeToSpendStatus.SAFE -> Emerald
                 SafeToSpendStatus.NEAR_LIMIT -> Saffron
                 SafeToSpendStatus.RECALIBRATE -> Color(0xFFF87171)
-                SafeToSpendStatus.SET_BUDGET -> Slate500
+                SafeToSpendStatus.SET_BUDGET, SafeToSpendStatus.NO_FUNDS -> Slate500
             }
 
             val statusText = when (safe.status) {
-                SafeToSpendStatus.SAFE -> "Safe"
-                SafeToSpendStatus.NEAR_LIMIT -> "Near Limit"
-                SafeToSpendStatus.RECALIBRATE -> "Recalibrate"
-                SafeToSpendStatus.SET_BUDGET -> "Set a monthly budget"
+                SafeToSpendStatus.SAFE -> strings.statusSafe
+                SafeToSpendStatus.NEAR_LIMIT -> strings.statusNearLimit
+                SafeToSpendStatus.RECALIBRATE -> strings.statusRecalibrate
+                SafeToSpendStatus.SET_BUDGET -> strings.statusSetBudget
+                SafeToSpendStatus.NO_FUNDS -> strings.statusNoFunds
             }
 
             Row(
@@ -176,7 +179,7 @@ fun DashboardScreen(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = "SAFE-TO-SPEND TODAY",
+                        text = strings.safeToSpendTodayTitle,
                         fontFamily = SpaceGroteskFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
@@ -186,7 +189,7 @@ fun DashboardScreen(
 
                     if (safe.status == SafeToSpendStatus.SET_BUDGET) {
                         Text(
-                            text = "Set a monthly budget",
+                            text = strings.setMonthlyBudgetAction,
                             fontFamily = PlusJakartaSansFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
@@ -203,7 +206,7 @@ fun DashboardScreen(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "/ day",
+                                text = strings.safeToSpendPerDay,
                                 fontFamily = PlusJakartaSansFamily,
                                 fontWeight = FontWeight.Medium,
                                 fontSize = 14.sp,
@@ -233,10 +236,18 @@ fun DashboardScreen(
                             )
                         }
 
-                        if (safe.budget > 0) {
-                            val daysLabel = if (safe.isLastDay) "Last day" else "${safe.daysLeft} days left"
+                        if (safe.status == SafeToSpendStatus.NO_FUNDS) {
                             Text(
-                                text = "$daysLabel · ${Currency.formatMinor(safe.remaining, state.userPreferences.currencyCode)} remaining",
+                                text = strings.noFundsSubline,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontSize = 11.sp,
+                                color = Slate500
+                            )
+                        } else if (safe.budget > 0) {
+                            val daysLabel = if (safe.isLastDay) strings.lastDayLabel else String.format(strings.daysLeftFormat, safe.daysLeft)
+                            val remText = String.format(strings.remainingFormat, Currency.formatMinor(safe.remaining, state.userPreferences.currencyCode))
+                            Text(
+                                text = "$daysLabel · $remText",
                                 fontFamily = PlusJakartaSansFamily,
                                 fontSize = 11.sp,
                                 color = Slate500
@@ -438,7 +449,7 @@ fun DashboardScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Recent Activity",
+                text = strings.recentActivityTitle,
                 fontFamily = PlusJakartaSansFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
@@ -446,7 +457,7 @@ fun DashboardScreen(
             )
 
             Text(
-                text = "View transactions",
+                text = strings.viewAllAction,
                 fontFamily = PlusJakartaSansFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 13.sp,
@@ -463,7 +474,7 @@ fun DashboardScreen(
             ) {
                 if (state.recentTransactions.isEmpty()) {
                     Text(
-                        text = "No transactions yet",
+                        text = strings.noTransactionsYet,
                         fontFamily = PlusJakartaSansFamily,
                         fontSize = 13.sp,
                         color = Slate500,
@@ -498,7 +509,7 @@ fun DashboardScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "MONTHLY BUDGET RUNWAY",
+                        text = strings.runwayCardTitle.uppercase(),
                         fontFamily = SpaceGroteskFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 10.sp,
@@ -520,7 +531,7 @@ fun DashboardScreen(
                     SafeToSpendStatus.SAFE -> Emerald
                     SafeToSpendStatus.NEAR_LIMIT -> Saffron
                     SafeToSpendStatus.RECALIBRATE -> Color(0xFFF87171)
-                    SafeToSpendStatus.SET_BUDGET -> Slate500
+                    SafeToSpendStatus.SET_BUDGET, SafeToSpendStatus.NO_FUNDS -> Slate500
                 }
 
                 LinearProgressIndicator(

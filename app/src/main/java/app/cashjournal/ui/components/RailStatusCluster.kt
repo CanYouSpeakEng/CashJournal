@@ -12,6 +12,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +40,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
@@ -78,7 +80,9 @@ fun RailStatusCluster(
     modifier: Modifier = Modifier,
     isNestedScreen: Boolean = false,
     onBackClick: (() -> Unit)? = null,
-    hapticsEnabled: Boolean = true
+    hapticsEnabled: Boolean = true,
+    onLongPressPrivacy: (() -> Unit)? = null,
+    onReleasePrivacy: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val view = LocalView.current
@@ -155,15 +159,31 @@ fun RailStatusCluster(
                 .shadow(elevation = 3.dp, shape = CircleShape)
                 .clip(CircleShape)
                 .background(Color.White)
-                .clickable {
-                    if (hapticsEnabled) {
-                        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    }
-                    if (isNestedScreen) {
-                        onBackClick?.invoke()
-                    } else {
-                        onToggleBalances()
-                    }
+                .pointerInput(isNestedScreen) {
+                    detectTapGestures(
+                        onPress = {
+                            val released = tryAwaitRelease()
+                            onReleasePrivacy?.invoke()
+                        },
+                        onLongPress = {
+                            if (!isNestedScreen) {
+                                if (hapticsEnabled) {
+                                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                }
+                                onLongPressPrivacy?.invoke()
+                            }
+                        },
+                        onTap = {
+                            if (hapticsEnabled) {
+                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                            }
+                            if (isNestedScreen) {
+                                onBackClick?.invoke()
+                            } else {
+                                onToggleBalances()
+                            }
+                        }
+                    )
                 },
             contentAlignment = Alignment.Center
         ) {

@@ -49,6 +49,7 @@ import app.cashjournal.ui.components.GlassCard
 import app.cashjournal.ui.components.SegmentItem
 import app.cashjournal.ui.components.SegmentedControl
 import app.cashjournal.ui.components.ToggleSwitch
+import app.cashjournal.ui.i18n.AppStrings
 import app.cashjournal.ui.onboarding.AppLanguage
 import app.cashjournal.ui.security.BiometricAuthHelper
 import app.cashjournal.ui.sheets.PinSetupSheet
@@ -65,6 +66,7 @@ import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
+import com.adamglin.phosphoricons.regular.ArrowCounterClockwise
 import com.adamglin.phosphoricons.regular.CaretRight
 import com.adamglin.phosphoricons.regular.Lock
 
@@ -89,12 +91,14 @@ fun SettingsScreen(
     onSetPin: (String) -> Unit = {},
     onRemovePin: () -> Unit = {},
     onLockAppNow: () -> Unit = {},
+    onResetOnboarding: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showPinSetupSheet by remember { mutableStateOf(false) }
     var showPinRemoveSheet by remember { mutableStateOf(false) }
     val currency = Currency.findByCode(state.userPreferences.currencyCode)
+    val strings = AppStrings.get(state.userPreferences.language)
     val context = LocalContext.current
     val activity = context as? FragmentActivity
 
@@ -103,7 +107,7 @@ fun SettingsScreen(
             onDismissRequest = { showDeleteDialog = false },
             title = {
                 Text(
-                    text = "Delete all data?",
+                    text = if (state.userPreferences.language == "in") "Hapus semua data?" else "Delete all data?",
                     fontFamily = PlusJakartaSansFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
@@ -112,7 +116,7 @@ fun SettingsScreen(
             },
             text = {
                 Text(
-                    text = "Removes all accounts and transactions on this phone. This can't be undone.",
+                    text = if (state.userPreferences.language == "in") "Menghapus semua akun dan transaksi di ponsel ini. Tindakan ini tidak dapat dibatalkan." else "Removes all accounts and transactions on this phone. This can't be undone.",
                     fontFamily = PlusJakartaSansFamily,
                     fontSize = 14.sp,
                     color = Slate600
@@ -128,7 +132,7 @@ fun SettingsScreen(
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Text(
-                        text = "Delete everything",
+                        text = if (state.userPreferences.language == "in") "Hapus semuanya" else "Delete everything",
                         fontFamily = PlusJakartaSansFamily,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -138,7 +142,7 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
                     Text(
-                        text = "Cancel",
+                        text = if (state.userPreferences.language == "in") "Batal" else "Cancel",
                         fontFamily = PlusJakartaSansFamily,
                         fontWeight = FontWeight.SemiBold,
                         color = Slate600
@@ -179,14 +183,14 @@ fun SettingsScreen(
         // Title & Subtitle
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                text = "Settings",
+                text = strings.settingsTitle,
                 fontFamily = PlusJakartaSansFamily,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 24.sp,
                 color = Charcoal
             )
             Text(
-                text = "Preferences, security, and device data",
+                text = strings.settingsSubtitle,
                 fontFamily = PlusJakartaSansFamily,
                 fontSize = 13.sp,
                 color = Slate500
@@ -200,7 +204,7 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "LANGUAGE",
+                    text = strings.sectionLanguage,
                     fontFamily = SpaceGroteskFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
@@ -236,7 +240,7 @@ fun SettingsScreen(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        text = "MAIN CURRENCY",
+                        text = strings.sectionMainCurrency,
                         fontFamily = SpaceGroteskFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
@@ -268,7 +272,7 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
-                    text = "SECURITY & ACCESS",
+                    text = strings.sectionSecurity,
                     fontFamily = SpaceGroteskFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
@@ -277,8 +281,8 @@ fun SettingsScreen(
                 )
 
                 SettingToggleRow(
-                    title = "PIN Code",
-                    subtitle = if (state.userPreferences.pinEnabled) "App locked after 15s in background" else "Protect app with 4-digit code",
+                    title = strings.pinLockTitle,
+                    subtitle = if (state.userPreferences.pinEnabled) (if (state.userPreferences.language == "in") "Terkunci otomatis setelah 15 dtk" else "App locked after 15s in background") else strings.pinLockSubtitle,
                     checked = state.userPreferences.pinEnabled,
                     onCheckedChange = { targetChecked ->
                         if (targetChecked) {
@@ -290,26 +294,26 @@ fun SettingsScreen(
                 )
 
                 SettingToggleRow(
-                    title = "Biometrics",
-                    subtitle = if (state.userPreferences.biometricsEnabled) "Fingerprint / Face unlock active" else "Unlock with fingerprint or face",
+                    title = strings.biometricsTitle,
+                    subtitle = if (state.userPreferences.biometricsEnabled) (if (state.userPreferences.language == "in") "Sidik jari / Wajah aktif" else "Fingerprint / Face unlock active") else strings.biometricsSubtitle,
                     checked = state.userPreferences.biometricsEnabled,
                     onCheckedChange = { targetChecked ->
                         if (targetChecked) {
                             if (!state.userPreferences.pinEnabled || state.userPreferences.pinHash.isEmpty()) {
-                                onToast("Please set up a PIN code first")
+                                onToast(if (state.userPreferences.language == "in") "Harap atur kode PIN terlebih dahulu" else "Please set up a PIN code first")
                                 showPinSetupSheet = true
                             } else {
                                 if (activity != null) {
                                     BiometricAuthHelper.promptBiometric(
                                         activity = activity,
-                                        title = "Enable Biometrics",
-                                        subtitle = "Confirm biometric identity to enable",
+                                        title = if (state.userPreferences.language == "in") "Aktifkan Biometrik" else "Enable Biometrics",
+                                        subtitle = if (state.userPreferences.language == "in") "Konfirmasi identitas biometrik untuk mengaktifkan" else "Confirm biometric identity to enable",
                                         onSuccess = {
                                             onBiometricsChange(true)
-                                            onToast("Biometrics enabled")
+                                            onToast(if (state.userPreferences.language == "in") "Biometrik diaktifkan" else "Biometrics enabled")
                                         },
                                         onError = {
-                                            onToast("Biometric verification cancelled or failed")
+                                            onToast(if (state.userPreferences.language == "in") "Verifikasi biometrik dibatalkan" else "Biometric verification cancelled or failed")
                                         }
                                     )
                                 } else {
@@ -318,14 +322,14 @@ fun SettingsScreen(
                             }
                         } else {
                             onBiometricsChange(false)
-                            onToast("Biometrics disabled")
+                            onToast(if (state.userPreferences.language == "in") "Biometrik dinonaktifkan" else "Biometrics disabled")
                         }
                     }
                 )
 
                 SettingToggleRow(
-                    title = "Screen Privacy",
-                    subtitle = "Blocks screenshots and app switcher preview",
+                    title = strings.screenPrivacyTitle,
+                    subtitle = strings.screenPrivacySubtitle,
                     checked = state.userPreferences.screenPrivacyEnabled,
                     onCheckedChange = onScreenPrivacyChange
                 )
@@ -345,14 +349,14 @@ fun SettingsScreen(
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
-                                text = "Lock App Now",
+                                text = strings.lockAppNowTitle,
                                 fontFamily = PlusJakartaSansFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
                                 color = Charcoal
                             )
                             Text(
-                                text = "Immediately lock screen with PIN",
+                                text = strings.lockAppNowSubtitle,
                                 fontFamily = PlusJakartaSansFamily,
                                 fontSize = 12.sp,
                                 color = Slate500
@@ -377,7 +381,7 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
-                    text = "SENSORY & FEEDBACK",
+                    text = strings.sectionSensory,
                     fontFamily = SpaceGroteskFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
@@ -386,19 +390,19 @@ fun SettingsScreen(
                 )
 
                 SettingToggleRow(
-                    title = "Sound Effects",
+                    title = strings.soundEffectsTitle,
                     checked = state.userPreferences.soundEffectsEnabled,
                     onCheckedChange = onSoundEffectsChange
                 )
 
                 SettingToggleRow(
-                    title = "Tactile Haptics",
+                    title = strings.tactileHapticsTitle,
                     checked = state.userPreferences.tactileHapticsEnabled,
                     onCheckedChange = onTactileHapticsChange
                 )
 
                 SettingToggleRow(
-                    title = "Daily Reminder",
+                    title = strings.dailyReminderTitle,
                     checked = state.userPreferences.dailyReminderEnabled,
                     onCheckedChange = onDailyReminderChange
                 )
@@ -412,7 +416,7 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
-                    text = "SIDEBAR PLACEMENT",
+                    text = strings.sectionSidebar,
                     fontFamily = SpaceGroteskFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
@@ -421,8 +425,8 @@ fun SettingsScreen(
                 )
 
                 val railItems = listOf(
-                    SegmentItem(false, "Left", Cobalt),
-                    SegmentItem(true, "Right", Cobalt)
+                    SegmentItem(false, if (state.userPreferences.language == "in") "Kiri" else "Left", Cobalt),
+                    SegmentItem(true, if (state.userPreferences.language == "in") "Kanan" else "Right", Cobalt)
                 )
 
                 SegmentedControl(
@@ -432,8 +436,8 @@ fun SettingsScreen(
                 )
 
                 SettingToggleRow(
-                    title = "Shake to Swap Sides",
-                    subtitle = "Knock device or shake to swap",
+                    title = strings.knockToSwapTitle,
+                    subtitle = if (state.userPreferences.language == "in") "Ketuk perangkat untuk pindah sisi" else "Knock device or shake to swap",
                     checked = state.userPreferences.shakeToSwap,
                     onCheckedChange = onShakeToSwapChange
                 )
@@ -444,7 +448,7 @@ fun SettingsScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "KNOCK SENSITIVITY",
+                            text = strings.knockSensitivityTitle,
                             fontFamily = SpaceGroteskFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp,
@@ -453,9 +457,9 @@ fun SettingsScreen(
                         )
 
                         val sensitivityItems = listOf(
-                            SegmentItem("gentle", "Gentle", Cobalt),
-                            SegmentItem("balanced", "Balanced", Cobalt),
-                            SegmentItem("firm", "Firm", Cobalt)
+                            SegmentItem("gentle", strings.knockSensitivityLow, Cobalt),
+                            SegmentItem("balanced", strings.knockSensitivityMed, Cobalt),
+                            SegmentItem("firm", strings.knockSensitivityHigh, Cobalt)
                         )
 
                         SegmentedControl(
@@ -469,13 +473,36 @@ fun SettingsScreen(
         }
 
         // 6. Weather Card
+        val weatherLocationSubtitle = remember(state.userPreferences, state.weatherData, strings) {
+            if (state.userPreferences.weatherCityLabel.isNotBlank()) {
+                String.format(strings.weatherCitySubtitle, state.userPreferences.weatherCityLabel)
+            } else if (state.weatherData?.locationLabel.isNullOrBlank()) {
+                strings.weatherApproxSubtitle
+            } else {
+                state.weatherData?.locationLabel ?: strings.weatherApproxSubtitle
+            }
+        }
+        val weatherUpdatedText = remember(state.weatherData, strings) {
+            val fetchedAt = state.weatherData?.fetchedAt ?: 0L
+            if (fetchedAt <= 0L) {
+                strings.weatherPending
+            } else {
+                val diffMin = ((System.currentTimeMillis() - fetchedAt) / 60000L).coerceAtLeast(0L)
+                if (diffMin < 1L) {
+                    strings.weatherUpdatedJustNow
+                } else {
+                    String.format(strings.weatherUpdatedMinsAgo, diffMin)
+                }
+            }
+        }
+
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
-                    text = "WEATHER",
+                    text = strings.sectionWeather,
                     fontFamily = SpaceGroteskFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
@@ -492,14 +519,14 @@ fun SettingsScreen(
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
-                            text = "Weather Location",
+                            text = strings.weatherLocationTitle,
                             fontFamily = PlusJakartaSansFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
                             color = Charcoal
                         )
                         Text(
-                            text = "Approximate location",
+                            text = weatherLocationSubtitle,
                             fontFamily = PlusJakartaSansFamily,
                             fontSize = 12.sp,
                             color = Slate500
@@ -527,7 +554,7 @@ fun SettingsScreen(
                 )
 
                 Text(
-                    text = "Updated 4 min ago",
+                    text = weatherUpdatedText,
                     fontFamily = PlusJakartaSansFamily,
                     fontSize = 11.sp,
                     color = Slate500
@@ -542,7 +569,7 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text(
-                    text = "DATA & PORTABILITY",
+                    text = strings.sectionData,
                     fontFamily = SpaceGroteskFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
@@ -553,12 +580,12 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onToast("Coming soon") },
+                        .clickable { onToast(strings.comingSoonToast) },
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Export Excel",
+                        text = strings.exportExcelTitle,
                         fontFamily = PlusJakartaSansFamily,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp,
@@ -575,12 +602,12 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onToast("Coming soon") },
+                        .clickable { onToast(strings.comingSoonToast) },
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Smart Import",
+                        text = if (state.userPreferences.language == "in") "Impor Cerdas" else "Smart Import",
                         fontFamily = PlusJakartaSansFamily,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp,
@@ -597,12 +624,34 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clickable { onResetOnboarding() },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = strings.replayOnboardingTitle,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        color = Cobalt
+                    )
+                    Icon(
+                        imageVector = PhosphorIcons.Regular.ArrowCounterClockwise,
+                        contentDescription = "Replay Onboarding",
+                        tint = Cobalt,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
                         .clickable { showDeleteDialog = true },
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Clear all data",
+                        text = strings.clearAllDataTitle,
                         fontFamily = PlusJakartaSansFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
@@ -639,7 +688,7 @@ fun SettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "ABOUT",
+                        text = strings.sectionAbout,
                         fontFamily = SpaceGroteskFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
@@ -659,7 +708,7 @@ fun SettingsScreen(
                         color = Slate600
                     )
                     Text(
-                        text = "CashJournal v1.0.10 (Native Android Build)",
+                        text = "CashJournal v1.0.11-dev (Native Android Build)",
                         fontFamily = SpaceGroteskFamily,
                         fontSize = 11.sp,
                         color = Slate500

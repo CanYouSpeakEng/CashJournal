@@ -24,8 +24,19 @@ data class Currency(
         val JPY = Currency("JPY", "Japanese Yen", "¥", 0)
         val AUD = Currency("AUD", "Australian Dollar", "A$", 2)
         val MYR = Currency("MYR", "Malaysian Ringgit", "RM", 2)
+        val SAR = Currency("SAR", "Saudi Riyal", "SR", 2)
+        val CNY = Currency("CNY", "Chinese Yuan", "¥", 2)
+        val CAD = Currency("CAD", "Canadian Dollar", "C$", 2)
+        val CHF = Currency("CHF", "Swiss Franc", "CHF", 2)
+        val HKD = Currency("HKD", "Hong Kong Dollar", "HK$", 2)
+        val NZD = Currency("NZD", "New Zealand Dollar", "NZ$", 2)
+        val KRW = Currency("KRW", "South Korean Won", "₩", 0)
+        val THB = Currency("THB", "Thai Baht", "฿", 2)
 
-        val ALL_CURRENCIES = listOf(IDR, USD, EUR, GBP, SGD, JPY, AUD, MYR)
+        val ALL_CURRENCIES = listOf(
+            IDR, USD, EUR, GBP, SGD, JPY, AUD, MYR,
+            SAR, CNY, CAD, CHF, HKD, NZD, KRW, THB
+        )
 
         fun findByCode(code: String): Currency {
             return ALL_CURRENCIES.firstOrNull { it.code.equals(code, ignoreCase = true) } ?: IDR

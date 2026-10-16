@@ -20,6 +20,7 @@ import app.cashjournal.ui.MainAppScaffold
 import app.cashjournal.ui.MainViewModel
 import app.cashjournal.ui.onboarding.AppLanguage
 import app.cashjournal.ui.onboarding.OnboardingScreen
+import app.cashjournal.ui.onboarding.WeatherOption
 import app.cashjournal.ui.screens.AppLockScreen
 import app.cashjournal.ui.security.BiometricAuthHelper
 import app.cashjournal.ui.theme.CashJournalTheme
@@ -85,18 +86,25 @@ class MainActivity : FragmentActivity() {
 
                 if (!state.userPreferences.onboardingComplete) {
                     OnboardingScreen(
-                        onFinish = { language, currencyCode, name, railOnRight, shakeToSwap, loadExample ->
+                        onFinish = { language, currencyCode, name, railOnRight, shakeToSwap, loadExample, weatherOption, cityName, cityLat, cityLon ->
+                            val weatherOptionKey = when (weatherOption) {
+                                WeatherOption.APPROX_LOCATION -> "approx"
+                                WeatherOption.SEARCH_CITY -> "search"
+                                WeatherOption.NOT_NOW -> "not_now"
+                            }
                             viewModel.updatePreferences { prefs ->
                                 prefs.updateLanguage(if (language == AppLanguage.INDONESIAN) "in" else "en")
                                 prefs.updateCurrencyCode(currencyCode)
                                 prefs.updateUserName(name)
                                 prefs.updateRailOnRight(railOnRight)
                                 prefs.updateShakeToSwap(shakeToSwap)
+                                prefs.updateWeatherOption(weatherOptionKey, cityName, cityLat, cityLon)
                                 prefs.updateOnboardingComplete(true)
                             }
                             if (loadExample) {
                                 viewModel.seedExampleData()
                             }
+                            viewModel.refreshWeather()
                         }
                     )
                 } else if (isAppLocked && state.userPreferences.pinEnabled && state.userPreferences.pinHash.isNotEmpty()) {

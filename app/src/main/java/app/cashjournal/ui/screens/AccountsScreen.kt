@@ -45,9 +45,11 @@ import androidx.compose.ui.unit.sp
 import app.cashjournal.domain.model.Account
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.ui.MainUiState
+import app.cashjournal.ui.components.CountryFlag
 import app.cashjournal.ui.components.GlassCard
 import app.cashjournal.ui.components.MaskedAmount
 import app.cashjournal.ui.components.SubtleGlassCard
+import app.cashjournal.ui.i18n.AppStrings
 import app.cashjournal.ui.theme.CashTypography
 import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Cobalt
@@ -85,6 +87,7 @@ fun AccountsScreen(
 ) {
     var selectedWorldCurrency by remember { mutableStateOf("USD") }
     val mainCurrency = Currency.findByCode(state.userPreferences.currencyCode)
+    val strings = AppStrings.get(state.userPreferences.language)
 
     val cachedRates = state.cachedRates
     val ratesToIdr = mapOf(
@@ -151,14 +154,14 @@ fun AccountsScreen(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = "Accounts",
+                    text = strings.accountsTitle,
                     fontFamily = PlusJakartaSansFamily,
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 24.sp,
                     color = Charcoal
                 )
                 Text(
-                    text = "${state.accounts.size} accounts${if (state.isReorderMode) " · reorder mode" else ""}",
+                    text = "${String.format(strings.accountsCountFormat, state.accounts.size)}${if (state.isReorderMode) strings.reorderModeSuffix else ""}",
                     fontFamily = PlusJakartaSansFamily,
                     fontSize = 13.sp,
                     color = Slate500
@@ -179,7 +182,7 @@ fun AccountsScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (state.isReorderMode) "Done" else "Edit",
+                        text = if (state.isReorderMode) strings.doneButton else strings.editButton,
                         fontFamily = PlusJakartaSansFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
@@ -218,22 +221,41 @@ fun AccountsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Total in World Currencies",
+                        text = strings.worldCurrenciesCardTitle,
                         fontFamily = PlusJakartaSansFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp,
                         color = Slate600
                     )
 
-                    Icon(
-                        imageVector = PhosphorIcons.Regular.ArrowsClockwise,
-                        contentDescription = "Refresh",
-                        tint = Slate500,
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .clickable { onRefreshRates() }
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "${strings.baseNetWorthLabel}:",
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 11.sp,
+                            color = Slate500
+                        )
+                        MaskedAmount(
+                            amountMinor = state.totalNetWorth,
+                            currencyCode = mainCurrency.code,
+                            isMasked = state.hideBalances,
+                            textStyle = CashTypography.Mono12.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Slate600)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = PhosphorIcons.Regular.ArrowsClockwise,
+                            contentDescription = "Refresh",
+                            tint = Slate500,
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .clickable { onRefreshRates() }
+                        )
+                    }
                 }
 
                 val rateForOneUnit = if (cachedRates != null && cachedRates.rates.isNotEmpty()) {
@@ -287,10 +309,14 @@ fun AccountsScreen(
                 ) {
                     if (cachedRates != null) {
                         val dotColor = if (state.isRatesOffline) Saffron else Emerald
-                        val statusText = if (state.isRatesOffline) {
-                            "Offline · last update ${cachedRates.timeLastUpdateUtc}"
+                        val diffMs = System.currentTimeMillis() - cachedRates.fetchedAt
+                        val diffMin = (diffMs / 60000L).coerceAtLeast(0L)
+                        val syncStatus = if (state.isRatesOffline) {
+                            "${strings.ratesOfflineLabel} · (Daily rates: 00:00 UTC)"
+                        } else if (diffMin < 1) {
+                            "${strings.ratesSyncedJustNow} · (Daily rates: 00:00 UTC)"
                         } else {
-                            "Updated daily · ${cachedRates.timeLastUpdateUtc}"
+                            "${String.format(strings.ratesSyncedMinsAgo, diffMin)} · (Daily rates: 00:00 UTC)"
                         }
                         Box(
                             modifier = Modifier
@@ -298,7 +324,7 @@ fun AccountsScreen(
                                 .background(dotColor, CircleShape)
                         )
                         Text(
-                            text = statusText,
+                            text = syncStatus,
                             fontFamily = PlusJakartaSansFamily,
                             fontSize = 11.sp,
                             color = Slate500
@@ -313,7 +339,7 @@ fun AccountsScreen(
                     }
                 }
 
-                // Quick Currency Chips
+                // Quick Currency Chips with Country Flags
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -321,16 +347,19 @@ fun AccountsScreen(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val chips = listOf("USD", "SGD", "MYR", "JPY", "EUR", "SAR").filter { it != mainCurrency.code }
+                    val chips = listOf("USD", "EUR", "SGD", "JPY", "GBP", "MYR", "SAR", "THB").filter { it != mainCurrency.code }
                     chips.forEach { code ->
                         val isSelected = code == selectedWorldCurrency
-                        Box(
+                        Row(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(if (isSelected) Cobalt else Slate100)
                                 .clickable { selectedWorldCurrency = code }
-                                .padding(horizontal = 10.dp, vertical = 5.dp)
+                                .padding(horizontal = 8.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
                         ) {
+                            CountryFlag(currencyCode = code, size = 16.dp, cornerRadius = 4.dp)
                             Text(
                                 text = code,
                                 fontFamily = SpaceGroteskFamily,
