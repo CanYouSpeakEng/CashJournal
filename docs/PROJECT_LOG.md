@@ -244,6 +244,22 @@ This log is kept up to date after every step. Any AI assistant or developer read
   - Tag: `v1.0.21-dev`
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.21-dev
   - Artifacts: `app-debug.apk` (17.5 MB), `app-release.apk` (12.3 MB).
+- [x] **Phase 18: Storage Hygiene & Automatic Stale OTA Installer Cleanup**
+  - [x] **Item 83: Automatic Stale OTA Installer Cleanup & Storage Optimization**:
+    - **Context**: When downloading over-the-air updates, the APK file is stored in `cacheDir/updates/CashJournal-<version>.apk` (~12-17 MB). Although Android automatically cleans cache under extreme storage pressure, APKs remained indefinitely after installation until manually cleared in system app settings.
+    - **Method**:
+      1. Implemented `cleanStaleUpdateApks(cacheDir: File, currentVersion: String)` in `AppUpdateService.kt`.
+      2. It scans `cacheDir/updates/` and removes any `.apk` file whose version is older than or equal to `currentVersion` (via `VersionComparator.isNewer`), as well as stray non-versioned APK files, while safely preserving pending newer APKs waiting to be installed.
+      3. Integrated cleanup into three critical touchpoints in `MainViewModel.kt`:
+         - App startup (`init`) to immediately purge the installer APK after an update installation restarts the app.
+         - Update check completion (`checkForUpdates`) when the app is confirmed up to date.
+         - Download initialization (`startUpdateDownload`) to wipe any superseded APKs before writing the new build.
+    - **Verification**: Added `testCleanStaleUpdateApks` in `AppUpdateTest.kt` verifying deletion of equal, older, and stray APKs while preserving newer APKs and non-APK files. All 71 unit tests passed (`./gradlew test`).
+- [x] **Release v1.0.22-dev (Phase 18: Automatic Stale OTA Installer Cleanup & Storage Hygiene)**
+  - Tag: `v1.0.22-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.22-dev
+  - Artifacts: `app-debug.apk` (17.5 MB), `app-release.apk` (12.3 MB).
+
 
 
 

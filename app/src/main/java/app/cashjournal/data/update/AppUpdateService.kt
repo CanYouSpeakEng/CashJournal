@@ -149,4 +149,40 @@ class AppUpdateService(
                 ?: apkAssets.firstOrNull()
         }
     }
+
+    /**
+     * Deletes stale APK update files from the internal cache directory.
+     * Any APK whose version is older than or equal to currentVersion is removed.
+     * Any unrecognized or stray APK files in the updates cache are also pruned.
+     */
+    fun cleanStaleUpdateApks(cacheDir: File, currentVersion: String) {
+        try {
+            val updatesDir = File(cacheDir, "updates")
+            if (!updatesDir.exists() || !updatesDir.isDirectory) return
+
+            val apkFiles = updatesDir.listFiles { file ->
+                file.isFile && file.name.endsWith(".apk", ignoreCase = true)
+            } ?: return
+
+            val prefix = "CashJournal-"
+            val suffix = ".apk"
+            for (apk in apkFiles) {
+                val isNamedProperly = apk.name.startsWith(prefix, ignoreCase = true) &&
+                        apk.name.endsWith(suffix, ignoreCase = true)
+
+                if (!isNamedProperly) {
+                    apk.delete()
+                    continue
+                }
+
+                val apkVersion = apk.name.removePrefix(prefix).removeSuffix(suffix)
+                val isNewer = VersionComparator.isNewer(currentVersion, apkVersion)
+                if (!isNewer) {
+                    apk.delete()
+                }
+            }
+        } catch (_: Exception) {
+            // Non-critical cache cleanup failure ignored
+        }
+    }
 }

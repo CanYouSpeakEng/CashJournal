@@ -43,6 +43,7 @@ import app.cashjournal.domain.model.SafeToSpendStatus
 import app.cashjournal.domain.model.Transaction
 import app.cashjournal.domain.model.TransactionType
 import app.cashjournal.ui.sensory.ChimeGenerator
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -51,6 +52,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -256,6 +258,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 refreshWeather()
             }
             val currentRuntimeVersion = AppVersionProvider.getVersionName(application)
+            withContext(Dispatchers.IO) {
+                appUpdateService.cleanStaleUpdateApks(application.cacheDir, currentRuntimeVersion)
+            }
             if (prefs.onboardingComplete && prefs.lastSeenVersion != currentRuntimeVersion) {
                 _activeSheet.value = ActiveSheet.RELEASE_NOTES
             }
@@ -396,6 +401,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 } else {
                     _updateState.value = UpdateState.UpToDate
+                    withContext(Dispatchers.IO) {
+                        appUpdateService.cleanStaleUpdateApks(getApplication<Application>().cacheDir, currentRuntimeVersion)
+                    }
                 }
             }.onFailure { err ->
                 _updateState.value = UpdateState.Error(err.message ?: "Failed to connect to GitHub")
@@ -413,6 +421,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             val cacheDir = getApplication<Application>().cacheDir
+            withContext(Dispatchers.IO) {
+                appUpdateService.cleanStaleUpdateApks(cacheDir, AppVersionProvider.getVersionName(getApplication()))
+            }
             val updateFile = File(cacheDir, "updates/CashJournal-${info.versionName}.apk")
             _updateState.value = UpdateState.Downloading(info, 0f, 0L, info.apkSize)
 

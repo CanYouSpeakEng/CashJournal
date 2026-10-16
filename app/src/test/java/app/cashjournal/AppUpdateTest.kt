@@ -9,6 +9,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+import app.cashjournal.data.update.AppUpdateService
+import java.io.File
+
 class AppUpdateTest {
 
     private val json = Json {
@@ -98,5 +101,33 @@ class AppUpdateTest {
         val releaseAsset = assets.filter { it.name.endsWith(".apk") }
             .find { it.name.contains("release", ignoreCase = true) }
         assertEquals("app-release.apk", releaseAsset?.name)
+    }
+
+    @Test
+    fun testCleanStaleUpdateApks() {
+        val tempDir = File(System.getProperty("java.io.tmpdir"), "cashjournal_test_${System.currentTimeMillis()}")
+        val updatesDir = File(tempDir, "updates").apply { mkdirs() }
+
+        // 1. Equal to current version (just installed) -> should be deleted
+        val equalApk = File(updatesDir, "CashJournal-1.0.21-dev.apk").apply { writeText("dummy content") }
+        // 2. Older than current version (stale/superseded) -> should be deleted
+        val olderApk = File(updatesDir, "CashJournal-1.0.19-dev.apk").apply { writeText("dummy content") }
+        // 3. Newer than current version (ready to install) -> should be kept
+        val newerApk = File(updatesDir, "CashJournal-1.0.22-dev.apk").apply { writeText("dummy content") }
+        // 4. Stray / non-versioned file in updates cache -> should be deleted
+        val strayApk = File(updatesDir, "unknown-patch.apk").apply { writeText("dummy content") }
+        // 5. Non-apk file -> ignored / kept
+        val nonApk = File(updatesDir, "metadata.json").apply { writeText("{}") }
+
+        val service = AppUpdateService()
+        service.cleanStaleUpdateApks(tempDir, currentVersion = "1.0.21-dev")
+
+        assertFalse("Equal version APK should be deleted", equalApk.exists())
+        assertFalse("Older version APK should be deleted", olderApk.exists())
+        assertTrue("Newer version APK should be preserved", newerApk.exists())
+        assertFalse("Stray APK should be deleted", strayApk.exists())
+        assertTrue("Non-APK file should not be touched", nonApk.exists())
+
+        tempDir.deleteRecursively()
     }
 }
