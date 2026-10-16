@@ -223,6 +223,11 @@ This log is kept up to date after every step. Any AI assistant or developer read
   - Tag: `v1.0.19-dev`
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.19-dev
   - Artifacts: `app-debug.apk` (17.5 MB), `app-release.apk` (12.3 MB).
+- [x] **Release v1.0.20-dev (Item 79: Biometric Prompt Backgrounding Fix & OTA Verification Build)**
+  - Tag: `v1.0.20-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.20-dev
+  - Artifacts: `app-debug.apk` (17.5 MB), `app-release.apk` (12.3 MB).
+
 
 
 
