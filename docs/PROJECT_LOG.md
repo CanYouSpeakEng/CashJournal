@@ -153,8 +153,8 @@ This log is kept up to date after every step. Any AI assistant or developer read
   - [x] **Item 62 (`LOW-3` & `LOW-4`)**: Enforced `tactileHapticsEnabled` checks across all interactive controls (`SegmentedControl`, `CustomNumericKeypad`, `SettingToggleRow`, `PinSetupSheet`, `AppLockScreen`), resolved `MainViewModel.updatePreferences` audio chime inversion, and removed redundant duplicate toasts from `SettingsScreen`.
   - [x] **Item 63 (`LOW-6`)**: Removed unused `gitCommitCount` shell process execution from `app/build.gradle.kts` and deleted unused `onPinChange` parameter from `SettingsScreen` and `MainAppScaffold`.
   - [x] **Item 64**: Added `PinSecurityTest.kt` and expanded `BackupRestoreTest.kt`, verifying 100% test pass across the test suite (`./gradlew test` and `./gradlew assembleDebug` both exit code 0).
-
-
-
-
+- [x] **Release v1.0.15-dev (Phases 10-12 Audit Remediation Release)**
+  - Tag: `v1.0.15-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.15-dev
+  - Artifacts: `app-debug.apk` (17.3 MB), `app-release.apk` (12.2 MB).
 
