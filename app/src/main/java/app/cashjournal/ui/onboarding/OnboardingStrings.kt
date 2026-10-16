@@ -44,6 +44,7 @@ data class OnboardingTexts(
     val menuRight: String,
     val shakeTitle: String,
     val shakeSubtitle: String,
+    val phoneSimulatePrompt: String,
 
     val permissionsTitle: String,
     val permissionsSubtitle: String,
@@ -107,6 +108,7 @@ val EnglishOnboardingTexts = OnboardingTexts(
     menuRight = "Right side",
     shakeTitle = "Shake to swap sides",
     shakeSubtitle = "Optional. A firm shake moves the menu to the other side.",
+    phoneSimulatePrompt = "Tap preview phone to test swapping rail",
 
     permissionsTitle = "Transparent Privacy & Access",
     permissionsSubtitle = "Everything in CashJournal stays strictly offline on your device. We only request permissions for features you choose to use.",
@@ -170,6 +172,7 @@ val IndonesianOnboardingTexts = OnboardingTexts(
     menuRight = "Sisi kanan",
     shakeTitle = "Goyang untuk tukar posisi",
     shakeSubtitle = "Opsional. Goyangan mantap akan memindahkan menu ke sisi lain.",
+    phoneSimulatePrompt = "Ketuk ponsel untuk mencoba memindahkan bilah",
 
     permissionsTitle = "Privasi & Akses Transparan",
     permissionsSubtitle = "Semua data CashJournal tersimpan sepenuhnya di perangkat Anda. Kami hanya meminta izin untuk fitur yang Anda pilih.",

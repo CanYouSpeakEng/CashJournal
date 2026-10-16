@@ -42,7 +42,9 @@ data class UserPreferences(
     val weatherCityLat: Double = 0.0,
     val weatherCityLon: Double = 0.0,
     val temperatureUnit: String = "C",
-    val selectedWorldCurrency: String = "USD"
+    val selectedWorldCurrency: String = "USD",
+    val immersiveModeEnabled: Boolean = true,
+    val lastSeenVersion: String = ""
 )
 
 class UserPreferencesRepository(private val context: Context) {
@@ -71,6 +73,8 @@ class UserPreferencesRepository(private val context: Context) {
         val WEATHER_CITY_LON = doublePreferencesKey("weather_city_lon")
         val TEMPERATURE_UNIT = stringPreferencesKey("temperature_unit")
         val SELECTED_WORLD_CURRENCY = stringPreferencesKey("selected_world_currency")
+        val IMMERSIVE_MODE_ENABLED = booleanPreferencesKey("immersive_mode_enabled")
+        val LAST_SEEN_VERSION = stringPreferencesKey("last_seen_version")
 
         // Weather Cache
         val CACHED_WEATHER_TEMP = doublePreferencesKey("cached_weather_temp")
@@ -117,7 +121,9 @@ class UserPreferencesRepository(private val context: Context) {
                 weatherCityLat = preferences[PreferencesKeys.WEATHER_CITY_LAT] ?: 0.0,
                 weatherCityLon = preferences[PreferencesKeys.WEATHER_CITY_LON] ?: 0.0,
                 temperatureUnit = preferences[PreferencesKeys.TEMPERATURE_UNIT] ?: "C",
-                selectedWorldCurrency = preferences[PreferencesKeys.SELECTED_WORLD_CURRENCY] ?: "USD"
+                selectedWorldCurrency = preferences[PreferencesKeys.SELECTED_WORLD_CURRENCY] ?: "USD",
+                immersiveModeEnabled = preferences[PreferencesKeys.IMMERSIVE_MODE_ENABLED] ?: true,
+                lastSeenVersion = preferences[PreferencesKeys.LAST_SEEN_VERSION] ?: ""
             )
         }
 
@@ -251,6 +257,14 @@ class UserPreferencesRepository(private val context: Context) {
         context.dataStore.edit { it[PreferencesKeys.SELECTED_WORLD_CURRENCY] = currency }
     }
 
+    suspend fun updateImmersiveMode(enabled: Boolean) {
+        context.dataStore.edit { it[PreferencesKeys.IMMERSIVE_MODE_ENABLED] = enabled }
+    }
+
+    suspend fun updateLastSeenVersion(version: String) {
+        context.dataStore.edit { it[PreferencesKeys.LAST_SEEN_VERSION] = version }
+    }
+
     suspend fun updateWeatherCache(weather: WeatherData) {
         context.dataStore.edit {
             it[PreferencesKeys.CACHED_WEATHER_TEMP] = weather.temperature
@@ -290,7 +304,8 @@ class UserPreferencesRepository(private val context: Context) {
         weatherCityLabel: String? = null,
         weatherCityLat: Double? = null,
         weatherCityLon: Double? = null,
-        selectedWorldCurrency: String? = null
+        selectedWorldCurrency: String? = null,
+        immersiveModeEnabled: Boolean? = null
     ) {
         context.dataStore.edit { prefs ->
             language?.let { prefs[PreferencesKeys.LANGUAGE] = it }
@@ -310,6 +325,7 @@ class UserPreferencesRepository(private val context: Context) {
             weatherCityLat?.let { prefs[PreferencesKeys.WEATHER_CITY_LAT] = it }
             weatherCityLon?.let { prefs[PreferencesKeys.WEATHER_CITY_LON] = it }
             selectedWorldCurrency?.let { prefs[PreferencesKeys.SELECTED_WORLD_CURRENCY] = it }
+            immersiveModeEnabled?.let { prefs[PreferencesKeys.IMMERSIVE_MODE_ENABLED] = it }
         }
     }
 

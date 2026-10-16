@@ -103,7 +103,8 @@ class BackupRestoreTest {
                 weatherCityLabel = "Tokyo",
                 weatherCityLat = 35.6762,
                 weatherCityLon = 139.6503,
-                selectedWorldCurrency = "EUR"
+                selectedWorldCurrency = "EUR",
+                immersiveModeEnabled = true
             )
         )
 
@@ -131,6 +132,7 @@ class BackupRestoreTest {
         assertEquals(35.6762, decodedPayload.preferences?.weatherCityLat ?: 0.0, 0.0001)
         assertEquals(139.6503, decodedPayload.preferences?.weatherCityLon ?: 0.0, 0.0001)
         assertEquals("EUR", decodedPayload.preferences?.selectedWorldCurrency)
+        assertEquals(true, decodedPayload.preferences?.immersiveModeEnabled)
     }
 
     @Test
@@ -157,6 +159,7 @@ class BackupRestoreTest {
         assertEquals(false, decoded.preferences?.screenPrivacyEnabled)
         assertEquals("approx", decoded.preferences?.weatherOption)
         assertEquals("USD", decoded.preferences?.selectedWorldCurrency)
+        assertEquals(true, decoded.preferences?.immersiveModeEnabled)
     }
 
     @Test

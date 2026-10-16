@@ -67,7 +67,8 @@ enum class ActiveSheet {
     WORLD_CURRENCIES,
     WEATHER_DETAIL,
     EDIT_TRANSACTION,
-    RECONCILE_BALANCE
+    RECONCILE_BALANCE,
+    RELEASE_NOTES
 }
 
 typealias SafeToSpendStatus = app.cashjournal.domain.model.SafeToSpendStatus
@@ -213,6 +214,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (prefs.weatherOption != "not_now") {
                 refreshWeather()
             }
+            if (prefs.onboardingComplete && prefs.lastSeenVersion != app.cashjournal.BuildConfig.VERSION_NAME) {
+                _activeSheet.value = ActiveSheet.RELEASE_NOTES
+            }
         }
     }
 
@@ -273,6 +277,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _selectedTransaction.value = null
         _selectedReconcileAccount.value = null
         _citySearchResults.value = emptyList()
+    }
+
+    fun dismissReleaseNotes() {
+        viewModelScope.launch {
+            preferencesRepository.updateLastSeenVersion(app.cashjournal.BuildConfig.VERSION_NAME)
+        }
+        dismissSheet()
     }
 
     fun showEditTransaction(transaction: Transaction) {

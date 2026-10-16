@@ -35,6 +35,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -372,10 +373,12 @@ fun SideRail(
                             .background(Slate200)
                     )
 
-                    // "+" Button at bottom: 42dp button with tap and hold tooltip
+                    val currentQuickAddStrings by rememberUpdatedState(strings)
+                    val currentOnQuickAddClick by rememberUpdatedState(onQuickAddClick)
                     Box(
                         modifier = Modifier
                             .size(42.dp)
+                            .shadow(elevation = 3.dp, shape = CircleShape)
                             .clip(CircleShape)
                             .background(Color.White)
                             .pointerInput(Unit) {
@@ -386,12 +389,12 @@ fun SideRail(
                                     },
                                     onLongPress = {
                                         if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                                        activeTooltip = strings.tooltipLogTransaction
+                                        activeTooltip = currentQuickAddStrings.tooltipLogTransaction
                                         activeTooltipY = 338f
                                     },
                                     onTap = {
                                         if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                                        onQuickAddClick()
+                                        currentOnQuickAddClick()
                                     }
                                 )
                             },
@@ -421,6 +424,9 @@ private fun RailNavButton(
 ) {
     val iconColor = if (isSelected) Color.White else Slate500
     val view = LocalView.current
+    val currentOnClick by rememberUpdatedState(onClick)
+    val currentOnLongPress by rememberUpdatedState(onLongPress)
+    val currentOnRelease by rememberUpdatedState(onRelease)
 
     Box(
         modifier = Modifier
@@ -430,14 +436,14 @@ private fun RailNavButton(
                 detectTapGestures(
                     onPress = {
                         val released = tryAwaitRelease()
-                        onRelease?.invoke()
+                        currentOnRelease?.invoke()
                     },
                     onLongPress = {
                         view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                        onLongPress?.invoke()
+                        currentOnLongPress?.invoke()
                     },
                     onTap = {
-                        onClick()
+                        currentOnClick()
                     }
                 )
             },

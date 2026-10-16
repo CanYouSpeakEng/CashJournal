@@ -64,6 +64,7 @@ import app.cashjournal.ui.sheets.LogTransactionSheet
 import app.cashjournal.ui.sheets.MainCurrencySheet
 import app.cashjournal.ui.sheets.NewAccountSheet
 import app.cashjournal.ui.sheets.ReconcileBalanceSheet
+import app.cashjournal.ui.sheets.ReleaseNotesSheet
 import app.cashjournal.ui.sheets.TransactionEditSheet
 import app.cashjournal.ui.sheets.WeatherDetailSheet
 import app.cashjournal.ui.sheets.WorldCurrenciesSheet
@@ -345,7 +346,9 @@ fun MainAppScaffold(
                         onResetOnboarding = { viewModel.resetOnboarding() },
                         onExportBackup = { uri -> viewModel.exportBackup(uri) },
                         onRestoreBackup = { uri -> viewModel.restoreBackup(uri) },
-                        onCycleStartDayChange = { viewModel.updateCycleStartDay(it) }
+                        onCycleStartDayChange = { viewModel.updateCycleStartDay(it) },
+                        onImmersiveModeChange = { viewModel.updatePreferences { prefs -> prefs.updateImmersiveMode(it) } },
+                        onOpenReleaseNotes = { viewModel.openSheet(ActiveSheet.RELEASE_NOTES) }
                     )
                 }
             }
@@ -495,6 +498,12 @@ fun MainAppScaffold(
                             }
                         },
                         onDismiss = { viewModel.dismissSheet() }
+                    )
+
+                    ActiveSheet.RELEASE_NOTES -> ReleaseNotesSheet(
+                        onDismiss = { viewModel.dismissReleaseNotes() },
+                        languageCode = state.userPreferences.language,
+                        hapticsEnabled = state.userPreferences.tactileHapticsEnabled
                     )
                 }
             }

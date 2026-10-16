@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -157,6 +158,11 @@ fun RailStatusCluster(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(5.dp)
     ) {
+        val currentOnLongPressPrivacy by rememberUpdatedState(onLongPressPrivacy)
+        val currentOnReleasePrivacy by rememberUpdatedState(onReleasePrivacy)
+        val currentOnBackClick by rememberUpdatedState(onBackClick)
+        val currentOnToggleBalances by rememberUpdatedState(onToggleBalances)
+
         // Circular Status Button / Back Button
         Box(
             modifier = Modifier
@@ -164,18 +170,18 @@ fun RailStatusCluster(
                 .shadow(elevation = 3.dp, shape = CircleShape)
                 .clip(CircleShape)
                 .background(Color.White)
-                .pointerInput(isNestedScreen) {
+                .pointerInput(Unit) {
                     detectTapGestures(
                         onPress = {
                             val released = tryAwaitRelease()
-                            onReleasePrivacy?.invoke()
+                            currentOnReleasePrivacy?.invoke()
                         },
                         onLongPress = {
                             if (!isNestedScreen) {
                                 if (hapticsEnabled) {
                                     view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                                 }
-                                onLongPressPrivacy?.invoke()
+                                currentOnLongPressPrivacy?.invoke()
                             }
                         },
                         onTap = {
@@ -183,9 +189,9 @@ fun RailStatusCluster(
                                 view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                             }
                             if (isNestedScreen) {
-                                onBackClick?.invoke()
+                                currentOnBackClick?.invoke()
                             } else {
-                                onToggleBalances()
+                                currentOnToggleBalances()
                             }
                         }
                     )

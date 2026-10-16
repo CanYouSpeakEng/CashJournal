@@ -18,6 +18,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -49,16 +51,21 @@ import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
+import kotlinx.coroutines.launch
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -1402,28 +1409,19 @@ private fun Step7Layout(
             color = Slate600
         )
 
-        // Side Segmented Control + Mini Phone Preview
+        // Interactive Phone Silhouette & Handedness Wireframe
         GlassCard(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                // Mini phone wireframe preview
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(110.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Slate100)
-                        .padding(12.dp),
-                    contentAlignment = if (railOnRight) Alignment.CenterEnd else Alignment.CenterStart
-                ) {
-                    // Mini rail pill indicator
-                    Box(
-                        modifier = Modifier
-                            .width(18.dp)
-                            .height(64.dp)
-                            .shadow(4.dp, RoundedCornerShape(9.dp))
-                            .background(Cobalt, RoundedCornerShape(9.dp))
-                    )
-                }
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Interactive Phone Silhouette Wireframe
+                PhoneSilhouettePreview(
+                    railOnRight = railOnRight,
+                    onToggleRail = { onToggleRail(!railOnRight) },
+                    texts = texts
+                )
 
                 // Left / Right segmented control
                 val segmentItems = listOf(
@@ -1472,6 +1470,270 @@ private fun Step7Layout(
                     onCheckedChange = onToggleShake
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun PhoneSilhouettePreview(
+    railOnRight: Boolean,
+    onToggleRail: () -> Unit,
+    texts: OnboardingTexts
+) {
+    val view = LocalView.current
+    val coroutineScope = rememberCoroutineScope()
+    val phoneShakeOffset = remember { androidx.compose.animation.core.Animatable(0f) }
+    val phoneShakeTilt = remember { androidx.compose.animation.core.Animatable(0f) }
+
+    val railBias by animateFloatAsState(
+        targetValue = if (railOnRight) 0.82f else -0.82f,
+        animationSpec = spring(stiffness = 320f, dampingRatio = 0.65f),
+        label = "silhouette_rail_bias"
+    )
+
+    val railTilt by animateFloatAsState(
+        targetValue = if (railOnRight) -10f else 10f,
+        animationSpec = spring(stiffness = 320f, dampingRatio = 0.65f),
+        label = "silhouette_rail_tilt"
+    )
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        // Outer Phone Chassis (width: 170dp, height: 200dp)
+        Box(
+            modifier = Modifier
+                .width(170.dp)
+                .height(200.dp)
+                .graphicsLayer {
+                    translationX = phoneShakeOffset.value
+                    rotationZ = phoneShakeTilt.value
+                }
+                .shadow(elevation = 8.dp, shape = RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color(0xFF0F172A))
+                .border(2.dp, Color(0xFF334155), RoundedCornerShape(24.dp))
+                .clickable {
+                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                    coroutineScope.launch {
+                        phoneShakeOffset.snapTo(if (railOnRight) -8f else 8f)
+                        phoneShakeTilt.snapTo(if (railOnRight) -3f else 3f)
+                        launch {
+                            phoneShakeOffset.animateTo(
+                                targetValue = 0f,
+                                animationSpec = spring(stiffness = 400f, dampingRatio = 0.5f)
+                            )
+                        }
+                        launch {
+                            phoneShakeTilt.animateTo(
+                                targetValue = 0f,
+                                animationSpec = spring(stiffness = 400f, dampingRatio = 0.5f)
+                            )
+                        }
+                    }
+                    onToggleRail()
+                }
+                .padding(6.dp)
+        ) {
+            // Glass Screen interior
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Color(0xFFF8FAFC))
+            ) {
+                // Top Camera Hole / Speaker Slit
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 5.dp)
+                        .size(width = 22.dp, height = 3.5.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color(0xFF0F172A).copy(alpha = 0.4f))
+                )
+
+                // Wireframe Dashboard contents
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 14.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    // Net worth wireframe bar
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(36.dp)
+                                .height(5.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(Slate300)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(7.dp)
+                                .clip(CircleShape)
+                                .background(Slate200)
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .width(65.dp)
+                            .height(9.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(Charcoal.copy(alpha = 0.15f))
+                    )
+
+                    // Safe-to-spend card wireframe
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(38.dp)
+                            .clip(RoundedCornerShape(7.dp))
+                            .background(Color.White)
+                            .border(1.dp, Slate200, RoundedCornerShape(7.dp))
+                            .padding(5.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .width(44.dp)
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(Emerald.copy(alpha = 0.4f))
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .width(32.dp)
+                                    .height(5.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(Emerald.copy(alpha = 0.6f))
+                            )
+                        }
+                    }
+
+                    // Account list mock items
+                    repeat(2) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(20.dp)
+                                .clip(RoundedCornerShape(5.dp))
+                                .background(Color.White)
+                                .border(1.dp, Slate200.copy(alpha = 0.6f), RoundedCornerShape(5.dp))
+                                .padding(horizontal = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(7.dp)
+                                    .clip(CircleShape)
+                                    .background(if (it == 0) Cobalt.copy(alpha = 0.4f) else Persimmon.copy(alpha = 0.4f))
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .width(38.dp)
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(Slate300)
+                            )
+                        }
+                    }
+                }
+
+                // Interactive Animated Floating Rail Silhouette
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 5.dp),
+                    contentAlignment = BiasAlignment(railBias, 0f)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(17.dp)
+                            .height(80.dp)
+                            .rotate(railTilt)
+                            .shadow(elevation = 4.dp, shape = RoundedCornerShape(9.dp))
+                            .clip(RoundedCornerShape(9.dp))
+                            .background(Color.White)
+                            .border(1.dp, Cobalt.copy(alpha = 0.25f), RoundedCornerShape(9.dp))
+                            .padding(vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxHeight(),
+                            verticalArrangement = Arrangement.SpaceBetween,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            // Mini status ring
+                            Box(
+                                modifier = Modifier
+                                    .size(9.dp)
+                                    .clip(CircleShape)
+                                    .background(Cobalt.copy(alpha = 0.15f))
+                                    .border(1.2.dp, Cobalt, CircleShape)
+                            )
+                            // Mini navigation dots
+                            repeat(3) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(2.5.dp)
+                                        .clip(CircleShape)
+                                        .background(if (it == 0) Cobalt else Slate400)
+                                )
+                            }
+                            // Mini Quick Add dot
+                            Box(
+                                modifier = Modifier
+                                    .size(7.dp)
+                                    .clip(CircleShape)
+                                    .background(Cobalt)
+                            )
+                        }
+                    }
+                }
+
+                // Bottom Gesture Navigation Bar
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 4.dp)
+                        .size(width = 34.dp, height = 2.5.dp)
+                        .clip(RoundedCornerShape(1.5.dp))
+                        .background(Slate300)
+                )
+            }
+        }
+
+        // Tap phone preview prompt
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(Cobalt.copy(alpha = 0.08f))
+                .padding(horizontal = 9.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = PhosphorIcons.Regular.DeviceMobile,
+                contentDescription = null,
+                tint = Cobalt,
+                modifier = Modifier.size(12.dp)
+            )
+            Text(
+                text = texts.phoneSimulatePrompt,
+                fontFamily = PlusJakartaSansFamily,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 11.sp,
+                color = Cobalt
+            )
         }
     }
 }

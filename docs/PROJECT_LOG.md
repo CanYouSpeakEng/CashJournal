@@ -164,11 +164,16 @@ This log is kept up to date after every step. Any AI assistant or developer read
   - Tag: `v1.0.16-dev`
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.16-dev
   - Artifacts: `app-debug.apk` (17.3 MB), `app-release.apk` (12.2 MB).
-- [ ] **Phase 14: Immersive Fullscreen, Interactive Handedness Silhouette & What's New Release Notes**
-  - [ ] **Item 67: Immersive Sticky Fullscreen by Default**: Enable `WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE` hiding system bars with a toggle in Settings (`immersiveModeEnabled`).
-  - [ ] **Item 68: Onboarding Step 7 Phone Silhouette Wireframe**: High-fidelity phone vector wireframe with animated rail spring glide and knock/shake-to-swap motion cue.
-  - [ ] **Item 69: What's New In-App Release Notes Modal Window**: One-time post-update pop-up sheet driven by `lastSeenVersion` DataStore tracking and re-readable via Settings About.
-  - [ ] **Item 70: Side Rail Tooltip Runtime Localization Reactivity**: Key `pointerInput(languageCode)` across `RailNavButton`, Quick Add button, and `RailStatusCluster` so long-press tooltips update to Indonesian (*"Dasbor"*, *"Buku Kas"*, *"Akun"*, *"Analisis"*, *"Pengaturan"*, *"Catat Transaksi"*, *"Privasi Layar"*) at runtime.
+- [x] **Phase 14: Immersive Fullscreen, Interactive Handedness Silhouette & What's New Release Notes**
+  - [x] **Item 67: Immersive Sticky Fullscreen by Default**: Configured `WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE` hiding status and navigation bars by default with transient edge swipe gesture support. Added DataStore preference `immersiveModeEnabled` (defaulting to true), JSON backup export/restore support, and reactive toggle row in Settings (`SettingsScreen.kt`).
+  - [x] **Item 68: Onboarding Step 7 Phone Silhouette Wireframe**: Implemented interactive `PhoneSilhouettePreview` composable featuring realistic smartphone chassis, screen bezel, wireframe dashboard cards, dynamic rail spring glide with tilt physics, knock/shake tap simulation, and bilingual caption prompts.
+  - [x] **Item 69: What's New In-App Release Notes Modal Window**: Implemented bilingual `ReleaseNotesSheet` modal bottom sheet highlighting major updates. Automated one-time trigger on app update via DataStore `lastSeenVersion != BuildConfig.VERSION_NAME` check on startup, with persistent manual re-inspection available from Settings About card.
+  - [x] **Item 70: Side Rail Tooltip Runtime Localization Reactivity**: Wrapped callbacks and strings in `rememberUpdatedState` and keyed pointer detectors in `RailStatusCluster` and `SideRail`, ensuring long-press tooltip pills update instantly to Indonesian (*"Dasbor"*, *"Buku Kas"*, *"Akun"*, *"Analisis"*, *"Pengaturan"*, *"Catat Transaksi"*, *"Privasi Layar"*) at runtime.
+- [x] **Release v1.0.17-dev (Phase 14: Immersive Fullscreen, Silhouette Wireframe & What's New Notes)**
+  - Tag: `v1.0.17-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.17-dev
+  - Artifacts: `app-debug.apk` (17.4 MB), `app-release.apk` (12.2 MB).
+
 
 
 

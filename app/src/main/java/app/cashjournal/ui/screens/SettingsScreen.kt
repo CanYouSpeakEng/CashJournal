@@ -108,6 +108,8 @@ fun SettingsScreen(
     onExportBackup: (Uri) -> Unit = {},
     onRestoreBackup: (Uri) -> Unit = {},
     onCycleStartDayChange: (Int) -> Unit = {},
+    onImmersiveModeChange: (Boolean) -> Unit = {},
+    onOpenReleaseNotes: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -662,6 +664,14 @@ fun SettingsScreen(
                 )
 
                 SettingToggleRow(
+                    title = strings.immersiveModeTitle,
+                    subtitle = strings.immersiveModeSubtitle,
+                    checked = state.userPreferences.immersiveModeEnabled,
+                    onCheckedChange = onImmersiveModeChange,
+                    hapticsEnabled = state.userPreferences.tactileHapticsEnabled
+                )
+
+                SettingToggleRow(
                     title = strings.knockToSwapTitle,
                     subtitle = if (state.userPreferences.language == "in") "Ketuk perangkat untuk pindah sisi" else "Knock device or shake to swap",
                     checked = state.userPreferences.shakeToSwap,
@@ -965,6 +975,37 @@ fun SettingsScreen(
                         fontSize = 11.sp,
                         color = Slate500
                     )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenReleaseNotes() }
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                            Text(
+                                text = strings.whatsNewTitle,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp,
+                                color = Cobalt
+                            )
+                            Text(
+                                text = strings.whatsNewSubtitle,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontSize = 11.sp,
+                                color = Slate500
+                            )
+                        }
+                        Icon(
+                            imageVector = PhosphorIcons.Regular.CaretRight,
+                            contentDescription = "Release Notes",
+                            tint = Cobalt,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
         }

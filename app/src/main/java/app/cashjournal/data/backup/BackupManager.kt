@@ -147,7 +147,8 @@ data class PreferencesBackupDto(
     val weatherCityLabel: String? = "",
     val weatherCityLat: Double? = 0.0,
     val weatherCityLon: Double? = 0.0,
-    val selectedWorldCurrency: String? = "USD"
+    val selectedWorldCurrency: String? = "USD",
+    val immersiveModeEnabled: Boolean? = true
 )
 
 data class RestoreResult(
@@ -187,7 +188,8 @@ class BackupManager(
             weatherCityLabel = prefs.weatherCityLabel,
             weatherCityLat = prefs.weatherCityLat,
             weatherCityLon = prefs.weatherCityLon,
-            selectedWorldCurrency = prefs.selectedWorldCurrency
+            selectedWorldCurrency = prefs.selectedWorldCurrency,
+            immersiveModeEnabled = prefs.immersiveModeEnabled
         )
 
         BackupPayload(
@@ -260,7 +262,8 @@ class BackupManager(
                     weatherCityLabel = p.weatherCityLabel,
                     weatherCityLat = p.weatherCityLat,
                     weatherCityLon = p.weatherCityLon,
-                    selectedWorldCurrency = p.selectedWorldCurrency
+                    selectedWorldCurrency = p.selectedWorldCurrency,
+                    immersiveModeEnabled = p.immersiveModeEnabled
                 )
             }
 

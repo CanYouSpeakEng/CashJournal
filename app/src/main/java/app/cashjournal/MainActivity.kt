@@ -14,9 +14,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -73,6 +77,20 @@ class MainActivity : FragmentActivity() {
                     }
                 }
 
+                // Immersive Sticky Fullscreen
+                val insetsController = remember(window) {
+                    WindowCompat.getInsetsController(window, window.decorView).apply {
+                        systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    }
+                }
+                LaunchedEffect(state.userPreferences.immersiveModeEnabled) {
+                    if (state.userPreferences.immersiveModeEnabled) {
+                        insetsController.hide(WindowInsetsCompat.Type.systemBars())
+                    } else {
+                        insetsController.show(WindowInsetsCompat.Type.systemBars())
+                    }
+                }
+
                 if (!state.isPreferencesLoaded) {
                     Box(
                         modifier = Modifier
@@ -95,6 +113,7 @@ class MainActivity : FragmentActivity() {
                                 prefs.updateShakeToSwap(shakeToSwap)
                                 prefs.updateWeatherOption(weatherOptionKey, cityName, cityLat, cityLon)
                                 prefs.updateOnboardingComplete(true)
+                                prefs.updateLastSeenVersion(BuildConfig.VERSION_NAME)
                             }
                             if (loadExample) {
                                 viewModel.seedExampleData()
