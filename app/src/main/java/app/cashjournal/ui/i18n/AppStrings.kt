@@ -116,7 +116,29 @@ data class ScreenStrings(
     val exportExcelTitle: String,
     val clearAllDataTitle: String,
     val sectionAbout: String,
-    val aboutDescription: String
+    val aboutDescription: String,
+    val dateToday: String,
+    val dateYesterday: String,
+    val dateCustom: String,
+    val selectDateDialogTitle: String,
+    val editTransactionTitle: String,
+    val saveChangesAction: String,
+    val deleteTransactionAction: String,
+    val deleteTransactionDialogTitle: String,
+    val deleteTransactionDialogDesc: String,
+    val confirmDeleteAction: String,
+    val cancelAction: String,
+    val transactionUpdatedToast: String,
+    val transactionDeletedToast: String,
+    val reconcileBalanceTitle: String,
+    val reconcileBalanceButton: String,
+    val currentBalanceLabel: String,
+    val actualBalanceLabel: String,
+    val differenceLabel: String,
+    val reconcileNotePlaceholder: String,
+    val confirmReconciliationAction: String,
+    val balanceReconciledToast: String,
+    val defaultAdjustmentTitle: String
 )
 
 object AppStrings {
@@ -228,7 +250,29 @@ object AppStrings {
         exportExcelTitle = "Export Excel",
         clearAllDataTitle = "Clear All Data",
         sectionAbout = "ABOUT CASHJOURNAL",
-        aboutDescription = "Offline-first personal finance with physics-driven microinteractions."
+        aboutDescription = "Offline-first personal finance with physics-driven microinteractions.",
+        dateToday = "Today",
+        dateYesterday = "Yesterday",
+        dateCustom = "Custom Date",
+        selectDateDialogTitle = "Select Date",
+        editTransactionTitle = "Edit Transaction",
+        saveChangesAction = "Save Changes",
+        deleteTransactionAction = "Delete Transaction",
+        deleteTransactionDialogTitle = "Delete Transaction?",
+        deleteTransactionDialogDesc = "Are you sure you want to delete this transaction? Account balances will be recalculated.",
+        confirmDeleteAction = "Delete",
+        cancelAction = "Cancel",
+        transactionUpdatedToast = "Transaction updated",
+        transactionDeletedToast = "Transaction deleted",
+        reconcileBalanceTitle = "Reconcile Balance",
+        reconcileBalanceButton = "Reconcile Balance",
+        currentBalanceLabel = "Current App Balance",
+        actualBalanceLabel = "Actual Real Balance",
+        differenceLabel = "Adjustment Delta",
+        reconcileNotePlaceholder = "e.g. Cash pocket audit, unlogged tips",
+        confirmReconciliationAction = "Confirm Reconciliation",
+        balanceReconciledToast = "Balance reconciled",
+        defaultAdjustmentTitle = "Balance Adjustment"
     )
 
     val IN = ScreenStrings(
@@ -339,7 +383,29 @@ object AppStrings {
         exportExcelTitle = "Ekspor Excel",
         clearAllDataTitle = "Hapus Semua Data",
         sectionAbout = "TENTANG CASHJOURNAL",
-        aboutDescription = "Keuangan pribadi offline-first dengan interaksi mikro berbasis fisika."
+        aboutDescription = "Keuangan pribadi offline-first dengan interaksi mikro berbasis fisika.",
+        dateToday = "Hari Ini",
+        dateYesterday = "Kemarin",
+        dateCustom = "Tanggal Lain",
+        selectDateDialogTitle = "Pilih Tanggal",
+        editTransactionTitle = "Edit Transaksi",
+        saveChangesAction = "Simpan Perubahan",
+        deleteTransactionAction = "Hapus Transaksi",
+        deleteTransactionDialogTitle = "Hapus Transaksi?",
+        deleteTransactionDialogDesc = "Apakah Anda yakin ingin menghapus transaksi ini? Saldo akun akan dihitung ulang secara otomatis.",
+        confirmDeleteAction = "Hapus",
+        cancelAction = "Batal",
+        transactionUpdatedToast = "Transaksi diperbarui",
+        transactionDeletedToast = "Transaksi dihapus",
+        reconcileBalanceTitle = "Rekonsiliasi Saldo",
+        reconcileBalanceButton = "Rekonsiliasi Saldo",
+        currentBalanceLabel = "Saldo Saat Ini di Aplikasi",
+        actualBalanceLabel = "Saldo Sebenarnya",
+        differenceLabel = "Selisih Penyesuaian",
+        reconcileNotePlaceholder = "cth. Audit uang tunai, tip tak tercatat",
+        confirmReconciliationAction = "Konfirmasi Rekonsiliasi",
+        balanceReconciledToast = "Saldo berhasil disesuaikan",
+        defaultAdjustmentTitle = "Penyesuaian Saldo"
     )
 
     fun get(languageCode: String): ScreenStrings {

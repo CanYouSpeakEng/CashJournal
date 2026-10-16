@@ -7,6 +7,7 @@ data class Account(
     val name: String,
     val accentKey: AccentKey = AccentKey.COBALT,
     val balance: Long = 0L, // Minor units
+    val initialBalance: Long = 0L,
     val sortIndex: Int = 0,
     val updatedAt: Long = System.currentTimeMillis()
 )

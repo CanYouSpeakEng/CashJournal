@@ -2,12 +2,20 @@ package app.cashjournal.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.room.Index
 import app.cashjournal.domain.model.AccentKey
 import app.cashjournal.domain.model.Category
 import app.cashjournal.domain.model.Transaction
 import app.cashjournal.domain.model.TransactionType
 
-@Entity(tableName = "transactions")
+@Entity(
+    tableName = "transactions",
+    indices = [
+        Index(value = ["sourceAccountId"]),
+        Index(value = ["destinationAccountId"]),
+        Index(value = ["date"])
+    ]
+)
 data class TransactionEntity(
     @PrimaryKey
     val id: String,

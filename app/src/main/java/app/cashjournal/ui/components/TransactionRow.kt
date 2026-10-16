@@ -81,8 +81,9 @@ fun TransactionRow(
             accountColor = srcAccount?.accentKey?.color
         }
         TransactionType.INCOME -> {
-            accountLabel = dstAccount?.name
-            accountColor = dstAccount?.accentKey?.color
+            val acc = srcAccount ?: dstAccount
+            accountLabel = acc?.name
+            accountColor = acc?.accentKey?.color
         }
     }
 

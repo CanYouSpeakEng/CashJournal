@@ -708,7 +708,7 @@ fun SettingsScreen(
                         color = Slate600
                     )
                     Text(
-                        text = "CashJournal v1.0.12-dev (Native Android Build)",
+                        text = "CashJournal v1.0.13-dev (Native Android Build)",
                         fontFamily = SpaceGroteskFamily,
                         fontSize = 11.sp,
                         color = Slate500

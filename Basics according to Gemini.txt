@@ -1,0 +1,69 @@
+If a financial tracker fails at one specific thing—**mathematical trust**—users will delete it within 48 hours and never come back. People forgive ugly UI, missing dark mode, or lack of fancy charts in a v1.0 release, but they will never forgive an app that loses their data or displays a balance that doesn't match their real wallet.
+
+Before you ship publicly, your app must nail these five non-negotiable foundations. If any of these are broken or missing, it is not ready for real users.
+
+---
+
+### 1. Bulletproof Ledger Integrity (Zero-Drift Math)
+
+This sounds obvious, but it is where 90% of beginner finance apps break. Your database cannot store an account's balance as a static number that gets updated with `balance = balance - expense`. If a user edits a transaction from two weeks ago, deletes an old transfer, or changes the source account of an expense, a static balance variable will eventually drift out of sync with the transaction history.
+
+* **Single Source of Truth:** Every account's current balance must be dynamically derived (or strictly verified via database triggers) from its `Initial Starting Balance + Sum(Inflows) - Sum(Outflows)`.
+* **Atomic Transfers:** A transfer between Account A and Account B cannot just be two disconnected transactions. They must be linked by a single ID. If the user deletes or edits the transfer on Account A's screen, Account B's side must update or delete simultaneously.
+* **Transfer Isolation:** Transfers between a user's own accounts must **never** be counted in "Total Monthly Income" or "Total Monthly Expense" summaries. If a user moves 1,000,000 from their bank to an e-wallet, they didn't spend 1,000,000, and they didn't earn 1,000,000.
+* **Integer Math Only (No Floating-Point Bugs):** Never store money as standard floating-point decimals (`float` or `double`), or your users will eventually see balances like `49,999.999999994`. Always store currency as smallest-unit integers (e.g., cents or whole Rupiah integers) in the database.
+
+---
+
+### 2. Full CRUD & Retroactive Editing
+
+Users make mistakes constantly. They log an expense in the wrong account, type an extra zero, or forget to log Friday's dinner until Sunday morning. Your v1.0 is dead on arrival if users cannot easily:
+
+* **Backdate Transactions:** The date picker must be front-and-center when logging, defaulting to "Today" but allowing two-tap changes to "Yesterday" or any past date.
+* **Edit Any Field Later:** A user must be able to tap an existing transaction and change *anything*—even switching it from an "Expense" to a "Transfer," or moving it from "Cash" to "Bank A"—and have all historical balances and monthly runway math recalculate cleanly.
+* **Safe Category/Account Deletion:** What happens if a user deletes the "Coffee" category or an old E-Wallet account after logging 50 transactions in it? If your app crashes, orphans those records, or silently deletes their financial history, they will rage-quit. You must force a prompt: *"Move existing transactions to another category, or archive this account?"*
+
+---
+
+### 3. The "Escape Hatch": Manual Balance Adjustment
+
+Even the most disciplined user will eventually look at their bank app, look at your tracker, and realize they are off by 35,000 because they forgot to log cash parking fees over the last two weeks.
+
+* **Why it's mandatory:** Without an easy way to fix this, the user feels like they "failed" at tracking, gets overwhelmed trying to audit two weeks of receipts, and abandons the app.
+* **The basic requirement:** Every account needs an **"Adjust / Reconcile Balance"** button. The user types in their *actual* real-world balance (`500,000`), and if the app thinks they have `535,000`, the app automatically creates a `35,000` adjustment entry so the numbers match reality again in 3 seconds.
+
+---
+
+### 4. Local Data Survival (Import / Export on Day 1)
+
+Because your app is strictly local with zero cloud sync, **you do not have a server backup to save your users.**
+
+* If you release a v1.0 without an **Export / Backup Database** and **Import / Restore Database** button, the very first time a user resets their phone, switches devices, or accidentally uninstalls the app, they lose months of manual work forever.
+* Worse, if *you* push a v1.1 app update with a database migration bug that corrupts their local storage, having a simple JSON/SQLite backup button is the only thing standing between a minor hiccup and a flood of 1-star reviews.
+
+---
+
+### 5. Custom Categories & "Month Start Day" Flexibility
+
+Two small UX realities that break early-stage finance apps if hardcoded:
+
+* **Editable Categories from Day 1:** Never ship with a locked list of 8 categories. If a user can't add, rename, or archive categories to fit their actual life, the data is useless to them.
+* **Custom Payday / Cycle Start Date:** Not everyone's financial month runs from the 1st to the 30th. Many people get paid on the 25th or the 28th. Especially since your core feature is a **Monthly Spending Runway**, if a user gets paid on the 25th and you force their runway to reset on the 1st of the next month, your runway math will feel broken for the last week of every month.
+
+---
+
+### The Litmus Test Checklist Before Launch
+
+| Requirement | If Missing / Broken... |
+| --- | --- |
+| **Atomic Transfers** | Editing a transfer corrupts one of the two accounts; net worth becomes fake. |
+| **Backdating & Retro-Edits** | One typo ruins the ledger; users have to delete and re-enter everything. |
+| **Balance Reconciliation** | Missing a few days of logging makes the app permanently out of sync with reality. |
+| **Local File Backup/Restore** | Updating the phone or reinstalling the app wipes out 100% of user history. |
+| **Custom Cycle Start Date** | Runway math breaks for anyone paid on the 25th–28th of the month. |
+
+---
+
+### How the Core Ledger Must Behave Under the Hood
+
+Step through the state diagram below to see how the four foundational transaction types (**Income**, **Expense**, **Atomic Transfer**, and **Balance Reconciliation**) must route through your local ledger so that account balances, net worth, and your monthly spending runway never drift out of sync.

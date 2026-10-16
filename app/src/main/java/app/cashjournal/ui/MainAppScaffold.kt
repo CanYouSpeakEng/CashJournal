@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import app.cashjournal.domain.model.Transaction
 import app.cashjournal.data.weather.TemperatureConverter
 import app.cashjournal.data.weather.WeatherIconMapper
 import app.cashjournal.ui.components.AmbientField
@@ -61,6 +62,8 @@ import app.cashjournal.ui.sensory.ShakeDetector
 import app.cashjournal.ui.sheets.LogTransactionSheet
 import app.cashjournal.ui.sheets.MainCurrencySheet
 import app.cashjournal.ui.sheets.NewAccountSheet
+import app.cashjournal.ui.sheets.ReconcileBalanceSheet
+import app.cashjournal.ui.sheets.TransactionEditSheet
 import app.cashjournal.ui.sheets.WeatherDetailSheet
 import app.cashjournal.ui.sheets.WorldCurrenciesSheet
 import app.cashjournal.ui.theme.Slate100
@@ -261,12 +264,14 @@ fun MainAppScaffold(
                         onAccountClick = { viewModel.openAccountDetail(it) },
                         onViewTransactions = { viewModel.setScreen(AppScreen.LEDGER) },
                         onSetBudgetClick = { viewModel.setScreen(AppScreen.ANALYTICS) },
-                        onAddAccountClick = { viewModel.openSheet(ActiveSheet.NEW_ACCOUNT) }
+                        onAddAccountClick = { viewModel.openSheet(ActiveSheet.NEW_ACCOUNT) },
+                        onTransactionClick = { viewModel.showEditTransaction(it) }
                     )
 
                     AppScreen.LEDGER -> LedgerScreen(
                         state = state,
-                        onLogTransactionClick = { viewModel.openSheet(ActiveSheet.LOG_TRANSACTION) }
+                        onLogTransactionClick = { viewModel.openSheet(ActiveSheet.LOG_TRANSACTION) },
+                        onTransactionClick = { viewModel.showEditTransaction(it) }
                     )
 
                     AppScreen.ACCOUNTS -> AccountsScreen(
@@ -283,7 +288,9 @@ fun MainAppScaffold(
                         state.selectedAccount?.let { acc ->
                             AccountDetailScreen(
                                 account = acc,
-                                state = state
+                                state = state,
+                                onTransactionClick = { viewModel.showEditTransaction(it) },
+                                onReconcileClick = { viewModel.showReconcileSheet(acc) }
                             )
                         }
                     }
@@ -381,12 +388,46 @@ fun MainAppScaffold(
                     ActiveSheet.LOG_TRANSACTION -> LogTransactionSheet(
                         accounts = state.accounts,
                         currencyCode = state.userPreferences.currencyCode,
-                        onSaveTransaction = { type, src, dst, note, amount ->
-                            viewModel.logTransaction(type, src, dst, note, amount)
+                        onSaveTransaction = { type, src, dst, note, amount, date ->
+                            viewModel.logTransaction(type, src, dst, note, amount, date)
                         },
                         onDismiss = { viewModel.dismissSheet() },
-                        soundEffectsEnabled = state.userPreferences.soundEffectsEnabled
+                        soundEffectsEnabled = state.userPreferences.soundEffectsEnabled,
+                        languageCode = state.userPreferences.language
                     )
+
+                    ActiveSheet.EDIT_TRANSACTION -> {
+                        state.selectedTransaction?.let { tx ->
+                            TransactionEditSheet(
+                                transaction = tx,
+                                accounts = state.accounts,
+                                currencyCode = state.userPreferences.currencyCode,
+                                onUpdateTransaction = { id, title, amount, cat, type, src, dst, date ->
+                                    viewModel.editTransaction(id, title, amount, cat, type, src, dst, date)
+                                },
+                                onDeleteTransaction = { id ->
+                                    viewModel.deleteTransaction(id)
+                                },
+                                onDismiss = { viewModel.dismissSheet() },
+                                soundEffectsEnabled = state.userPreferences.soundEffectsEnabled,
+                                languageCode = state.userPreferences.language
+                            )
+                        }
+                    }
+
+                    ActiveSheet.RECONCILE_BALANCE -> {
+                        (state.selectedReconcileAccount ?: state.selectedAccount)?.let { acc ->
+                            ReconcileBalanceSheet(
+                                account = acc,
+                                currencyCode = state.userPreferences.currencyCode,
+                                onConfirmReconciliation = { actualBal, note ->
+                                    viewModel.reconcileBalance(acc.id, actualBal, note)
+                                },
+                                onDismiss = { viewModel.dismissSheet() },
+                                languageCode = state.userPreferences.language
+                            )
+                        }
+                    }
 
                     ActiveSheet.NEW_ACCOUNT -> NewAccountSheet(
                         currencyCode = state.userPreferences.currencyCode,

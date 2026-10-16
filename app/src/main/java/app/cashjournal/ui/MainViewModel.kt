@@ -42,9 +42,11 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.min
 import kotlin.math.roundToInt
+import app.cashjournal.ui.i18n.AppStrings
 
 enum class AppScreen {
     DASHBOARD,
@@ -60,7 +62,9 @@ enum class ActiveSheet {
     NEW_ACCOUNT,
     MAIN_CURRENCY,
     WORLD_CURRENCIES,
-    WEATHER_DETAIL
+    WEATHER_DETAIL,
+    EDIT_TRANSACTION,
+    RECONCILE_BALANCE
 }
 
 typealias SafeToSpendStatus = app.cashjournal.domain.model.SafeToSpendStatus
@@ -71,6 +75,8 @@ data class MainUiState(
     val currentScreen: AppScreen = AppScreen.DASHBOARD,
     val selectedAccount: Account? = null,
     val activeSheet: ActiveSheet? = null,
+    val selectedTransaction: Transaction? = null,
+    val selectedReconcileAccount: Account? = null,
     val hideBalances: Boolean = false,
     val accounts: List<Account> = emptyList(),
     val transactions: List<Transaction> = emptyList(),
@@ -99,6 +105,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentScreen = MutableStateFlow(AppScreen.DASHBOARD)
     private val _selectedAccount = MutableStateFlow<Account?>(null)
     private val _activeSheet = MutableStateFlow<ActiveSheet?>(null)
+    private val _selectedTransaction = MutableStateFlow<Transaction?>(null)
+    private val _selectedReconcileAccount = MutableStateFlow<Account?>(null)
     private val _hideBalances = MutableStateFlow(false)
     private val _isReorderMode = MutableStateFlow(false)
     private val _toastMessage = MutableStateFlow<String?>(null)
@@ -127,7 +135,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         combine(weatherFlow, ratesFlow, _isRatesOffline, _citySearchResults, _isSearchingCity) { weather, rates, offline, cities, searching ->
             Pent(weather, rates, offline, cities, searching)
         },
-        combine(_currentScreen, _selectedAccount, _activeSheet, _hideBalances, _isReorderMode, _toastMessage) { args ->
+        combine(
+            _currentScreen,
+            _selectedAccount,
+            _activeSheet,
+            _selectedTransaction,
+            _selectedReconcileAccount,
+            _hideBalances,
+            _isReorderMode,
+            _toastMessage
+        ) { args ->
             args
         }
     ) { group1, group2, group3 ->
@@ -137,9 +154,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val screen = group3[0] as AppScreen
         val account = group3[1] as? Account
         val sheet = group3[2] as? ActiveSheet
-        val hideBal = group3[3] as Boolean
-        val reorder = group3[4] as Boolean
-        val toast = group3[5] as? String
+        val selectedTx = group3[3] as? Transaction
+        val reconcileAcc = group3[4] as? Account
+        val hideBal = group3[5] as Boolean
+        val reorder = group3[6] as Boolean
+        val toast = group3[7] as? String
 
         val totalWorth = rawAccounts.sumOf { it.balance }
         val recentTx = rawTransactions.take(5)
@@ -151,6 +170,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             currentScreen = screen,
             selectedAccount = account,
             activeSheet = sheet,
+            selectedTransaction = selectedTx,
+            selectedReconcileAccount = reconcileAcc,
             hideBalances = hideBal,
             accounts = rawAccounts,
             transactions = rawTransactions,
@@ -233,7 +254,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun dismissSheet() {
         _activeSheet.value = null
+        _selectedTransaction.value = null
+        _selectedReconcileAccount.value = null
         _citySearchResults.value = emptyList()
+    }
+
+    fun showEditTransaction(transaction: Transaction) {
+        _selectedTransaction.value = transaction
+        _activeSheet.value = ActiveSheet.EDIT_TRANSACTION
+    }
+
+    fun showReconcileSheet(account: Account) {
+        _selectedReconcileAccount.value = account
+        _activeSheet.value = ActiveSheet.RECONCILE_BALANCE
     }
 
     fun toggleHideBalances() {
@@ -258,7 +291,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         sourceAccountId: String?,
         destAccountId: String?,
         note: String,
-        amount: Long
+        amount: Long,
+        date: Long = System.currentTimeMillis()
     ) {
         if (amount <= 0) {
             showToast("Enter an amount")
@@ -307,29 +341,156 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 amount = amount,
                 title = title,
                 category = txCategory,
-                date = System.currentTimeMillis(),
+                date = date,
                 iconKey = iconKey,
                 accentKey = accentKey,
                 updatedAt = System.currentTimeMillis()
             )
 
-            when (type) {
-                TransactionType.EXPENSE -> {
-                    database.accountDao().updateBalance(sourceAccountId, -amount)
-                }
-                TransactionType.INCOME -> {
-                    database.accountDao().updateBalance(sourceAccountId, amount)
-                }
-                TransactionType.TRANSFER -> {
-                    database.accountDao().updateBalance(sourceAccountId, -amount)
-                    destAccountId?.let { database.accountDao().updateBalance(it, amount) }
-                }
+            database.withTransaction {
+                database.transactionDao().insert(tx)
+                database.accountDao().recalculateAccountBalance(sourceAccountId)
+                destAccountId?.let { database.accountDao().recalculateAccountBalance(it) }
             }
 
-            database.transactionDao().insert(tx)
             ChimeGenerator.playChime(uiState.value.userPreferences.soundEffectsEnabled, viewModelScope)
             dismissSheet()
             showToast("Transaction logged")
+        }
+    }
+
+    fun editTransaction(
+        id: String,
+        title: String,
+        amount: Long,
+        category: Category,
+        type: TransactionType,
+        sourceAccountId: String?,
+        destAccountId: String?,
+        date: Long
+    ) {
+        if (amount <= 0) {
+            showToast("Enter an amount")
+            return
+        }
+
+        if (sourceAccountId.isNullOrBlank()) {
+            showToast("Select an account")
+            return
+        }
+
+        if (type == TransactionType.TRANSFER && (destAccountId == null || destAccountId == sourceAccountId)) {
+            showToast("Select a different destination account")
+            return
+        }
+
+        viewModelScope.launch {
+            val existing = database.transactionDao().getTransactionById(id) ?: return@launch
+            val sourceAcc = database.accountDao().getAccountById(sourceAccountId)
+
+            val txCategory = if (type == TransactionType.TRANSFER) "TRANSFER" else category.key
+            val iconKey = when (type) {
+                TransactionType.EXPENSE -> category.key
+                TransactionType.INCOME -> "ArrowDownLeft"
+                TransactionType.TRANSFER -> "ArrowsLeftRight"
+            }
+            val accentKey = when (type) {
+                TransactionType.EXPENSE -> sourceAcc?.accentKey ?: "COBALT"
+                TransactionType.INCOME -> "EMERALD"
+                TransactionType.TRANSFER -> "COBALT"
+            }
+
+            val updatedTx = existing.copy(
+                title = title,
+                category = txCategory,
+                type = type.name,
+                amount = amount,
+                date = date,
+                iconKey = iconKey,
+                accentKey = accentKey,
+                sourceAccountId = sourceAccountId,
+                destinationAccountId = destAccountId,
+                updatedAt = System.currentTimeMillis()
+            )
+
+            val affectedAccounts = setOfNotNull(
+                existing.sourceAccountId,
+                existing.destinationAccountId,
+                sourceAccountId,
+                destAccountId
+            )
+
+            database.withTransaction {
+                database.transactionDao().update(updatedTx)
+                affectedAccounts.forEach { accId ->
+                    database.accountDao().recalculateAccountBalance(accId)
+                }
+            }
+
+            ChimeGenerator.playChime(uiState.value.userPreferences.soundEffectsEnabled, viewModelScope)
+            dismissSheet()
+            val strings = AppStrings.get(uiState.value.userPreferences.language)
+            showToast(strings.transactionUpdatedToast)
+        }
+    }
+
+    fun deleteTransaction(id: String) {
+        viewModelScope.launch {
+            val existing = database.transactionDao().getTransactionById(id) ?: return@launch
+            val affectedAccounts = setOfNotNull(existing.sourceAccountId, existing.destinationAccountId)
+
+            database.withTransaction {
+                database.transactionDao().delete(existing)
+                affectedAccounts.forEach { accId ->
+                    database.accountDao().recalculateAccountBalance(accId)
+                }
+            }
+
+            dismissSheet()
+            val strings = AppStrings.get(uiState.value.userPreferences.language)
+            showToast(strings.transactionDeletedToast)
+        }
+    }
+
+    fun reconcileBalance(accountId: String, actualBalance: Long, note: String) {
+        viewModelScope.launch {
+            val account = database.accountDao().getAccountById(accountId) ?: return@launch
+            val delta = actualBalance - account.balance
+            val strings = AppStrings.get(uiState.value.userPreferences.language)
+
+            if (delta == 0L) {
+                dismissSheet()
+                showToast(strings.balanceReconciledToast)
+                return@launch
+            }
+
+            val isPositive = delta > 0L
+            val txType = if (isPositive) TransactionType.INCOME else TransactionType.EXPENSE
+            val txAmount = abs(delta)
+            val title = note.ifBlank { strings.defaultAdjustmentTitle }
+
+            val tx = TransactionEntity(
+                id = UUID.randomUUID().toString(),
+                sourceAccountId = accountId,
+                destinationAccountId = null,
+                type = txType.name,
+                amount = txAmount,
+                title = title,
+                category = Category.OTHER.key,
+                date = System.currentTimeMillis(),
+                iconKey = if (isPositive) "ArrowDownLeft" else "Tag",
+                accentKey = if (isPositive) "EMERALD" else "COBALT",
+                updatedAt = System.currentTimeMillis()
+            )
+
+            database.withTransaction {
+                database.transactionDao().insert(tx)
+                database.accountDao().recalculateAccountBalance(accountId)
+            }
+
+            ChimeGenerator.playChime(uiState.value.userPreferences.soundEffectsEnabled, viewModelScope)
+            dismissSheet()
+            showToast(strings.balanceReconciledToast)
         }
     }
 
@@ -345,6 +506,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 name = name.take(28),
                 accentKey = accentKey.name,
                 balance = startingBalance.coerceAtLeast(0L),
+                initialBalance = startingBalance.coerceAtLeast(0L),
                 sortIndex = (uiState.value.accounts.size),
                 updatedAt = System.currentTimeMillis()
             )

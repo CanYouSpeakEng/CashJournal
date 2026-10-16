@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cashjournal.domain.model.Account
 import app.cashjournal.domain.model.Currency
+import app.cashjournal.domain.model.Transaction
 import app.cashjournal.ui.MainUiState
 import app.cashjournal.ui.SafeToSpendStatus
 import app.cashjournal.ui.components.GlassCard
@@ -76,6 +77,7 @@ fun DashboardScreen(
     onViewTransactions: () -> Unit,
     onSetBudgetClick: () -> Unit,
     onAddAccountClick: () -> Unit,
+    onTransactionClick: ((Transaction) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val currency = Currency.findByCode(state.userPreferences.currencyCode)
@@ -486,7 +488,8 @@ fun DashboardScreen(
                             transaction = tx,
                             isMasked = state.hideBalances,
                             currencyCode = state.userPreferences.currencyCode,
-                            accounts = state.accounts
+                            accounts = state.accounts,
+                            onClick = if (onTransactionClick != null) { { onTransactionClick(tx) } } else null
                         )
                     }
                 }

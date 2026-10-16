@@ -29,6 +29,7 @@ object ExampleDataSeeder {
                 name = "BCA Main",
                 accentKey = AccentKey.COBALT.name,
                 balance = 12_500_000L,
+                initialBalance = 8_646_000L,
                 sortIndex = 0,
                 updatedAt = now
             ),
@@ -37,6 +38,7 @@ object ExampleDataSeeder {
                 name = "Mandiri",
                 accentKey = AccentKey.EMERALD.name,
                 balance = 4_200_000L,
+                initialBalance = 5_650_000L,
                 sortIndex = 1,
                 updatedAt = now
             ),
@@ -45,6 +47,7 @@ object ExampleDataSeeder {
                 name = "GoPay",
                 accentKey = AccentKey.PERSIMMON.name,
                 balance = 950_000L,
+                initialBalance = 549_000L,
                 sortIndex = 2,
                 updatedAt = now
             ),
@@ -53,6 +56,7 @@ object ExampleDataSeeder {
                 name = "Bibit Vault",
                 accentKey = AccentKey.IRIS.name,
                 balance = 800_000L,
+                initialBalance = 615_000L,
                 sortIndex = 3,
                 updatedAt = now
             )
@@ -193,6 +197,7 @@ object ExampleDataSeeder {
             )
         )
         database.transactionDao().insertAll(transactions)
+        database.accountDao().recalculateAllAccountBalances(now)
 
         // 3. Seed Monthly Plan
         val monthKey = SimpleDateFormat("yyyy-MM", Locale.US).format(Date(now))

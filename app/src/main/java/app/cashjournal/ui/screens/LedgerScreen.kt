@@ -85,6 +85,7 @@ enum class LedgerFilter {
 fun LedgerScreen(
     state: MainUiState,
     onLogTransactionClick: () -> Unit,
+    onTransactionClick: ((Transaction) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val strings = AppStrings.get(state.userPreferences.language)
@@ -368,7 +369,8 @@ fun LedgerScreen(
                                         transaction = tx,
                                         isMasked = state.hideBalances,
                                         currencyCode = state.userPreferences.currencyCode,
-                                        accounts = state.accounts
+                                        accounts = state.accounts,
+                                        onClick = if (onTransactionClick != null) { { onTransactionClick(tx) } } else null
                                     )
                                 }
                             }

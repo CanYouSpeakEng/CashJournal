@@ -58,6 +58,20 @@ import app.cashjournal.ui.theme.Slate500
 import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
 
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.runtime.mutableLongStateOf
+import app.cashjournal.ui.i18n.AppStrings
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LogTransactionSheet(
     accounts: List<Account>,
@@ -67,13 +81,16 @@ fun LogTransactionSheet(
         sourceAccountId: String?,
         destAccountId: String?,
         note: String,
-        amount: Long
+        amount: Long,
+        date: Long
     ) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
-    soundEffectsEnabled: Boolean = true
+    soundEffectsEnabled: Boolean = true,
+    languageCode: String = "en"
 ) {
     val scope = rememberCoroutineScope()
+    val strings = AppStrings.get(languageCode)
     var triggerSplash by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf(TransactionType.EXPENSE) }
     var selectedSourceAccountId by remember { mutableStateOf(accounts.firstOrNull()?.id) }
@@ -82,6 +99,26 @@ fun LogTransactionSheet(
     }
     var note by remember { mutableStateOf("") }
     var rawDigits by remember { mutableStateOf("0") }
+    var selectedDateMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var showDatePickerDialog by remember { mutableStateOf(false) }
+
+    val (isToday, isYesterday) = remember(selectedDateMillis) {
+        val nowCal = Calendar.getInstance()
+        val selCal = Calendar.getInstance().apply { timeInMillis = selectedDateMillis }
+        val nowYear = nowCal.get(Calendar.YEAR)
+        val nowDay = nowCal.get(Calendar.DAY_OF_YEAR)
+        val selYear = selCal.get(Calendar.YEAR)
+        val selDay = selCal.get(Calendar.DAY_OF_YEAR)
+
+        val today = (nowYear == selYear && nowDay == selDay)
+        val yesterday = (nowYear == selYear && nowDay - 1 == selDay)
+        Pair(today, yesterday)
+    }
+
+    val formattedCustomDate = remember(selectedDateMillis, languageCode) {
+        val locale = if (languageCode.equals("in", ignoreCase = true)) Locale("id", "ID") else Locale.US
+        SimpleDateFormat("d MMM", locale).format(Date(selectedDateMillis))
+    }
 
     val currency = Currency.findByCode(currencyCode)
     val detectedCategory = remember(note) { Category.detectFromNote(note) }
@@ -95,6 +132,48 @@ fun LogTransactionSheet(
         Currency.formatMinor(parsedAmount, currencyCode, includeSymbol = false)
     }
 
+    if (showDatePickerDialog) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDateMillis
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePickerDialog = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { utcMidnight ->
+                            val nowCal = Calendar.getInstance()
+                            val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+                                timeInMillis = utcMidnight
+                            }
+                            val localCal = Calendar.getInstance().apply {
+                                set(
+                                    utcCal.get(Calendar.YEAR),
+                                    utcCal.get(Calendar.MONTH),
+                                    utcCal.get(Calendar.DAY_OF_MONTH),
+                                    nowCal.get(Calendar.HOUR_OF_DAY),
+                                    nowCal.get(Calendar.MINUTE),
+                                    nowCal.get(Calendar.SECOND)
+                                )
+                            }
+                            selectedDateMillis = localCal.timeInMillis
+                        }
+                        showDatePickerDialog = false
+                    }
+                ) {
+                    Text("OK", fontFamily = PlusJakartaSansFamily, fontWeight = FontWeight.Bold, color = Cobalt)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePickerDialog = false }) {
+                    Text(strings.cancelAction, fontFamily = PlusJakartaSansFamily, color = Slate500)
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -102,7 +181,7 @@ fun LogTransactionSheet(
             .background(Color.White)
             .padding(horizontal = 20.dp, vertical = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Grab Handle
         Box(
@@ -130,6 +209,29 @@ fun LogTransactionSheet(
                 }
             }
         )
+
+        // Date Selector Chips Row (Backdating Support)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DateChip(
+                label = strings.dateToday,
+                isSelected = isToday,
+                onClick = { selectedDateMillis = System.currentTimeMillis() }
+            )
+            DateChip(
+                label = strings.dateYesterday,
+                isSelected = isYesterday,
+                onClick = { selectedDateMillis = System.currentTimeMillis() - 86_400_000L }
+            )
+            DateChip(
+                label = if (!isToday && !isYesterday) formattedCustomDate else strings.dateCustom,
+                isSelected = (!isToday && !isYesterday),
+                onClick = { showDatePickerDialog = true }
+            )
+        }
 
         // Account Chips Row
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -315,7 +417,8 @@ fun LogTransactionSheet(
                             selectedSourceAccountId,
                             selectedDestAccountId,
                             note,
-                            parsedAmount
+                            parsedAmount,
+                            selectedDateMillis
                         )
                     }
                 },
@@ -342,6 +445,32 @@ fun LogTransactionSheet(
                     .height(54.dp)
             )
         }
+    }
+}
+
+@Composable
+private fun DateChip(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val bgColor = if (isSelected) Cobalt else Slate200.copy(alpha = 0.6f)
+    val textColor = if (isSelected) Color.White else Charcoal
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(bgColor)
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = label,
+            fontFamily = PlusJakartaSansFamily,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+            fontSize = 11.sp,
+            color = textColor
+        )
     }
 }
 

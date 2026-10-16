@@ -12,6 +12,7 @@ data class AccountEntity(
     val name: String,
     val accentKey: String,
     val balance: Long,
+    val initialBalance: Long = 0L,
     val sortIndex: Int,
     val updatedAt: Long
 ) {
@@ -20,6 +21,7 @@ data class AccountEntity(
         name = name,
         accentKey = AccentKey.fromKey(accentKey),
         balance = balance,
+        initialBalance = initialBalance,
         sortIndex = sortIndex,
         updatedAt = updatedAt
     )
@@ -30,6 +32,7 @@ data class AccountEntity(
             name = account.name,
             accentKey = account.accentKey.name,
             balance = account.balance,
+            initialBalance = account.initialBalance,
             sortIndex = account.sortIndex,
             updatedAt = account.updatedAt
         )
