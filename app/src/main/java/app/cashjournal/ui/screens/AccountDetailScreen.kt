@@ -133,7 +133,7 @@ fun AccountDetailScreen(
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = "$pctOfTotal% of total",
+                    text = strings.accountDetailPctOfTotal.format(pctOfTotal),
                     fontFamily = SpaceGroteskFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
@@ -167,7 +167,7 @@ fun AccountDetailScreen(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
-                            text = "BALANCE",
+                            text = strings.accountDetailBalance,
                             fontFamily = SpaceGroteskFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp,
@@ -215,7 +215,7 @@ fun AccountDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "INFLOW",
+                        text = strings.accountDetailInflow,
                         fontFamily = SpaceGroteskFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 10.sp,
@@ -237,7 +237,7 @@ fun AccountDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "OUTFLOW",
+                        text = strings.accountDetailOutflow,
                         fontFamily = SpaceGroteskFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 10.sp,
@@ -256,7 +256,7 @@ fun AccountDetailScreen(
 
         // Account Activity Header
         Text(
-            text = "Account Activity",
+            text = strings.accountDetailActivity,
             fontFamily = PlusJakartaSansFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
@@ -272,7 +272,7 @@ fun AccountDetailScreen(
             ) {
                 if (accountTransactions.isEmpty()) {
                     Text(
-                        text = "No transactions recorded for this account.",
+                        text = strings.accountDetailNoTransactions,
                         fontFamily = PlusJakartaSansFamily,
                         fontSize = 13.sp,
                         color = Slate500,

@@ -94,7 +94,8 @@ fun LogTransactionSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     soundEffectsEnabled: Boolean = true,
-    languageCode: String = "en"
+    languageCode: String = "en",
+    hapticsEnabled: Boolean = true
 ) {
     val scope = rememberCoroutineScope()
     val strings = AppStrings.get(languageCode)
@@ -306,6 +307,7 @@ fun LogTransactionSheet(
         SegmentedControl(
             items = segmentItems,
             selectedValue = selectedType,
+            hapticsEnabled = hapticsEnabled,
             onValueSelected = { type ->
                 if (type != selectedType) {
                     ChimeGenerator.playChime(soundEffectsEnabled, scope)
@@ -511,6 +513,7 @@ fun LogTransactionSheet(
                     }
                 }
             },
+            hapticsEnabled = hapticsEnabled,
             modifier = Modifier.fillMaxWidth()
         )
 

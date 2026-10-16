@@ -49,6 +49,7 @@ import kotlin.math.floor
 import kotlin.math.min
 import kotlin.math.roundToInt
 import app.cashjournal.ui.i18n.AppStrings
+import app.cashjournal.ui.i18n.ScreenStrings
 
 enum class AppScreen {
     DASHBOARD,
@@ -282,9 +283,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _activeSheet.value = ActiveSheet.RECONCILE_BALANCE
     }
 
+    private fun currentStrings(): ScreenStrings = AppStrings.get(uiState.value.userPreferences.language)
+
     fun toggleHideBalances() {
         _hideBalances.value = !_hideBalances.value
-        showToast(if (_hideBalances.value) "Balances masked" else "Balances revealed")
+        val strings = currentStrings()
+        showToast(if (_hideBalances.value) strings.toastBalancesMasked else strings.toastBalancesRevealed)
     }
 
     fun setReorderMode(enabled: Boolean) {
@@ -308,18 +312,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         date: Long = System.currentTimeMillis(),
         category: Category? = null
     ) {
+        val strings = currentStrings()
         if (amount <= 0) {
-            showToast("Enter an amount")
+            showToast(strings.toastEnterAmount)
             return
         }
 
         if (sourceAccountId.isNullOrBlank()) {
-            showToast("Select an account")
+            showToast(strings.toastSelectAccount)
             return
         }
 
         if (type == TransactionType.TRANSFER && (destAccountId == null || destAccountId == sourceAccountId)) {
-            showToast("Select a different destination account")
+            showToast(strings.toastSelectDifferentDestAccount)
             return
         }
 
@@ -369,7 +374,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             ChimeGenerator.playChime(uiState.value.userPreferences.soundEffectsEnabled, viewModelScope)
             dismissSheet()
-            showToast("Transaction logged")
+            showToast(strings.toastTransactionLogged)
         }
     }
 
@@ -383,18 +388,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         destAccountId: String?,
         date: Long
     ) {
+        val strings = currentStrings()
         if (amount <= 0) {
-            showToast("Enter an amount")
+            showToast(strings.toastEnterAmount)
             return
         }
 
         if (sourceAccountId.isNullOrBlank()) {
-            showToast("Select an account")
+            showToast(strings.toastSelectAccount)
             return
         }
 
         if (type == TransactionType.TRANSFER && (destAccountId == null || destAccountId == sourceAccountId)) {
-            showToast("Select a different destination account")
+            showToast(strings.toastSelectDifferentDestAccount)
             return
         }
 
@@ -509,8 +515,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun createAccount(name: String, startingBalance: Long, accentKey: AccentKey) {
+        val strings = currentStrings()
         if (name.isBlank()) {
-            showToast("Account name is required")
+            showToast(strings.toastAccountNameRequired)
             return
         }
 
@@ -526,7 +533,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
             database.accountDao().insert(account)
             dismissSheet()
-            showToast("Account \"${name.take(28)}\" created")
+            showToast(strings.toastAccountCreatedFormat.format(name.take(28)))
         }
     }
 
@@ -563,29 +570,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updatePreferences(transform: suspend (UserPreferencesRepository) -> Unit) {
         viewModelScope.launch {
-            ChimeGenerator.playChime(uiState.value.userPreferences.soundEffectsEnabled, viewModelScope)
             transform(preferencesRepository)
+            val updated = preferencesRepository.userPreferencesFlow.first()
+            ChimeGenerator.playChime(updated.soundEffectsEnabled, viewModelScope)
         }
     }
 
     fun setPin(pin: String) {
         viewModelScope.launch {
             preferencesRepository.setPin(pin)
-            showToast("PIN code secured")
+            showToast(currentStrings().toastPinSecured)
         }
     }
 
     fun removePin() {
         viewModelScope.launch {
             preferencesRepository.removePin()
-            showToast("PIN and biometrics disabled")
+            showToast(currentStrings().toastPinDisabled)
         }
     }
 
     fun updateBiometrics(enabled: Boolean) {
         viewModelScope.launch {
             preferencesRepository.updateBiometricsEnabled(enabled)
-            showToast(if (enabled) "Biometrics enabled" else "Biometrics disabled")
+            val strings = currentStrings()
+            showToast(if (enabled) strings.toastBiometricsEnabled else strings.toastBiometricsDisabled)
         }
     }
 
@@ -645,7 +654,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _citySearchResults.value = emptyList()
             refreshWeather()
             dismissSheet()
-            showToast("Weather location set to ${city.name}")
+            showToast(currentStrings().toastWeatherLocationSet.format(city.name))
         }
     }
 
@@ -664,9 +673,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refreshRates(manual: Boolean) {
         viewModelScope.launch {
+            val strings = currentStrings()
             val cached = preferencesRepository.cachedRatesFlow.first()
             if (manual && !exchangeRateService.canManualRefresh(cached?.fetchedAt ?: 0L)) {
-                showToast("Rates already updated recently")
+                showToast(strings.toastRatesRecentlyUpdated)
                 return@launch
             }
 
@@ -677,12 +687,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 preferencesRepository.updateRatesCache(freshRates)
                 _isRatesOffline.value = false
                 if (manual) {
-                    showToast("Rates updated")
+                    showToast(strings.toastRatesUpdated)
                 }
             }.onFailure {
                 _isRatesOffline.value = true
                 if (manual) {
-                    showToast("Unable to refresh rates (offline)")
+                    showToast(strings.toastRatesOffline)
                 }
             }
         }
@@ -697,9 +707,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
 
+            val strings = currentStrings()
             val cached = preferencesRepository.cachedRatesFlow.first()
             if (cached == null || cached.rates.isEmpty()) {
-                showToast("Connect to the internet once to change your currency.")
+                showToast(strings.toastConnectInternetCurrency)
                 return@launch
             }
 
@@ -779,7 +790,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             preferencesRepository.updateCurrencyCode(targetCode)
             dismissSheet()
-            showToast("Currency changed to $targetCode")
+            showToast(strings.currencyChangedToast.format(targetCode))
 
             // Automatically re-fetch rates using the new base currency
             refreshRates(manual = false)
@@ -794,7 +805,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 database.monthlyPlanDao().deleteAll()
             }
             setScreen(AppScreen.DASHBOARD)
-            showToast("All data deleted")
+            showToast(currentStrings().allDataDeletedToast)
         }
     }
 

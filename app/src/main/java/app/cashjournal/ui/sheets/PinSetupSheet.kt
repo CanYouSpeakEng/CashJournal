@@ -65,7 +65,8 @@ import kotlin.math.roundToInt
 fun PinSetupSheet(
     onPinCreated: (String) -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    hapticsEnabled: Boolean = true
 ) {
     var isConfirmStep by remember { mutableStateOf(false) }
     var firstPin by remember { mutableStateOf("") }
@@ -78,7 +79,7 @@ fun PinSetupSheet(
 
     fun triggerShake() {
         coroutineScope.launch {
-            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.REJECT)
             shakeOffset.animateTo(12f, tween(50, easing = FastOutSlowInEasing))
             shakeOffset.animateTo(-12f, tween(50, easing = FastOutSlowInEasing))
             shakeOffset.animateTo(8f, tween(40, easing = FastOutSlowInEasing))
@@ -91,7 +92,7 @@ fun PinSetupSheet(
 
     fun handleDigit(d: String) {
         if (currentInput.length < 4) {
-            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             errorMessage = null
             val updated = currentInput + d
             if (!isConfirmStep) {
@@ -106,7 +107,7 @@ fun PinSetupSheet(
                 confirmPin = updated
                 if (updated.length == 4) {
                     if (updated == firstPin) {
-                        view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                        if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                         onPinCreated(updated)
                     } else {
                         errorMessage = "PINs did not match. Please try again."
@@ -122,7 +123,7 @@ fun PinSetupSheet(
     }
 
     fun handleBackspace() {
-        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
         errorMessage = null
         if (!isConfirmStep) {
             if (firstPin.isNotEmpty()) firstPin = firstPin.dropLast(1)
@@ -258,7 +259,8 @@ fun PinVerifyOrRemoveSheet(
     subtitle: String = "Enter your current 4-digit PIN to confirm.",
     onSuccess: () -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    hapticsEnabled: Boolean = true
 ) {
     var enteredPin by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -269,7 +271,7 @@ fun PinVerifyOrRemoveSheet(
 
     fun triggerShake() {
         coroutineScope.launch {
-            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.REJECT)
             shakeOffset.animateTo(12f, tween(50, easing = FastOutSlowInEasing))
             shakeOffset.animateTo(-12f, tween(50, easing = FastOutSlowInEasing))
             shakeOffset.animateTo(8f, tween(40, easing = FastOutSlowInEasing))
@@ -280,13 +282,13 @@ fun PinVerifyOrRemoveSheet(
 
     fun handleDigit(d: String) {
         if (enteredPin.length < 4) {
-            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             errorMessage = null
             val updated = enteredPin + d
             enteredPin = updated
             if (updated.length == 4) {
                 if (UserPreferencesRepository.verifyPin(updated, storedHash)) {
-                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                     onSuccess()
                 } else {
                     errorMessage = "Incorrect PIN. Please try again."
@@ -301,7 +303,7 @@ fun PinVerifyOrRemoveSheet(
     }
 
     fun handleBackspace() {
-        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
         errorMessage = null
         if (enteredPin.isNotEmpty()) enteredPin = enteredPin.dropLast(1)
     }

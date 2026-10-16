@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cashjournal.data.preferences.UserPreferencesRepository
+import app.cashjournal.ui.i18n.AppStrings
 import app.cashjournal.ui.sheets.PinKeypad
 import app.cashjournal.ui.theme.Berry
 import app.cashjournal.ui.theme.Charcoal
@@ -68,8 +69,11 @@ fun AppLockScreen(
     biometricsEnabled: Boolean,
     onUnlock: () -> Unit,
     onBiometricRequest: (() -> Unit)? = null,
+    languageCode: String = "en",
+    hapticsEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    val strings = AppStrings.get(languageCode)
     var enteredPin by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -79,7 +83,7 @@ fun AppLockScreen(
 
     fun triggerShake() {
         coroutineScope.launch {
-            view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.REJECT)
             shakeOffset.animateTo(12f, tween(50, easing = FastOutSlowInEasing))
             shakeOffset.animateTo(-12f, tween(50, easing = FastOutSlowInEasing))
             shakeOffset.animateTo(8f, tween(40, easing = FastOutSlowInEasing))
@@ -90,16 +94,16 @@ fun AppLockScreen(
 
     fun handleDigit(d: String) {
         if (enteredPin.length < 4) {
-            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             errorMessage = null
             val updated = enteredPin + d
             enteredPin = updated
             if (updated.length == 4) {
                 if (UserPreferencesRepository.verifyPin(updated, pinHash)) {
-                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                    if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                     onUnlock()
                 } else {
-                    errorMessage = "Incorrect PIN"
+                    errorMessage = strings.lockScreenError
                     triggerShake()
                     coroutineScope.launch {
                         delay(400)
@@ -111,7 +115,7 @@ fun AppLockScreen(
     }
 
     fun handleBackspace() {
-        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
         errorMessage = null
         if (enteredPin.isNotEmpty()) enteredPin = enteredPin.dropLast(1)
     }
@@ -166,7 +170,7 @@ fun AppLockScreen(
                     color = Charcoal
                 )
                 Text(
-                    text = "Enter your 4-digit PIN to unlock",
+                    text = strings.lockScreenPrompt,
                     fontFamily = PlusJakartaSansFamily,
                     fontSize = 14.sp,
                     color = Slate600

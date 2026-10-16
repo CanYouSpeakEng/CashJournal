@@ -59,6 +59,15 @@ class MainActivity : FragmentActivity() {
                     }
                 }
 
+                // Daily Reminder scheduling
+                LaunchedEffect(state.userPreferences.dailyReminderEnabled) {
+                    if (state.userPreferences.dailyReminderEnabled) {
+                        app.cashjournal.receiver.DailyReminderScheduler.scheduleDailyReminder(applicationContext)
+                    } else {
+                        app.cashjournal.receiver.DailyReminderScheduler.cancelDailyReminder(applicationContext)
+                    }
+                }
+
                 if (!state.userPreferences.onboardingComplete) {
                     OnboardingScreen(
                         onFinish = { language, currencyCode, name, railOnRight, shakeToSwap, loadExample, weatherOption, cityName, cityLat, cityLon ->
@@ -87,12 +96,15 @@ class MainActivity : FragmentActivity() {
                         pinHash = state.userPreferences.pinHash,
                         biometricsEnabled = state.userPreferences.biometricsEnabled,
                         onUnlock = { isAppLocked.value = false },
+                        languageCode = state.userPreferences.language,
+                        hapticsEnabled = state.userPreferences.tactileHapticsEnabled,
                         onBiometricRequest = if (state.userPreferences.biometricsEnabled) {
                             {
+                                val isIndonesian = state.userPreferences.language.equals("in", ignoreCase = true)
                                 BiometricAuthHelper.promptBiometric(
                                     activity = this@MainActivity,
-                                    title = "Unlock CashJournal",
-                                    subtitle = "Confirm biometric to unlock",
+                                    title = if (isIndonesian) "Buka CashJournal" else "Unlock CashJournal",
+                                    subtitle = if (isIndonesian) "Konfirmasi biometrik untuk membuka" else "Confirm biometric to unlock",
                                     onSuccess = { isAppLocked.value = false },
                                     onError = { /* fallback to PIN */ }
                                 )

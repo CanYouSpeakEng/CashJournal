@@ -48,6 +48,7 @@ import app.cashjournal.data.weather.TemperatureConverter
 import app.cashjournal.data.weather.WeatherIconMapper
 import app.cashjournal.ui.components.AmbientField
 import app.cashjournal.ui.components.GreetingBar
+import app.cashjournal.ui.i18n.AppStrings
 import app.cashjournal.ui.components.NavTab
 import app.cashjournal.ui.components.SideRail
 import app.cashjournal.ui.components.ToastPill
@@ -224,14 +225,16 @@ fun MainAppScaffold(
                 )
         ) {
             // Greeting Bar
+            val greetingAccount = if (state.userPreferences.language.equals("in", ignoreCase = true)) "AKUN" else "ACCOUNT"
             if (isAccountDetail && state.selectedAccount != null) {
                 GreetingBar(
-                    greeting = "ACCOUNT",
+                    greeting = greetingAccount,
                     name = state.selectedAccount!!.name,
                     weatherIcon = weatherIcon,
                     temperature = tempText,
                     weatherEnabled = isWeatherEnabled,
                     onWeatherClick = if (isWeatherEnabled) { { viewModel.openSheet(ActiveSheet.WEATHER_DETAIL) } } else null,
+                    languageCode = state.userPreferences.language,
                     modifier = Modifier.fillMaxWidth()
                 )
             } else {
@@ -241,6 +244,7 @@ fun MainAppScaffold(
                     temperature = tempText,
                     weatherEnabled = isWeatherEnabled,
                     onWeatherClick = if (isWeatherEnabled) { { viewModel.openSheet(ActiveSheet.WEATHER_DETAIL) } } else null,
+                    languageCode = state.userPreferences.language,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -313,7 +317,6 @@ fun MainAppScaffold(
                         state = state,
                         onLanguageChange = { viewModel.updatePreferences { prefs -> prefs.updateLanguage(it) } },
                         onOpenMainCurrency = { viewModel.openSheet(ActiveSheet.MAIN_CURRENCY) },
-                        onPinChange = { viewModel.updatePreferences { prefs -> prefs.updatePinEnabled(it) } },
                         onBiometricsChange = { viewModel.updateBiometrics(it) },
                         onScreenPrivacyChange = { viewModel.updatePreferences { prefs -> prefs.updateScreenPrivacyEnabled(it) } },
                         onSoundEffectsChange = { viewModel.updatePreferences { prefs -> prefs.updateSoundEffectsEnabled(it) } },
@@ -322,12 +325,13 @@ fun MainAppScaffold(
                         onRailSideChange = { viewModel.updatePreferences { prefs -> prefs.updateRailOnRight(it) } },
                         onShakeToSwapChange = { enabled ->
                             val supported = shakeDetector.isSupported
+                            val screenStrings = AppStrings.get(state.userPreferences.language)
                             if (enabled && !supported) {
-                                viewModel.showToast("Shake sensor not available on this device")
+                                viewModel.showToast(screenStrings.toastShakeSensorUnavailable)
                                 viewModel.updatePreferences { prefs -> prefs.updateShakeToSwap(false) }
                             } else {
                                 viewModel.updatePreferences { prefs -> prefs.updateShakeToSwap(enabled) }
-                                viewModel.showToast(if (enabled) "Shake sensor activated" else "Shake sensor disabled")
+                                viewModel.showToast(if (enabled) screenStrings.toastShakeSensorActivated else screenStrings.toastShakeSensorDisabled)
                             }
                         },
                         onKnockSensitivityChange = { viewModel.updatePreferences { prefs -> prefs.updateKnockSensitivity(it) } },
@@ -405,7 +409,8 @@ fun MainAppScaffold(
                         },
                         onDismiss = { viewModel.dismissSheet() },
                         soundEffectsEnabled = state.userPreferences.soundEffectsEnabled,
-                        languageCode = state.userPreferences.language
+                        languageCode = state.userPreferences.language,
+                        hapticsEnabled = state.userPreferences.tactileHapticsEnabled
                     )
 
                     ActiveSheet.EDIT_TRANSACTION -> {
@@ -422,7 +427,8 @@ fun MainAppScaffold(
                                 },
                                 onDismiss = { viewModel.dismissSheet() },
                                 soundEffectsEnabled = state.userPreferences.soundEffectsEnabled,
-                                languageCode = state.userPreferences.language
+                                languageCode = state.userPreferences.language,
+                                hapticsEnabled = state.userPreferences.tactileHapticsEnabled
                             )
                         }
                     }
@@ -436,7 +442,8 @@ fun MainAppScaffold(
                                     viewModel.reconcileBalance(acc.id, actualBal, note)
                                 },
                                 onDismiss = { viewModel.dismissSheet() },
-                                languageCode = state.userPreferences.language
+                                languageCode = state.userPreferences.language,
+                                hapticsEnabled = state.userPreferences.tactileHapticsEnabled
                             )
                         }
                     }

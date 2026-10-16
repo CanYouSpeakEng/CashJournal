@@ -59,7 +59,8 @@ fun ReconcileBalanceSheet(
     onConfirmReconciliation: (actualBalance: Long, note: String) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
-    languageCode: String = "en"
+    languageCode: String = "en",
+    hapticsEnabled: Boolean = true
 ) {
     val strings = AppStrings.get(languageCode)
     val currency = Currency.findByCode(currencyCode)
@@ -261,6 +262,7 @@ fun ReconcileBalanceSheet(
         // Numeric Keypad
         CustomNumericKeypad(
             currencyCode = currencyCode,
+            hapticsEnabled = hapticsEnabled,
             onKeyPressed = { key ->
                 if (key == "BACKSPACE") {
                     rawDigits = if (rawDigits.length > 1) {

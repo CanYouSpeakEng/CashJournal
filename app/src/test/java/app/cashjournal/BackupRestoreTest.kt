@@ -97,7 +97,13 @@ class BackupRestoreTest {
                 temperatureUnit = "C",
                 soundEffectsEnabled = true,
                 tactileHapticsEnabled = true,
-                dailyReminderEnabled = true
+                dailyReminderEnabled = true,
+                screenPrivacyEnabled = true,
+                weatherOption = "search",
+                weatherCityLabel = "Tokyo",
+                weatherCityLat = 35.6762,
+                weatherCityLon = 139.6503,
+                selectedWorldCurrency = "EUR"
             )
         )
 
@@ -119,6 +125,38 @@ class BackupRestoreTest {
         assertNotNull(decodedPayload.preferences)
         assertEquals("IDR", decodedPayload.preferences?.currencyCode)
         assertEquals("Yahya", decodedPayload.preferences?.userName)
+        assertEquals(true, decodedPayload.preferences?.screenPrivacyEnabled)
+        assertEquals("search", decodedPayload.preferences?.weatherOption)
+        assertEquals("Tokyo", decodedPayload.preferences?.weatherCityLabel)
+        assertEquals(35.6762, decodedPayload.preferences?.weatherCityLat ?: 0.0, 0.0001)
+        assertEquals(139.6503, decodedPayload.preferences?.weatherCityLon ?: 0.0, 0.0001)
+        assertEquals("EUR", decodedPayload.preferences?.selectedWorldCurrency)
+    }
+
+    @Test
+    fun testPreferencesBackupLegacyFallbackWithoutNewFields() {
+        val legacyJson = """
+            {
+                "version": 1,
+                "appVersion": "1.0.12",
+                "exportedAt": 1750000000000,
+                "accounts": [],
+                "transactions": [],
+                "preferences": {
+                    "language": "en",
+                    "currencyCode": "USD",
+                    "userName": "Alex"
+                }
+            }
+        """.trimIndent()
+
+        val decoded = json.decodeFromString(BackupPayload.serializer(), legacyJson)
+        assertNotNull(decoded.preferences)
+        assertEquals("USD", decoded.preferences?.currencyCode)
+        assertEquals("Alex", decoded.preferences?.userName)
+        assertEquals(false, decoded.preferences?.screenPrivacyEnabled)
+        assertEquals("approx", decoded.preferences?.weatherOption)
+        assertEquals("USD", decoded.preferences?.selectedWorldCurrency)
     }
 
     @Test

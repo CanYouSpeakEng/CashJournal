@@ -93,7 +93,8 @@ fun TransactionEditSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     soundEffectsEnabled: Boolean = true,
-    languageCode: String = "en"
+    languageCode: String = "en",
+    hapticsEnabled: Boolean = true
 ) {
     val scope = rememberCoroutineScope()
     val strings = AppStrings.get(languageCode)
@@ -371,6 +372,7 @@ fun TransactionEditSheet(
         SegmentedControl(
             items = segmentItems,
             selectedValue = selectedType,
+            hapticsEnabled = hapticsEnabled,
             onValueSelected = { type ->
                 if (type != selectedType) {
                     ChimeGenerator.playChime(soundEffectsEnabled, scope)
@@ -558,6 +560,7 @@ fun TransactionEditSheet(
         // Numeric Keypad
         CustomNumericKeypad(
             currencyCode = currencyCode,
+            hapticsEnabled = hapticsEnabled,
             onKeyPressed = { key ->
                 if (key == "BACKSPACE") {
                     rawDigits = if (rawDigits.length > 1) {

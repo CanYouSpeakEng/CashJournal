@@ -145,14 +145,15 @@ This log is kept up to date after every step. Any AI assistant or developer read
   - [x] **Item 55 (`MED-1`)**: Upgraded `Category.detectFromNote` to pre-compiled word-boundary regex matching (`\b`), eliminating substring false positives (`theater`/`sweater` -> `FOOD`, `chair`/`repair` -> `UTILITIES`, `cost` -> `HOUSING`). Added negative test cases in `CategoryDetectorTest.kt`.
   - [x] **Item 56 (`MED-2`)**: Buffered budget `Slider` dragging in local `sliderBudget` on `AnalyticsScreen`, committing to Room and playing chime only via `onValueChangeFinished` to eliminate AudioTrack and SQLite thrashing.
   - [x] **Item 57 (`MED-3`)**: Made category picker in `LogTransactionSheet` sensitive to `INCOME` (including `Category.SALARY`), preserved manual/non-OTHER category choices in `TransactionEditSheet` during note editing, and preserved category accent colors when updating `EXPENSE` in `MainViewModel.editTransaction()`.
-- [ ] **Phase 12: Security Hardening, Full Localization, Backup Completeness & Sensory Polish**
-  - [ ] **Item 58 (`MED-4`)**: Upgrade 4-digit PIN storage from unsalted SHA-256 to salted multi-round SHA-256 (`saltHex:hashHex`) with transparent fallback verification for legacy hashes.
-  - [ ] **Item 59 (`MED-5`)**: Complete Bahasa Indonesia (`"in"`) localization across `GreetingBar`, `DashboardScreen`, `AccountsScreen`, `AccountDetailScreen`, `AnalyticsScreen`, `SettingsScreen`, `AppLockScreen`, modal sheets, and `MainViewModel` toasts.
-  - [ ] **Item 60 (`LOW-1`)**: Include `screenPrivacyEnabled`, `weatherOption`, `weatherCityLabel`, `weatherCityLat`, `weatherCityLon`, and `selectedWorldCurrency` in `BackupManager` (`PreferencesBackupDto`).
-  - [ ] **Item 61 (`LOW-2`)**: Implement `DailyReminderScheduler` and `DailyReminderReceiver` (`AlarmManager` + `NotificationChannel`) wired to the `dailyReminderEnabled` preference.
-  - [ ] **Item 62 (`LOW-3` & `LOW-4`)**: Enforce `tactileHapticsEnabled` across all interactive controls, fix `updatePreferences` playing a chime when turning Sound Effects *off*, and remove duplicate PIN/Biometric toasts.
-  - [ ] **Item 63 (`LOW-6`)**: Remove unused `gitCommitCount` shell execution in `app/build.gradle.kts` and clean up unused parameters.
-  - [ ] **Item 64**: Expand unit test suite to cover all post-audit mathematical, heuristic, security, and backup invariants.
+- [x] **Phase 12: Security Hardening, Full Localization, Backup Completeness & Sensory Polish**
+  - [x] **Item 58 (`MED-4`)**: Upgraded 4-digit PIN storage to 10,000-round salted SHA-256 (`saltHex:hashHex`) using `SecureRandom` 16-byte salt and constant-time `MessageDigest.isEqual` comparison, with transparent backward-compatible verification for legacy 64-hex hashes.
+  - [x] **Item 59 (`MED-5`)**: Complete Bahasa Indonesia (`"in"`) localization across `GreetingBar` dynamic time greetings, `AccountDetailScreen` metrics, `AppLockScreen` prompt/error, biometric prompt/status messages, shake sensor notifications, and `MainViewModel` toasts via reactive `currentStrings()`.
+  - [x] **Item 60 (`LOW-1`)**: Expanded `BackupPayload` / `PreferencesBackupDto` to fully cover `screenPrivacyEnabled`, `weatherOption`, `weatherCityLabel`, `weatherCityLat`, `weatherCityLon`, and `selectedWorldCurrency`, with legacy backward-compatibility deserialization fallbacks.
+  - [x] **Item 61 (`LOW-2`)**: Implemented `DailyReminderScheduler` (`AlarmManager.setInexactRepeating` at 20:00 local time) and `DailyReminderReceiver` (`cashjournal_daily_reminder` notification channel) reactively controlled by `dailyReminderEnabled` with `RECEIVE_BOOT_COMPLETED` rescheduling support.
+  - [x] **Item 62 (`LOW-3` & `LOW-4`)**: Enforced `tactileHapticsEnabled` checks across all interactive controls (`SegmentedControl`, `CustomNumericKeypad`, `SettingToggleRow`, `PinSetupSheet`, `AppLockScreen`), resolved `MainViewModel.updatePreferences` audio chime inversion, and removed redundant duplicate toasts from `SettingsScreen`.
+  - [x] **Item 63 (`LOW-6`)**: Removed unused `gitCommitCount` shell process execution from `app/build.gradle.kts` and deleted unused `onPinChange` parameter from `SettingsScreen` and `MainAppScaffold`.
+  - [x] **Item 64**: Added `PinSecurityTest.kt` and expanded `BackupRestoreTest.kt`, verifying 100% test pass across the test suite (`./gradlew test` and `./gradlew assembleDebug` both exit code 0).
+
 
 
 

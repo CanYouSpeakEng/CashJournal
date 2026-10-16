@@ -12,6 +12,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import app.cashjournal.data.currency.CachedExchangeRates
 import app.cashjournal.data.weather.WeatherData
+import java.security.MessageDigest
+import java.security.SecureRandom
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
@@ -282,7 +284,13 @@ class UserPreferencesRepository(private val context: Context) {
         temperatureUnit: String?,
         soundEffectsEnabled: Boolean?,
         tactileHapticsEnabled: Boolean?,
-        dailyReminderEnabled: Boolean?
+        dailyReminderEnabled: Boolean?,
+        screenPrivacyEnabled: Boolean? = null,
+        weatherOption: String? = null,
+        weatherCityLabel: String? = null,
+        weatherCityLat: Double? = null,
+        weatherCityLon: Double? = null,
+        selectedWorldCurrency: String? = null
     ) {
         context.dataStore.edit { prefs ->
             language?.let { prefs[PreferencesKeys.LANGUAGE] = it }
@@ -296,17 +304,74 @@ class UserPreferencesRepository(private val context: Context) {
             soundEffectsEnabled?.let { prefs[PreferencesKeys.SOUND_EFFECTS_ENABLED] = it }
             tactileHapticsEnabled?.let { prefs[PreferencesKeys.TACTILE_HAPTICS_ENABLED] = it }
             dailyReminderEnabled?.let { prefs[PreferencesKeys.DAILY_REMINDER_ENABLED] = it }
+            screenPrivacyEnabled?.let { prefs[PreferencesKeys.SCREEN_PRIVACY_ENABLED] = it }
+            weatherOption?.let { prefs[PreferencesKeys.WEATHER_OPTION] = it }
+            weatherCityLabel?.let { prefs[PreferencesKeys.WEATHER_CITY_LABEL] = it }
+            weatherCityLat?.let { prefs[PreferencesKeys.WEATHER_CITY_LAT] = it }
+            weatherCityLon?.let { prefs[PreferencesKeys.WEATHER_CITY_LON] = it }
+            selectedWorldCurrency?.let { prefs[PreferencesKeys.SELECTED_WORLD_CURRENCY] = it }
         }
     }
 
     companion object {
-        fun hashPin(pin: String): String {
-            val bytes = java.security.MessageDigest.getInstance("SHA-256").digest(pin.toByteArray())
+        private const val HASH_ROUNDS = 10000
+
+        private fun hexStringToByteArray(hex: String): ByteArray {
+            val len = hex.length
+            val data = ByteArray(len / 2)
+            var i = 0
+            while (i < len) {
+                data[i / 2] = ((Character.digit(hex[i], 16) shl 4) + Character.digit(hex[i + 1], 16)).toByte()
+                i += 2
+            }
+            return data
+        }
+
+        private fun hashLegacyPin(pin: String): String {
+            val bytes = MessageDigest.getInstance("SHA-256").digest(pin.toByteArray(Charsets.UTF_8))
             return bytes.joinToString("") { "%02x".format(it) }
         }
 
+        fun computeSaltedSha256(pin: String, salt: ByteArray, rounds: Int = HASH_ROUNDS): String {
+            val md = MessageDigest.getInstance("SHA-256")
+            var current = md.digest(salt + pin.toByteArray(Charsets.UTF_8))
+            for (i in 1 until rounds) {
+                md.reset()
+                current = md.digest(current + salt)
+            }
+            return current.joinToString("") { "%02x".format(it) }
+        }
+
+        fun createSaltedPinHash(pin: String): String {
+            val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
+            val saltHex = salt.joinToString("") { "%02x".format(it) }
+            val hashHex = computeSaltedSha256(pin, salt)
+            return "$saltHex:$hashHex"
+        }
+
+        fun hashPin(pin: String): String {
+            return createSaltedPinHash(pin)
+        }
+
         fun verifyPin(enteredPin: String, storedHash: String): Boolean {
-            return storedHash.isNotEmpty() && hashPin(enteredPin) == storedHash
+            if (storedHash.isEmpty()) return false
+            return if (storedHash.contains(":")) {
+                val parts = storedHash.split(":")
+                if (parts.size != 2) return false
+                val salt = try {
+                    hexStringToByteArray(parts[0])
+                } catch (e: Exception) {
+                    return false
+                }
+                val expectedHash = parts[1]
+                val computedHash = computeSaltedSha256(enteredPin, salt)
+                MessageDigest.isEqual(computedHash.toByteArray(Charsets.UTF_8), expectedHash.toByteArray(Charsets.UTF_8))
+            } else if (storedHash.length == 64) {
+                val legacy = hashLegacyPin(enteredPin)
+                MessageDigest.isEqual(legacy.toByteArray(Charsets.UTF_8), storedHash.toByteArray(Charsets.UTF_8))
+            } else {
+                false
+            }
         }
     }
 }

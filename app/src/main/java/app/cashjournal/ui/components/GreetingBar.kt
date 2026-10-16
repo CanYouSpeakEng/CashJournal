@@ -42,6 +42,7 @@ fun GreetingBar(
     temperature: String? = temperatureText,
     weatherEnabled: Boolean = true,
     onWeatherClick: (() -> Unit)? = null,
+    languageCode: String = "en",
     modifier: Modifier = Modifier
 ) {
     val activeName = name ?: userName
@@ -50,10 +51,18 @@ fun GreetingBar(
     val currentTime = LocalTime.now()
     val hour = currentTime.hour
     val defaultGreetingText = when {
-        hour < 12 -> "Good morning"
-        hour < 17 -> "Good afternoon"
-        hour < 21 -> "Good evening"
-        else -> "Good night"
+        languageCode.equals("in", ignoreCase = true) -> when {
+            hour < 12 -> "Selamat pagi"
+            hour < 15 -> "Selamat siang"
+            hour < 18 -> "Selamat sore"
+            else -> "Selamat malam"
+        }
+        else -> when {
+            hour < 12 -> "Good morning"
+            hour < 17 -> "Good afternoon"
+            hour < 21 -> "Good evening"
+            else -> "Good night"
+        }
     }
     val greetingText = greeting ?: defaultGreetingText
 

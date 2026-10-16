@@ -141,7 +141,13 @@ data class PreferencesBackupDto(
     val temperatureUnit: String? = "C",
     val soundEffectsEnabled: Boolean? = true,
     val tactileHapticsEnabled: Boolean? = true,
-    val dailyReminderEnabled: Boolean? = true
+    val dailyReminderEnabled: Boolean? = true,
+    val screenPrivacyEnabled: Boolean? = false,
+    val weatherOption: String? = "approx",
+    val weatherCityLabel: String? = "",
+    val weatherCityLat: Double? = 0.0,
+    val weatherCityLon: Double? = 0.0,
+    val selectedWorldCurrency: String? = "USD"
 )
 
 data class RestoreResult(
@@ -175,7 +181,13 @@ class BackupManager(
             temperatureUnit = prefs.temperatureUnit,
             soundEffectsEnabled = prefs.soundEffectsEnabled,
             tactileHapticsEnabled = prefs.tactileHapticsEnabled,
-            dailyReminderEnabled = prefs.dailyReminderEnabled
+            dailyReminderEnabled = prefs.dailyReminderEnabled,
+            screenPrivacyEnabled = prefs.screenPrivacyEnabled,
+            weatherOption = prefs.weatherOption,
+            weatherCityLabel = prefs.weatherCityLabel,
+            weatherCityLat = prefs.weatherCityLat,
+            weatherCityLon = prefs.weatherCityLon,
+            selectedWorldCurrency = prefs.selectedWorldCurrency
         )
 
         BackupPayload(
@@ -242,7 +254,13 @@ class BackupManager(
                     temperatureUnit = p.temperatureUnit,
                     soundEffectsEnabled = p.soundEffectsEnabled,
                     tactileHapticsEnabled = p.tactileHapticsEnabled,
-                    dailyReminderEnabled = p.dailyReminderEnabled
+                    dailyReminderEnabled = p.dailyReminderEnabled,
+                    screenPrivacyEnabled = p.screenPrivacyEnabled,
+                    weatherOption = p.weatherOption,
+                    weatherCityLabel = p.weatherCityLabel,
+                    weatherCityLat = p.weatherCityLat,
+                    weatherCityLon = p.weatherCityLon,
+                    selectedWorldCurrency = p.selectedWorldCurrency
                 )
             }
 

@@ -49,7 +49,8 @@ fun TransactionTypeSegmentedControl(
     modifier: Modifier = Modifier,
     expenseLabel: String = "Expense",
     incomeLabel: String = "Income",
-    transferLabel: String = "Transfer"
+    transferLabel: String = "Transfer",
+    hapticsEnabled: Boolean = true
 ) {
     val items = listOf(
         SegmentItem(TransactionType.EXPENSE, expenseLabel, Persimmon),
@@ -61,7 +62,8 @@ fun TransactionTypeSegmentedControl(
         items = items,
         selectedValue = selectedType,
         onValueSelected = onTypeSelected,
-        modifier = modifier
+        modifier = modifier,
+        hapticsEnabled = hapticsEnabled
     )
 }
 
@@ -70,7 +72,8 @@ fun <T> SegmentedControl(
     items: List<SegmentItem<T>>,
     selectedValue: T,
     onValueSelected: (T) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    hapticsEnabled: Boolean = true
 ) {
     val view = LocalView.current
 
@@ -124,7 +127,9 @@ fun <T> SegmentedControl(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) {
-                            view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                            if (hapticsEnabled) {
+                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                            }
                             onValueSelected(item.value)
                         },
                     contentAlignment = Alignment.Center

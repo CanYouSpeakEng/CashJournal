@@ -1,22 +1,9 @@
-import java.io.ByteArrayOutputStream
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
-}
-
-val gitCommitCount = try {
-    val stdout = ByteArrayOutputStream()
-    exec {
-        commandLine("git", "rev-list", "--count", "HEAD")
-        standardOutput = stdout
-    }
-    stdout.toString().trim().toIntOrNull() ?: 1
-} catch (e: Exception) {
-    1
 }
 
 val epochOffset = 1767225600L // 2026-01-01T00:00:00Z

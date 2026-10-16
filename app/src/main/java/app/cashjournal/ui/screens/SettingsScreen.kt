@@ -1,7 +1,9 @@
 package app.cashjournal.ui.screens
 
 import android.net.Uri
+import android.view.HapticFeedbackConstants
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.ui.platform.LocalView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -87,7 +89,6 @@ fun SettingsScreen(
     state: MainUiState,
     onLanguageChange: (String) -> Unit,
     onOpenMainCurrency: () -> Unit,
-    onPinChange: (Boolean) -> Unit,
     onBiometricsChange: (Boolean) -> Unit,
     onScreenPrivacyChange: (Boolean) -> Unit,
     onSoundEffectsChange: (Boolean) -> Unit,
@@ -510,7 +511,8 @@ fun SettingsScreen(
                         } else {
                             showPinRemoveSheet = true
                         }
-                    }
+                    },
+                    hapticsEnabled = state.userPreferences.tactileHapticsEnabled
                 )
 
                 SettingToggleRow(
@@ -520,7 +522,7 @@ fun SettingsScreen(
                     onCheckedChange = { targetChecked ->
                         if (targetChecked) {
                             if (!state.userPreferences.pinEnabled || state.userPreferences.pinHash.isEmpty()) {
-                                onToast(if (state.userPreferences.language == "in") "Harap atur kode PIN terlebih dahulu" else "Please set up a PIN code first")
+                                onToast(strings.toastPinSetupFirst)
                                 showPinSetupSheet = true
                             } else {
                                 if (activity != null) {
@@ -530,10 +532,9 @@ fun SettingsScreen(
                                         subtitle = if (state.userPreferences.language == "in") "Konfirmasi identitas biometrik untuk mengaktifkan" else "Confirm biometric identity to enable",
                                         onSuccess = {
                                             onBiometricsChange(true)
-                                            onToast(if (state.userPreferences.language == "in") "Biometrik diaktifkan" else "Biometrics enabled")
                                         },
                                         onError = {
-                                            onToast(if (state.userPreferences.language == "in") "Verifikasi biometrik dibatalkan" else "Biometric verification cancelled or failed")
+                                            onToast(strings.toastBiometricCancelled)
                                         }
                                     )
                                 } else {
@@ -542,16 +543,17 @@ fun SettingsScreen(
                             }
                         } else {
                             onBiometricsChange(false)
-                            onToast(if (state.userPreferences.language == "in") "Biometrik dinonaktifkan" else "Biometrics disabled")
                         }
-                    }
+                    },
+                    hapticsEnabled = state.userPreferences.tactileHapticsEnabled
                 )
 
                 SettingToggleRow(
                     title = strings.screenPrivacyTitle,
                     subtitle = strings.screenPrivacySubtitle,
                     checked = state.userPreferences.screenPrivacyEnabled,
-                    onCheckedChange = onScreenPrivacyChange
+                    onCheckedChange = onScreenPrivacyChange,
+                    hapticsEnabled = state.userPreferences.tactileHapticsEnabled
                 )
 
                 if (state.userPreferences.pinEnabled) {
@@ -612,19 +614,22 @@ fun SettingsScreen(
                 SettingToggleRow(
                     title = strings.soundEffectsTitle,
                     checked = state.userPreferences.soundEffectsEnabled,
-                    onCheckedChange = onSoundEffectsChange
+                    onCheckedChange = onSoundEffectsChange,
+                    hapticsEnabled = state.userPreferences.tactileHapticsEnabled
                 )
 
                 SettingToggleRow(
                     title = strings.tactileHapticsTitle,
                     checked = state.userPreferences.tactileHapticsEnabled,
-                    onCheckedChange = onTactileHapticsChange
+                    onCheckedChange = onTactileHapticsChange,
+                    hapticsEnabled = state.userPreferences.tactileHapticsEnabled
                 )
 
                 SettingToggleRow(
                     title = strings.dailyReminderTitle,
                     checked = state.userPreferences.dailyReminderEnabled,
-                    onCheckedChange = onDailyReminderChange
+                    onCheckedChange = onDailyReminderChange,
+                    hapticsEnabled = state.userPreferences.tactileHapticsEnabled
                 )
             }
         }
@@ -652,14 +657,16 @@ fun SettingsScreen(
                 SegmentedControl(
                     items = railItems,
                     selectedValue = state.userPreferences.railOnRight,
-                    onValueSelected = onRailSideChange
+                    onValueSelected = onRailSideChange,
+                    hapticsEnabled = state.userPreferences.tactileHapticsEnabled
                 )
 
                 SettingToggleRow(
                     title = strings.knockToSwapTitle,
                     subtitle = if (state.userPreferences.language == "in") "Ketuk perangkat untuk pindah sisi" else "Knock device or shake to swap",
                     checked = state.userPreferences.shakeToSwap,
-                    onCheckedChange = onShakeToSwapChange
+                    onCheckedChange = onShakeToSwapChange,
+                    hapticsEnabled = state.userPreferences.tactileHapticsEnabled
                 )
 
                 if (state.userPreferences.shakeToSwap) {
@@ -969,8 +976,8 @@ fun SettingsScreen(
             onPinCreated = { pin ->
                 onSetPin(pin)
                 showPinSetupSheet = false
-                onToast("PIN code enabled")
-            }
+            },
+            hapticsEnabled = state.userPreferences.tactileHapticsEnabled
         )
     }
 
@@ -981,8 +988,8 @@ fun SettingsScreen(
             onSuccess = {
                 onRemovePin()
                 showPinRemoveSheet = false
-                onToast("PIN code removed")
-            }
+            },
+            hapticsEnabled = state.userPreferences.tactileHapticsEnabled
         )
     }
 }
@@ -992,12 +999,19 @@ private fun SettingToggleRow(
     title: String,
     subtitle: String? = null,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    hapticsEnabled: Boolean = true
 ) {
+    val view = LocalView.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) },
+            .clickable {
+                if (hapticsEnabled) {
+                    view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                }
+                onCheckedChange(!checked)
+            },
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1021,7 +1035,8 @@ private fun SettingToggleRow(
 
         ToggleSwitch(
             checked = checked,
-            onCheckedChange = onCheckedChange
+            onCheckedChange = onCheckedChange,
+            hapticsEnabled = hapticsEnabled
         )
     }
 }
