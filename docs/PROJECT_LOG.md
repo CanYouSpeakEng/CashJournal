@@ -164,5 +164,10 @@ This log is kept up to date after every step. Any AI assistant or developer read
   - Tag: `v1.0.16-dev`
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.16-dev
   - Artifacts: `app-debug.apk` (17.3 MB), `app-release.apk` (12.2 MB).
+- [ ] **Phase 14: Immersive Fullscreen, Interactive Handedness Silhouette & What's New Release Notes**
+  - [ ] **Item 67: Immersive Sticky Fullscreen by Default**: Enable `WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE` hiding system bars with a toggle in Settings (`immersiveModeEnabled`).
+  - [ ] **Item 68: Onboarding Step 7 Phone Silhouette Wireframe**: High-fidelity phone vector wireframe with animated rail spring glide and knock/shake-to-swap motion cue.
+  - [ ] **Item 69: What's New In-App Release Notes Modal Window**: One-time post-update pop-up sheet driven by `lastSeenVersion` DataStore tracking and re-readable via Settings About.
+
 
 
