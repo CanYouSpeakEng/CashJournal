@@ -116,14 +116,18 @@ fun TransactionEditSheet(
 
     val (isToday, isYesterday) = remember(selectedDateMillis) {
         val nowCal = Calendar.getInstance()
+        val yestCal = (nowCal.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -1) }
         val selCal = Calendar.getInstance().apply { timeInMillis = selectedDateMillis }
+
         val nowYear = nowCal.get(Calendar.YEAR)
         val nowDay = nowCal.get(Calendar.DAY_OF_YEAR)
+        val yestYear = yestCal.get(Calendar.YEAR)
+        val yestDay = yestCal.get(Calendar.DAY_OF_YEAR)
         val selYear = selCal.get(Calendar.YEAR)
         val selDay = selCal.get(Calendar.DAY_OF_YEAR)
 
         val today = (nowYear == selYear && nowDay == selDay)
-        val yesterday = (nowYear == selYear && nowDay - 1 == selDay)
+        val yesterday = (yestYear == selYear && yestDay == selDay)
         Pair(today, yesterday)
     }
 

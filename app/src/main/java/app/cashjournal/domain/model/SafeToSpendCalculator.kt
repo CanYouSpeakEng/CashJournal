@@ -88,7 +88,7 @@ object SafeToSpendCalculator {
             set(Calendar.MILLISECOND, 0)
         }
         val diffMillis = endDayCal.timeInMillis - nowCal.timeInMillis
-        val daysLeft = (diffMillis / (24 * 60 * 60 * 1000L)).toInt().coerceAtLeast(0)
+        val daysLeft = Math.round(diffMillis.toDouble() / (24 * 60 * 60 * 1000.0)).toInt().coerceAtLeast(0)
         val isLastDay = daysLeft <= 0
 
         val label = if (clampedDay == 1) {
@@ -133,8 +133,17 @@ object SafeToSpendCalculator {
         val month = calendar.get(Calendar.MONTH) + 1
         val todayMonthKey = "%04d-%02d".format(Locale.US, year, month)
 
-        // Starting spent only if applies to current month/cycle
-        val startingSpent = if (plan.monthKey == todayMonthKey || plan.monthKey.isEmpty()) plan.startingSpent else 0L
+        val cycleCal = Calendar.getInstance(calendar.timeZone).apply { timeInMillis = cycle.startMillis }
+        val cycleYear = cycleCal.get(Calendar.YEAR)
+        val cycleMonth = cycleCal.get(Calendar.MONTH) + 1
+        val cycleMonthKey = "%04d-%02d".format(Locale.US, cycleYear, cycleMonth)
+
+        // Starting spent applies if it matches calendar month, active cycle start month, or empty key
+        val startingSpent = if (plan.monthKey.isEmpty() || plan.monthKey == cycleMonthKey || plan.monthKey == todayMonthKey) {
+            plan.startingSpent
+        } else {
+            0L
+        }
 
         // Expenses for current cycle
         val currentCycleExpenses = transactions.filter { tx ->

@@ -220,4 +220,38 @@ class SafeToSpendTest {
         assertEquals(420000L, result.safeToSpendToday)
         assertEquals(SafeToSpendStatus.SAFE, result.status)
     }
+
+    @Test
+    fun testStartingSpentPreservedAcrossMonthBoundaryWithCustomCycle() {
+        // Today is November 2, 2026. Custom cycle starts on the 25th.
+        // Active cycle range is 25 Oct 2026 - 24 Nov 2026.
+        // Cycle start month is 2026-10, while current calendar month is 2026-11.
+        val cal = createUtcCalendar(2026, Calendar.NOVEMBER, 2)
+
+        // Plan configured for this cycle with monthKey matching cycle start month ("2026-10")
+        val plan = MonthlyPlan(
+            monthKey = "2026-10",
+            budget = 5000000L,
+            startingSpent = 1500000L
+        )
+
+        // Transaction within active cycle in November
+        val txNov = Transaction(
+            title = "Early Nov Groceries",
+            amount = 500000L,
+            type = TransactionType.EXPENSE,
+            date = createUtcCalendar(2026, Calendar.NOVEMBER, 1).timeInMillis
+        )
+
+        val result = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = listOf(txNov),
+            calendar = cal,
+            cycleStartDay = 25
+        )
+
+        // startingSpent must NOT be reset to 0 even though calendar month is November
+        assertEquals(2000000L, result.spentThisMonth) // 1,500,000 starting + 500,000 tx
+        assertEquals(3000000L, result.remaining)
+    }
 }

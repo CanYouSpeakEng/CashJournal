@@ -134,6 +134,26 @@ This log is kept up to date after every step. Any AI assistant or developer read
     - Expanded category presets (`GROCERIES`, `HEALTH`, `ENTERTAINMENT`, `EDUCATION`) with bilingual localized names.
     - Interactive category selection modal picker in both `LogTransactionSheet` and `TransactionEditSheet`.
     - Unit tests in `SafeToSpendTest.kt` (100% pass).
+- [x] **Phase 10: Critical Ledger Integrity, State Reactivity & Mathematical Correctness (Post-Audit Remediation)**
+  - [x] **Item 49 (`CRITICAL-1`)**: Converted `AccountEntity.initialBalance` alongside balance during `changeMainCurrency()` and invoked `recalculateAllAccountBalances()` inside the atomic Room transaction, eliminating zero-drift balance corruption on subsequent transaction mutations. Added unit test `testCurrencySwitchInitialBalanceConversionZeroDrift` in `LedgerIntegrityTest.kt`.
+  - [x] **Item 50 (`HIGH-1`)**: Dynamically resolved `selectedAccount` and `selectedReconcileAccount` from live `rawAccounts` in `MainViewModel.uiState` so `AccountDetailScreen` updates immediately after edits, deletions, or balance reconciliation.
+  - [x] **Item 51 (`HIGH-2`)**: Synchronized `AccountsScreen` world currency selector with `userPreferences.selectedWorldCurrency` and replaced hardcoded IDR fallback math with currency-agnostic `CurrencyConverter.convertMinorUnits()`.
+  - [x] **Item 52 (`HIGH-4`)**: Preserved `MonthlyPlan.startingSpent` across calendar month boundaries when a custom `cycleStartDay` (`2..28`) is active by validating `plan.monthKey` against `cycleMonthKey` (`yyyy-MM` of cycle start timestamp). Added unit test in `SafeToSpendTest.kt`.
+  - [x] **Item 53 (`LOW-5`)**: Fixed year-boundary `"Yesterday"` date comparison (Jan 1 vs. Dec 31) across `LedgerScreen`, `LogTransactionSheet`, and `TransactionEditSheet`, and made `SafeToSpendCalculator.getCycleRange` `daysLeft` calculation DST-safe.
+- [ ] **Phase 11: UX Precision, Category Heuristics & Performance Polish**
+  - [ ] **Item 54 (`HIGH-3`)**: Hide the weather pill in `GreetingBar` when weather is set to `"not_now"` (`Off`), and display `Thermometer` + `"--"` when weather is enabled but awaiting its first reading.
+  - [ ] **Item 55 (`MED-1`)**: Upgrade `Category.detectFromNote` to word-boundary regex matching (`\b`) to eliminate substring false positives (`"theater"`/`"sweater"` matching `"eat"`, `"chair"`/`"repair"` matching `"air"`, `"cost"` matching `"kos"`).
+  - [ ] **Item 56 (`MED-2`)**: Buffer budget `Slider` dragging in local state on `AnalyticsScreen` and commit via `onValueChangeFinished` to prevent per-frame `AudioTrack` and SQLite churn.
+  - [ ] **Item 57 (`MED-3`)**: Allow `Category.SALARY` selection for `INCOME` in `LogTransactionSheet`, preserve manual category selection when editing notes in `TransactionEditSheet`, and preserve category accent colors when editing `EXPENSE` transactions in `MainViewModel.editTransaction`.
+- [ ] **Phase 12: Security Hardening, Full Localization, Backup Completeness & Sensory Polish**
+  - [ ] **Item 58 (`MED-4`)**: Upgrade 4-digit PIN storage from unsalted SHA-256 to salted multi-round SHA-256 (`saltHex:hashHex`) with transparent fallback verification for legacy hashes.
+  - [ ] **Item 59 (`MED-5`)**: Complete Bahasa Indonesia (`"in"`) localization across `GreetingBar`, `DashboardScreen`, `AccountsScreen`, `AccountDetailScreen`, `AnalyticsScreen`, `SettingsScreen`, `AppLockScreen`, modal sheets, and `MainViewModel` toasts.
+  - [ ] **Item 60 (`LOW-1`)**: Include `screenPrivacyEnabled`, `weatherOption`, `weatherCityLabel`, `weatherCityLat`, `weatherCityLon`, and `selectedWorldCurrency` in `BackupManager` (`PreferencesBackupDto`).
+  - [ ] **Item 61 (`LOW-2`)**: Implement `DailyReminderScheduler` and `DailyReminderReceiver` (`AlarmManager` + `NotificationChannel`) wired to the `dailyReminderEnabled` preference.
+  - [ ] **Item 62 (`LOW-3` & `LOW-4`)**: Enforce `tactileHapticsEnabled` across all interactive controls, fix `updatePreferences` playing a chime when turning Sound Effects *off*, and remove duplicate PIN/Biometric toasts.
+  - [ ] **Item 63 (`LOW-6`)**: Remove unused `gitCommitCount` shell execution in `app/build.gradle.kts` and clean up unused parameters.
+  - [ ] **Item 64**: Expand unit test suite to cover all post-audit mathematical, heuristic, security, and backup invariants.
+
 
 
 

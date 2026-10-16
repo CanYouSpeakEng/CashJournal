@@ -155,10 +155,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val (weather, rates, isOffline, cityResults, isSearching) = group2
 
         val screen = group3[0] as AppScreen
-        val account = group3[1] as? Account
+        val rawSelectedAccount = group3[1] as? Account
+        val account = rawSelectedAccount?.let { sel -> rawAccounts.find { it.id == sel.id } ?: sel }
         val sheet = group3[2] as? ActiveSheet
         val selectedTx = group3[3] as? Transaction
-        val reconcileAcc = group3[4] as? Account
+        val rawReconcileAcc = group3[4] as? Account
+        val reconcileAcc = rawReconcileAcc?.let { sel -> rawAccounts.find { it.id == sel.id } ?: sel }
         val hideBal = group3[5] as Boolean
         val reorder = group3[6] as Boolean
         val toast = group3[7] as? String
@@ -715,7 +717,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     sourceDecimals = sourceDecimals,
                     targetDecimals = targetDecimals
                 )
-                acc.copy(balance = newBal, updatedAt = System.currentTimeMillis())
+                val newInitialBal = CurrencyConverter.convertMinorUnits(
+                    amountMinor = acc.initialBalance,
+                    sourceCode = currentCode,
+                    targetCode = targetCode,
+                    baseCode = cached.baseCode,
+                    rates = cached.rates,
+                    sourceDecimals = sourceDecimals,
+                    targetDecimals = targetDecimals
+                )
+                acc.copy(
+                    balance = newBal,
+                    initialBalance = newInitialBal,
+                    updatedAt = System.currentTimeMillis()
+                )
             }
 
             val currentTx = database.transactionDao().getAllTransactionsFlow().first()
@@ -759,6 +774,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 database.accountDao().insertAll(convertedAccounts)
                 database.transactionDao().insertAll(convertedTx)
                 convertedPlan?.let { database.monthlyPlanDao().upsert(it) }
+                database.accountDao().recalculateAllAccountBalances()
             }
 
             preferencesRepository.updateCurrencyCode(targetCode)

@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.cashjournal.data.currency.CurrencyConverter
 import app.cashjournal.domain.model.Account
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.ui.MainUiState
@@ -82,28 +83,49 @@ fun AccountsScreen(
     onMoveAccount: (index: Int, moveUp: Boolean) -> Unit,
     onToggleReorderMode: (Boolean) -> Unit,
     onOpenWorldCurrencies: () -> Unit,
+    onSelectWorldCurrency: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     onRefreshRates: () -> Unit = {}
 ) {
-    var selectedWorldCurrency by remember { mutableStateOf("USD") }
     val mainCurrency = Currency.findByCode(state.userPreferences.currencyCode)
+    val selectedWorldCurrency = remember(state.userPreferences.selectedWorldCurrency, mainCurrency.code) {
+        val pref = state.userPreferences.selectedWorldCurrency
+        if (pref.isNotEmpty() && pref != mainCurrency.code) {
+            pref
+        } else if (mainCurrency.code == "USD") {
+            "EUR"
+        } else {
+            "USD"
+        }
+    }
     val strings = AppStrings.get(state.userPreferences.language)
 
     val cachedRates = state.cachedRates
-    val ratesToIdr = mapOf(
-        "USD" to 15700.0,
-        "EUR" to 17100.0,
-        "SGD" to 11900.0,
-        "JPY" to 105.0,
-        "MYR" to 3550.0,
-        "SAR" to 4180.0
-    )
+    val fallbackRatesToUsd = remember {
+        mapOf(
+            "USD" to 1.0,
+            "EUR" to 0.92,
+            "GBP" to 0.78,
+            "SGD" to 1.35,
+            "JPY" to 150.0,
+            "MYR" to 4.70,
+            "SAR" to 3.75,
+            "THB" to 36.0,
+            "AUD" to 1.52,
+            "CAD" to 1.36,
+            "CHF" to 0.90,
+            "CNY" to 7.23,
+            "HKD" to 7.82,
+            "INR" to 83.3,
+            "IDR" to 15700.0
+        )
+    }
 
     val sourceDecimals = Currency.getDecimals(mainCurrency.code)
     val targetDecimals = Currency.getDecimals(selectedWorldCurrency)
 
     val convertedTotal = if (cachedRates != null && cachedRates.rates.isNotEmpty()) {
-        app.cashjournal.data.currency.CurrencyConverter.convertMinorUnits(
+        CurrencyConverter.convertMinorUnits(
             amountMinor = state.totalNetWorth,
             sourceCode = mainCurrency.code,
             targetCode = selectedWorldCurrency,
@@ -113,9 +135,15 @@ fun AccountsScreen(
             targetDecimals = targetDecimals
         )
     } else {
-        val currentRate = ratesToIdr[selectedWorldCurrency] ?: 15700.0
-        val totalMajor = state.totalNetWorth.toDouble()
-        ((totalMajor / currentRate) * 100).toLong()
+        CurrencyConverter.convertMinorUnits(
+            amountMinor = state.totalNetWorth,
+            sourceCode = mainCurrency.code,
+            targetCode = selectedWorldCurrency,
+            baseCode = "USD",
+            rates = fallbackRatesToUsd,
+            sourceDecimals = sourceDecimals,
+            targetDecimals = targetDecimals
+        )
     }
 
     val maxBalance = state.accounts.maxOfOrNull { it.balance }?.coerceAtLeast(1L) ?: 1L
@@ -260,7 +288,7 @@ fun AccountsScreen(
 
                 val rateForOneUnit = if (cachedRates != null && cachedRates.rates.isNotEmpty()) {
                     val oneUnitMinor = 10.0.pow(targetDecimals.toDouble()).toLong()
-                    app.cashjournal.data.currency.CurrencyConverter.convertMinorUnits(
+                    CurrencyConverter.convertMinorUnits(
                         amountMinor = oneUnitMinor,
                         sourceCode = selectedWorldCurrency,
                         targetCode = mainCurrency.code,
@@ -270,7 +298,16 @@ fun AccountsScreen(
                         targetDecimals = sourceDecimals
                     )
                 } else {
-                    ratesToIdr[selectedWorldCurrency]?.toLong() ?: 15700L
+                    val oneUnitMinor = 10.0.pow(targetDecimals.toDouble()).toLong()
+                    CurrencyConverter.convertMinorUnits(
+                        amountMinor = oneUnitMinor,
+                        sourceCode = selectedWorldCurrency,
+                        targetCode = mainCurrency.code,
+                        baseCode = "USD",
+                        rates = fallbackRatesToUsd,
+                        sourceDecimals = targetDecimals,
+                        targetDecimals = sourceDecimals
+                    )
                 }
 
                 Row(
@@ -354,7 +391,7 @@ fun AccountsScreen(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(if (isSelected) Cobalt else Slate100)
-                                .clickable { selectedWorldCurrency = code }
+                                .clickable { onSelectWorldCurrency(code) }
                                 .padding(horizontal = 8.dp, vertical = 5.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(5.dp)

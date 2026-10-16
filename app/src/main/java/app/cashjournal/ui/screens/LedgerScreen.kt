@@ -130,6 +130,10 @@ fun LedgerScreen(
         val todayYear = cal.get(Calendar.YEAR)
         val todayDayOfYear = cal.get(Calendar.DAY_OF_YEAR)
 
+        val yestCal = (cal.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -1) }
+        val yestYear = yestCal.get(Calendar.YEAR)
+        val yestDayOfYear = yestCal.get(Calendar.DAY_OF_YEAR)
+
         val txCal = Calendar.getInstance()
         val locale = if (isIndonesian) Locale("id", "ID") else Locale.US
 
@@ -140,7 +144,7 @@ fun LedgerScreen(
 
             when {
                 txYear == todayYear && txDayOfYear == todayDayOfYear -> if (isIndonesian) "HARI INI" else "TODAY"
-                txYear == todayYear && txDayOfYear == todayDayOfYear - 1 -> if (isIndonesian) "KEMARIN" else "YESTERDAY"
+                txYear == yestYear && txDayOfYear == yestDayOfYear -> if (isIndonesian) "KEMARIN" else "YESTERDAY"
                 else -> {
                     SimpleDateFormat("EEEE, MMM d", locale).format(Date(tx.date)).uppercase()
                 }

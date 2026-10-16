@@ -281,6 +281,9 @@ fun MainAppScaffold(
                         onMoveAccount = { idx, up -> viewModel.moveAccount(idx, up) },
                         onToggleReorderMode = { viewModel.setReorderMode(it) },
                         onOpenWorldCurrencies = { viewModel.openSheet(ActiveSheet.WORLD_CURRENCIES) },
+                        onSelectWorldCurrency = { code ->
+                            viewModel.updatePreferences { prefs -> prefs.updateSelectedWorldCurrency(code) }
+                        },
                         onRefreshRates = { viewModel.refreshRates(manual = true) }
                     )
 

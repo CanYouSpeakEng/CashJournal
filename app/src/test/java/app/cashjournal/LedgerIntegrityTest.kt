@@ -1,5 +1,6 @@
 package app.cashjournal
 
+import app.cashjournal.data.currency.CurrencyConverter
 import app.cashjournal.domain.model.Account
 import app.cashjournal.domain.model.Category
 import app.cashjournal.domain.model.MonthlyPlan
@@ -135,5 +136,70 @@ class LedgerIntegrityTest {
         )
 
         assertEquals(threeDaysAgo, backdatedTx.date)
+    }
+
+    @Test
+    fun testCurrencySwitchInitialBalanceConversionZeroDrift() {
+        val rates = mapOf("USD" to 1.0, "IDR" to 16000.0)
+        val oldCurrency = "IDR"
+        val oldDecimals = 0
+        val newCurrency = "USD"
+        val newDecimals = 2
+
+        val rawInitial = 16_000_000L // 16,000,000 IDR
+        val tx1Amount = 1_600_000L   // 1,600,000 IDR expense
+        val tx2Amount = 3_200_000L   // 3,200,000 IDR income
+        val accId = "acc-curr"
+
+        val oldAccount = Account(id = accId, name = "Savings", initialBalance = rawInitial, balance = rawInitial - tx1Amount + tx2Amount)
+        val oldTx1 = Transaction(id = "tx1", title = "Expense", type = TransactionType.EXPENSE, amount = tx1Amount, sourceAccountId = accId)
+        val oldTx2 = Transaction(id = "tx2", title = "Income", type = TransactionType.INCOME, amount = tx2Amount, sourceAccountId = accId)
+
+        assertEquals(17_600_000L, computeDerivedBalance(oldAccount, listOf(oldTx1, oldTx2)))
+
+        // CRITICAL-1: Both initialBalance and transactions are converted using CurrencyConverter
+        val convertedInitial = CurrencyConverter.convertMinorUnits(
+            amountMinor = oldAccount.initialBalance,
+            sourceCode = oldCurrency,
+            targetCode = newCurrency,
+            baseCode = "USD",
+            rates = rates,
+            sourceDecimals = oldDecimals,
+            targetDecimals = newDecimals
+        )
+        val convertedTx1Amount = CurrencyConverter.convertMinorUnits(
+            amountMinor = oldTx1.amount,
+            sourceCode = oldCurrency,
+            targetCode = newCurrency,
+            baseCode = "USD",
+            rates = rates,
+            sourceDecimals = oldDecimals,
+            targetDecimals = newDecimals
+        )
+        val convertedTx2Amount = CurrencyConverter.convertMinorUnits(
+            amountMinor = oldTx2.amount,
+            sourceCode = oldCurrency,
+            targetCode = newCurrency,
+            baseCode = "USD",
+            rates = rates,
+            sourceDecimals = oldDecimals,
+            targetDecimals = newDecimals
+        )
+
+        // 16,000,000 IDR = 1,000.00 USD = 100,000 cents
+        assertEquals(100_000L, convertedInitial)
+        // 1,600,000 IDR = 100.00 USD = 10,000 cents
+        assertEquals(10_000L, convertedTx1Amount)
+        // 3,200,000 IDR = 200.00 USD = 20,000 cents
+        assertEquals(20_000L, convertedTx2Amount)
+
+        val newAccount = oldAccount.copy(initialBalance = convertedInitial, balance = convertedInitial)
+        val newTx1 = oldTx1.copy(amount = convertedTx1Amount)
+        val newTx2 = oldTx2.copy(amount = convertedTx2Amount)
+
+        // Recalculating account balance with Room formula: initialBalance + SUM(flows)
+        val recalculatedBalance = computeDerivedBalance(newAccount, listOf(newTx1, newTx2))
+        // 100,000 - 10,000 + 20,000 = 110,000 cents ($1,100.00)
+        assertEquals(110_000L, recalculatedBalance)
     }
 }
