@@ -160,5 +160,9 @@ This log is kept up to date after every step. Any AI assistant or developer read
 - [x] **Phase 13: Cold-Start Initialization Gating & Status Ring-to-Back Morph Transition Polish**
   - [x] **Item 65: Cold-Start / Post-Update Onboarding Flash Elimination**: Added `isPreferencesLoaded` gate to `MainUiState` in `MainViewModel.kt` and `MainActivity.kt` to prevent `OnboardingScreen` from rendering on Frame 0 before DataStore disk read finishes, rendering a seamless `Slate100` theme placeholder while loading.
   - [x] **Item 66: Side Rail Status Ring <-> Back Button Centered Shrink & Pop Animation**: Added `contentAlignment = Alignment.Center` and equal 42dp x 42dp bounding cells to `AnimatedContent` in `RailStatusCluster.kt`; replaced default `TopStart` fade with synchronized bidirectional `scaleOut` (shrink down) and `scaleIn` (spring pop up) transition to eliminate diagonal bottom-right drift.
+- [x] **Release v1.0.16-dev (Phase 13: Cold-Start Gating & Status Ring Morph Polish)**
+  - Tag: `v1.0.16-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.16-dev
+  - Artifacts: `app-debug.apk` (17.3 MB), `app-release.apk` (12.2 MB).
 
 
