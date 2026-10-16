@@ -1,9 +1,11 @@
 package app.cashjournal.ui
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
+import app.cashjournal.data.backup.BackupManager
 import app.cashjournal.data.ExampleDataSeeder
 import app.cashjournal.data.currency.CachedExchangeRates
 import app.cashjournal.data.currency.CurrencyConverter
@@ -101,6 +103,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val weatherService = WeatherService()
     private val exchangeRateService = ExchangeRateService()
     private val locationProvider = LocationProvider(application)
+    private val backupManager = BackupManager(database, preferencesRepository)
 
     private val _currentScreen = MutableStateFlow(AppScreen.DASHBOARD)
     private val _selectedAccount = MutableStateFlow<Account?>(null)
@@ -773,6 +776,54 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun resetOnboarding() {
         viewModelScope.launch {
             preferencesRepository.updateOnboardingComplete(false)
+        }
+    }
+
+    fun exportBackup(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val outputStream = getApplication<Application>().contentResolver.openOutputStream(uri)
+                val lang = preferencesRepository.userPreferencesFlow.first().language
+                val strings = AppStrings.get(lang)
+                if (outputStream == null) {
+                    showToast(strings.backupExportFailed)
+                    return@launch
+                }
+                val result = backupManager.exportToStream(outputStream)
+                if (result.isSuccess) {
+                    showToast(strings.backupExportSuccess)
+                } else {
+                    showToast(strings.backupExportFailed)
+                }
+            } catch (e: Exception) {
+                val lang = preferencesRepository.userPreferencesFlow.first().language
+                showToast(AppStrings.get(lang).backupExportFailed)
+            }
+        }
+    }
+
+    fun restoreBackup(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val inputStream = getApplication<Application>().contentResolver.openInputStream(uri)
+                val lang = preferencesRepository.userPreferencesFlow.first().language
+                val strings = AppStrings.get(lang)
+                if (inputStream == null) {
+                    showToast(strings.backupImportFailed)
+                    return@launch
+                }
+                val result = backupManager.restoreFromStream(inputStream)
+                if (result.isSuccess) {
+                    val res = result.getOrThrow()
+                    setScreen(AppScreen.DASHBOARD)
+                    showToast(strings.backupImportSuccess.format(res.accountsRestored, res.transactionsRestored))
+                } else {
+                    showToast(strings.backupImportFailed)
+                }
+            } catch (e: Exception) {
+                val lang = preferencesRepository.userPreferencesFlow.first().language
+                showToast(AppStrings.get(lang).backupImportFailed)
+            }
         }
     }
 }

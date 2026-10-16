@@ -264,6 +264,32 @@ class UserPreferencesRepository(private val context: Context) {
         }
     }
 
+    suspend fun restorePreferences(
+        language: String?,
+        currencyCode: String?,
+        userName: String?,
+        railOnRight: Boolean?,
+        shakeToSwap: Boolean?,
+        knockSensitivity: String?,
+        temperatureUnit: String?,
+        soundEffectsEnabled: Boolean?,
+        tactileHapticsEnabled: Boolean?,
+        dailyReminderEnabled: Boolean?
+    ) {
+        context.dataStore.edit { prefs ->
+            language?.let { prefs[PreferencesKeys.LANGUAGE] = it }
+            currencyCode?.let { prefs[PreferencesKeys.CURRENCY_CODE] = it }
+            userName?.let { prefs[PreferencesKeys.USER_NAME] = it }
+            railOnRight?.let { prefs[PreferencesKeys.RAIL_ON_RIGHT] = it }
+            shakeToSwap?.let { prefs[PreferencesKeys.SHAKE_TO_SWAP] = it }
+            knockSensitivity?.let { prefs[PreferencesKeys.KNOCK_SENSITIVITY] = it }
+            temperatureUnit?.let { prefs[PreferencesKeys.TEMPERATURE_UNIT] = it }
+            soundEffectsEnabled?.let { prefs[PreferencesKeys.SOUND_EFFECTS_ENABLED] = it }
+            tactileHapticsEnabled?.let { prefs[PreferencesKeys.TACTILE_HAPTICS_ENABLED] = it }
+            dailyReminderEnabled?.let { prefs[PreferencesKeys.DAILY_REMINDER_ENABLED] = it }
+        }
+    }
+
     companion object {
         fun hashPin(pin: String): String {
             val bytes = java.security.MessageDigest.getInstance("SHA-256").digest(pin.toByteArray())

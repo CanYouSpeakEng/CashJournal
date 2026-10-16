@@ -329,7 +329,9 @@ fun MainAppScaffold(
                         onSetPin = { pin -> viewModel.setPin(pin) },
                         onRemovePin = { viewModel.removePin() },
                         onLockAppNow = onLockApp,
-                        onResetOnboarding = { viewModel.resetOnboarding() }
+                        onResetOnboarding = { viewModel.resetOnboarding() },
+                        onExportBackup = { uri -> viewModel.exportBackup(uri) },
+                        onRestoreBackup = { uri -> viewModel.restoreBackup(uri) }
                     )
                 }
             }

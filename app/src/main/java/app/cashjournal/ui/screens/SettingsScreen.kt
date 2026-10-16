@@ -1,5 +1,8 @@
 package app.cashjournal.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -42,6 +45,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.fragment.app.FragmentActivity
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import app.cashjournal.R
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.ui.MainUiState
@@ -92,11 +98,27 @@ fun SettingsScreen(
     onRemovePin: () -> Unit = {},
     onLockAppNow: () -> Unit = {},
     onResetOnboarding: () -> Unit = {},
+    onExportBackup: (Uri) -> Unit = {},
+    onRestoreBackup: (Uri) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showRestoreDialog by remember { mutableStateOf(false) }
     var showPinSetupSheet by remember { mutableStateOf(false) }
     var showPinRemoveSheet by remember { mutableStateOf(false) }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        uri?.let { onExportBackup(it) }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let { onRestoreBackup(it) }
+    }
+
     val currency = Currency.findByCode(state.userPreferences.currencyCode)
     val strings = AppStrings.get(state.userPreferences.language)
     val context = LocalContext.current
@@ -143,6 +165,58 @@ fun SettingsScreen(
                 TextButton(onClick = { showDeleteDialog = false }) {
                     Text(
                         text = if (state.userPreferences.language == "in") "Batal" else "Cancel",
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Slate600
+                    )
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    if (showRestoreDialog) {
+        AlertDialog(
+            onDismissRequest = { showRestoreDialog = false },
+            title = {
+                Text(
+                    text = strings.restoreBackupDialogTitle,
+                    fontFamily = PlusJakartaSansFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Charcoal
+                )
+            },
+            text = {
+                Text(
+                    text = strings.restoreBackupDialogDesc,
+                    fontFamily = PlusJakartaSansFamily,
+                    fontSize = 14.sp,
+                    color = Slate600
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showRestoreDialog = false
+                        importLauncher.launch(arrayOf("application/json", "application/octet-stream", "*/*"))
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Cobalt),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        text = strings.confirmRestoreAction,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestoreDialog = false }) {
+                    Text(
+                        text = strings.cancelAction,
                         fontFamily = PlusJakartaSansFamily,
                         fontWeight = FontWeight.SemiBold,
                         color = Slate600
@@ -580,12 +654,15 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onToast(strings.comingSoonToast) },
+                        .clickable {
+                            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+                            exportLauncher.launch("cashjournal_backup_$timestamp.json")
+                        },
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = strings.exportExcelTitle,
+                        text = strings.exportJsonTitle,
                         fontFamily = PlusJakartaSansFamily,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp,
@@ -593,7 +670,29 @@ fun SettingsScreen(
                     )
                     Icon(
                         imageVector = PhosphorIcons.Regular.CaretRight,
-                        contentDescription = "Export",
+                        contentDescription = "Export Backup",
+                        tint = Slate400,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showRestoreDialog = true },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = strings.importJsonTitle,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        color = Charcoal
+                    )
+                    Icon(
+                        imageVector = PhosphorIcons.Regular.CaretRight,
+                        contentDescription = "Restore Backup",
                         tint = Slate400,
                         modifier = Modifier.size(16.dp)
                     )
@@ -607,7 +706,7 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (state.userPreferences.language == "in") "Impor Cerdas" else "Smart Import",
+                        text = strings.exportExcelTitle,
                         fontFamily = PlusJakartaSansFamily,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp,
@@ -615,7 +714,7 @@ fun SettingsScreen(
                     )
                     Icon(
                         imageVector = PhosphorIcons.Regular.CaretRight,
-                        contentDescription = "Import",
+                        contentDescription = "Export Excel",
                         tint = Slate400,
                         modifier = Modifier.size(16.dp)
                     )
