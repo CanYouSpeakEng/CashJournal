@@ -315,6 +315,7 @@ fun MainAppScaffold(
 
                     AppScreen.ANALYTICS -> AnalyticsScreen(
                         state = state,
+                        onBudgetPlanChange = { mode, percent, nominal -> viewModel.updateBudgetPlan(mode, percent, nominal) },
                         onBudgetChange = { viewModel.updateBudget(it) }
                     )
 

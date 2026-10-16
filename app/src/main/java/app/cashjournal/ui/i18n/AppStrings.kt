@@ -244,7 +244,17 @@ data class ScreenStrings(
     val releaseNotesDialogTitle: String,
     val permissionUnknownSourcesTitle: String,
     val permissionUnknownSourcesMessage: String,
-    val openSettingsAction: String
+    val openSettingsAction: String,
+    val budgetModeFixed: String,
+    val budgetModePercentage: String,
+    val budgetModePercentageDesc: String,
+    val targetBudgetPercentageFormat: String,
+    val survivalRunwayTitle: String,
+    val survivalRunwayMonthsFormat: String,
+    val survivalRunwayDaysFormat: String,
+    val survivalRunwayBurnSubline: String,
+    val survivalRunwayIndeterminate: String,
+    val survivalRunwayPillFormat: String
 )
 
 object AppStrings {
@@ -484,7 +494,17 @@ object AppStrings {
         releaseNotesDialogTitle = "What's New in %s",
         permissionUnknownSourcesTitle = "Permission Required",
         permissionUnknownSourcesMessage = "To install app updates outside of Google Play, Android requires permission to install unknown apps. Tap below to enable permission in Settings.",
-        openSettingsAction = "Open Settings"
+        openSettingsAction = "Open Settings",
+        budgetModeFixed = "Fixed Nominal",
+        budgetModePercentage = "% of Total Funds",
+        budgetModePercentageDesc = "Inclusive wealth preservation: sets spending limit as a percentage of total net worth",
+        targetBudgetPercentageFormat = "TARGET BUDGET (%d%% OF FUNDS)",
+        survivalRunwayTitle = "Capital Survival Runway",
+        survivalRunwayMonthsFormat = "%.1f mos",
+        survivalRunwayDaysFormat = "%d days",
+        survivalRunwayBurnSubline = "At %s/day burn, your available funds will last ~%s",
+        survivalRunwayIndeterminate = "Indeterminate (no active spending)",
+        survivalRunwayPillFormat = "Runway: %s"
     )
 
     val IN = ScreenStrings(
@@ -723,7 +743,17 @@ object AppStrings {
         releaseNotesDialogTitle = "Yang Baru di %s",
         permissionUnknownSourcesTitle = "Izin Diperlukan",
         permissionUnknownSourcesMessage = "Untuk memasang pembaruan aplikasi di luar Google Play, Android memerlukan izin memasang aplikasi yang tidak dikenal. Ketuk di bawah untuk mengaktifkan izin di Pengaturan.",
-        openSettingsAction = "Buka Pengaturan"
+        openSettingsAction = "Buka Pengaturan",
+        budgetModeFixed = "Nominal Tetap",
+        budgetModePercentage = "% dari Total Dana",
+        budgetModePercentageDesc = "Pelestarian simpanan inklusif: membatasi belanja berdasarkan persentase total kekayaan",
+        targetBudgetPercentageFormat = "TARGET ANGGARAN (%d%% DARI DANA)",
+        survivalRunwayTitle = "Daya Tahan Modal",
+        survivalRunwayMonthsFormat = "%.1f bln",
+        survivalRunwayDaysFormat = "%d hari",
+        survivalRunwayBurnSubline = "Dengan laju %s/hari, dana Anda bertahan ~%s",
+        survivalRunwayIndeterminate = "Tidak terbatas (belum ada pengeluaran)",
+        survivalRunwayPillFormat = "Daya Tahan: %s"
     )
 
     fun get(languageCode: String): ScreenStrings {

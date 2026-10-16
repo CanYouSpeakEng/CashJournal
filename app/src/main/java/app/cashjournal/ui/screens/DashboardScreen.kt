@@ -32,8 +32,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cashjournal.domain.model.Account
+import app.cashjournal.domain.model.BudgetMode
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.domain.model.Transaction
+import java.util.Locale
 import app.cashjournal.ui.MainUiState
 import app.cashjournal.ui.SafeToSpendStatus
 import app.cashjournal.ui.components.GlassCard
@@ -218,7 +220,7 @@ fun DashboardScreen(
                         }
                     }
 
-                    // Status pill and subline
+                    // Status pill, survival runway pill, and subline
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -238,6 +240,28 @@ fun DashboardScreen(
                             )
                         }
 
+                        if (safe.survivalMonths > 0f) {
+                            val runwayText = if (safe.survivalMonths >= 1f) {
+                                String.format(Locale.US, strings.survivalRunwayMonthsFormat, safe.survivalMonths)
+                            } else {
+                                String.format(Locale.US, strings.survivalRunwayDaysFormat, safe.survivalDays)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Emerald.copy(alpha = 0.12f))
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = String.format(strings.survivalRunwayPillFormat, runwayText),
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = Emerald
+                                )
+                            }
+                        }
+
                         if (safe.status == SafeToSpendStatus.NO_FUNDS) {
                             Text(
                                 text = strings.noFundsSubline,
@@ -248,8 +272,9 @@ fun DashboardScreen(
                         } else if (safe.budget > 0) {
                             val daysLabel = if (safe.isLastDay) strings.lastDayLabel else String.format(strings.daysLeftFormat, safe.daysLeft)
                             val remText = String.format(strings.remainingFormat, Currency.formatMinor(safe.remaining, state.userPreferences.currencyCode))
+                            val modeSuffix = if (safe.budgetMode == BudgetMode.PERCENTAGE_OF_FUNDS) " (${safe.budgetPercent}%)" else ""
                             Text(
-                                text = "$daysLabel · $remText",
+                                text = "$daysLabel · $remText$modeSuffix",
                                 fontFamily = PlusJakartaSansFamily,
                                 fontSize = 11.sp,
                                 color = Slate500

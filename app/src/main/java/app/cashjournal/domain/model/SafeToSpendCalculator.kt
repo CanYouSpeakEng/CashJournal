@@ -25,7 +25,12 @@ data class SafeToSpendState(
     val percentSpent: Float = 0f,
     val displayPercent: Int = 0,
     val status: SafeToSpendStatus = SafeToSpendStatus.SAFE,
-    val cycleLabel: String = ""
+    val cycleLabel: String = "",
+    val budgetMode: BudgetMode = BudgetMode.FIXED_NOMINAL,
+    val budgetPercent: Int = 10,
+    val dailyBurnRate: Long = 0L,
+    val survivalDays: Int = 0,
+    val survivalMonths: Float = 0f
 )
 
 data class CycleRange(
@@ -150,36 +155,71 @@ object SafeToSpendCalculator {
             tx.type == TransactionType.EXPENSE && tx.date >= cycle.startMillis && tx.date <= cycle.endMillis
         }.sumOf { it.amount }
 
+        val effectiveBudget = when (plan.budgetMode) {
+            BudgetMode.PERCENTAGE_OF_FUNDS -> {
+                if (totalNetWorth > 0L) {
+                    val pct = plan.budgetPercent.coerceIn(1, 100)
+                    (totalNetWorth.toDouble() * (pct.toDouble() / 100.0)).toLong()
+                } else {
+                    0L
+                }
+            }
+            BudgetMode.FIXED_NOMINAL -> plan.budget
+        }
+
         val totalSpent = startingSpent + currentCycleExpenses
-        val budget = plan.budget
-        val remaining = if (budget > totalSpent) budget - totalSpent else 0L
+        val remaining = if (effectiveBudget > totalSpent) effectiveBudget - totalSpent else 0L
 
         val divisor = if (cycle.daysLeft > 0) cycle.daysLeft else 1
         val hasNoFunds = !hasAccounts || totalNetWorth <= 0L
         val perDay = if (hasNoFunds) 0L else floor(remaining.toDouble() / divisor).toLong()
 
-        val percent = if (budget > 0) (totalSpent.toFloat() / budget.toFloat()) else 0f
+        val percent = if (effectiveBudget > 0) (totalSpent.toFloat() / effectiveBudget.toFloat()) else 0f
         val displayPct = min(100, (percent * 100).roundToInt())
 
         val status = when {
             hasNoFunds -> SafeToSpendStatus.NO_FUNDS
-            budget <= 0L -> SafeToSpendStatus.SET_BUDGET
+            effectiveBudget <= 0L -> SafeToSpendStatus.SET_BUDGET
             remaining <= 0L -> SafeToSpendStatus.RECALIBRATE
             percent >= 0.70f -> SafeToSpendStatus.NEAR_LIMIT
             else -> SafeToSpendStatus.SAFE
+        }
+
+        // Capital Burn-Rate Survival Runway Metric
+        val nowCal = (calendar.clone() as Calendar).apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val elapsedMillis = (nowCal.timeInMillis - cycle.startMillis).coerceAtLeast(0L)
+        val daysElapsed = ((elapsedMillis / (24 * 60 * 60 * 1000L)) + 1).toInt().coerceAtLeast(1)
+        val dailyBurnRate = if (totalSpent > 0L) (totalSpent.toDouble() / daysElapsed.toDouble()).toLong() else 0L
+
+        val (survivalDays, survivalMonths) = if (dailyBurnRate > 0L && totalNetWorth > 0L) {
+            val daysExact = totalNetWorth.toDouble() / dailyBurnRate.toDouble()
+            val months = (daysExact / 30.0).toFloat()
+            Pair(daysExact.toInt(), months)
+        } else {
+            Pair(0, 0f)
         }
 
         return SafeToSpendState(
             safeToSpendToday = perDay,
             remaining = remaining,
             spentThisMonth = totalSpent,
-            budget = budget,
+            budget = effectiveBudget,
             daysLeft = cycle.daysLeft,
             isLastDay = cycle.isLastDay,
             percentSpent = percent,
             displayPercent = displayPct,
             status = status,
-            cycleLabel = cycle.label
+            cycleLabel = cycle.label,
+            budgetMode = plan.budgetMode,
+            budgetPercent = plan.budgetPercent,
+            dailyBurnRate = dailyBurnRate,
+            survivalDays = survivalDays,
+            survivalMonths = survivalMonths
         )
     }
 }

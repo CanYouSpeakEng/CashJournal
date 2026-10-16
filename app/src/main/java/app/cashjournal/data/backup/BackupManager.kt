@@ -113,13 +113,17 @@ data class MonthlyPlanBackupDto(
     val id: String = "primary_plan",
     val budget: Long,
     val startingSpent: Long = 0L,
-    val monthKey: String
+    val monthKey: String,
+    val budgetMode: String = "FIXED_NOMINAL",
+    val budgetPercent: Int = 10
 ) {
     fun toEntity(): MonthlyPlanEntity = MonthlyPlanEntity(
         id = id,
         budget = budget,
         startingSpent = startingSpent,
-        monthKey = monthKey
+        monthKey = monthKey,
+        budgetMode = budgetMode,
+        budgetPercent = budgetPercent
     )
 
     companion object {
@@ -127,7 +131,9 @@ data class MonthlyPlanBackupDto(
             id = entity.id,
             budget = entity.budget,
             startingSpent = entity.startingSpent,
-            monthKey = entity.monthKey
+            monthKey = entity.monthKey,
+            budgetMode = entity.budgetMode,
+            budgetPercent = entity.budgetPercent
         )
     }
 }

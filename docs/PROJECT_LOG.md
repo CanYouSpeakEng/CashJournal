@@ -285,21 +285,27 @@ This log is kept up to date after every step. Any AI assistant or developer read
   - Tag: `v1.0.23-dev`
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.23-dev
   - Artifacts: `app-debug.apk` (17.5 MB), `app-release.apk` (12.3 MB).
-- [ ] **Phase 21: Inclusive Spending Runway & Fund-Preservation Capital Mode (PLANNED / UNDER REVIEW)**
-  - [ ] **Item 87: Percentage-of-Funds Monthly Budget Mode & Capital Runway**:
+- [x] **Phase 21: Inclusive Spending Runway & Fund-Preservation Capital Mode**
+  - [x] **Item 87: Percentage-of-Funds Monthly Budget Mode & Capital Runway**:
     - **Context**: The existing Monthly Spending Runway assumes a traditional monthly paycheck/budget ceiling. For students, freelancers, job-seekers, or anyone living off savings, setting a static nominal budget is unnatural. These users need capital preservation based on a percentage of their total available funds/net worth (e.g., "spend at most 10% of total funds this month").
     - **Method**:
-      1. Extend `MonthlyPlan` and preferences to support `BudgetMode`: `FIXED_NOMINAL` (default) vs. `PERCENTAGE_OF_FUNDS` (e.g., 5% to 25% of total net worth).
-      2. Update `SafeToSpendCalculator.calculate()` to dynamically compute the monthly budget ceiling from `totalNetWorth * (budgetPercent / 100.0)` when in `PERCENTAGE_OF_FUNDS` mode.
-      3. Add a mode switcher and percentage slider in `AnalyticsScreen.kt` and `MonthlyPlanSheet.kt`.
-    - **Verification Plan**: Unit tests covering `SafeToSpendCalculator` in percentage mode with fluctuating net worth values; UI verification on Dashboard and Analytics runway cards.
-  - [ ] **Item 88: Capital Burn-Rate Survival Runway Metric**:
-    - **Context**: For users with zero current income living off savings, calculate and display how long their existing total funds will last at their current 30-day daily burn rate.
+      1. Extended `MonthlyPlan` and Room database schema to support `BudgetMode`: `FIXED_NOMINAL` vs. `PERCENTAGE_OF_FUNDS` (1% to 50% of total net worth).
+      2. Added Room `MIGRATION_3_4` and updated `AppDatabase` (version 4) and `BackupManager` (`MonthlyPlanBackupDto`).
+      3. Updated `SafeToSpendCalculator.calculate()` to dynamically compute the monthly budget ceiling from `totalNetWorth * (budgetPercent / 100.0)` when in `PERCENTAGE_OF_FUNDS` mode.
+      4. Added dual-mode switcher chips (`Fixed Nominal` vs `% of Total Funds`) and an interactive 1%..50% percentage slider in `AnalyticsScreen.kt`.
+    - **Verification**: Verified via unit tests in `SafeToSpendTest.kt` across positive, zero, and negative net worth amounts.
+  - [x] **Item 88: Capital Burn-Rate Survival Runway Metric**:
+    - **Context**: For users living off savings or tracking capital preservation, calculate and display how long their existing total funds will last at their current cycle daily burn rate.
     - **Method**:
-      1. Calculate `Average Daily Burn = (Current Cycle Expenses) / (Days Elapsed in Cycle)`.
-      2. Compute `Survival Runway (Months) = Total Liquid Funds / (Average Daily Burn * 30)`.
-      3. Display a dedicated "Capital Survival Runway" badge in the Analytics and Dashboard runway cards when fund-preservation mode is active.
-    - **Verification Plan**: Unit tests for burn rate and survival runway calculations; zero-division safety guards.
+      1. Computed `daysElapsed = ((elapsedMillis / (24 * 60 * 60 * 1000L)) + 1).coerceAtLeast(1)`.
+      2. Calculated `dailyBurnRate = (totalSpent / daysElapsed)`.
+      3. Derived `survivalDays = totalNetWorth / dailyBurnRate` and `survivalMonths = survivalDays / 30.0`.
+      4. Implemented dedicated Capital Survival Runway cards and badges in `AnalyticsScreen.kt` and `DashboardScreen.kt` with localized formats in English and Indonesian.
+    - **Verification**: All 85 unit tests passed (`./gradlew test`). Both release and debug APKs assembled cleanly.
+- [x] **Release v1.0.24-dev (Phase 21: Inclusive Spending Runway & Fund-Preservation Capital Mode)**
+  - Tag: `v1.0.24-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.24-dev
+  - Artifacts: `app-debug.apk` (17.5 MB), `app-release.apk` (12.3 MB).
 
 
 

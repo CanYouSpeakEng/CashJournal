@@ -34,6 +34,7 @@ import app.cashjournal.data.weather.WeatherService
 import app.cashjournal.domain.model.AccentKey
 import app.cashjournal.domain.model.Account
 import app.cashjournal.domain.model.AccountType
+import app.cashjournal.domain.model.BudgetMode
 import app.cashjournal.domain.model.Category
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.domain.model.MonthlyPlan
@@ -832,7 +833,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun updateBudget(newBudget: Long) {
+    fun updateBudgetPlan(
+        budgetMode: BudgetMode = uiState.value.monthlyPlan.budgetMode,
+        budgetPercent: Int = uiState.value.monthlyPlan.budgetPercent,
+        nominalBudget: Long = uiState.value.monthlyPlan.budget
+    ) {
         viewModelScope.launch {
             ChimeGenerator.playChime(uiState.value.userPreferences.soundEffectsEnabled, viewModelScope)
             val current = uiState.value.monthlyPlan
@@ -840,12 +845,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             database.monthlyPlanDao().upsert(
                 MonthlyPlanEntity(
                     id = current.id,
-                    budget = newBudget.coerceAtLeast(0L),
+                    budget = nominalBudget.coerceAtLeast(0L),
                     startingSpent = current.startingSpent,
-                    monthKey = monthKey
+                    monthKey = monthKey,
+                    budgetMode = budgetMode.name,
+                    budgetPercent = budgetPercent.coerceIn(1, 100)
                 )
             )
         }
+    }
+
+    fun updateBudget(newBudget: Long) {
+        updateBudgetPlan(nominalBudget = newBudget)
     }
 
     fun updatePreferences(transform: suspend (UserPreferencesRepository) -> Unit) {

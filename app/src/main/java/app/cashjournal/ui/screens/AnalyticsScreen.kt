@@ -24,6 +24,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,6 +44,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.cashjournal.domain.model.BudgetMode
 import app.cashjournal.domain.model.Category
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.domain.model.SafeToSpendCalculator
@@ -94,7 +96,8 @@ data class CategorySpend(
 @Composable
 fun AnalyticsScreen(
     state: MainUiState,
-    onBudgetChange: (Long) -> Unit,
+    onBudgetChange: (Long) -> Unit = {},
+    onBudgetPlanChange: (BudgetMode, Int, Long) -> Unit = { _, _, nominal -> onBudgetChange(nominal) },
     modifier: Modifier = Modifier
 ) {
     val currencyCode = state.userPreferences.currencyCode
@@ -346,8 +349,11 @@ fun AnalyticsScreen(
         // 2. Monthly Spending Runway Card
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             val safe = state.safeToSpend
+            val currentMode = state.monthlyPlan.budgetMode
             val currentBudget = state.monthlyPlan.budget
+            val currentPercent = state.monthlyPlan.budgetPercent
             var sliderBudget by remember(currentBudget) { mutableLongStateOf(currentBudget) }
+            var sliderPercent by remember(currentPercent) { mutableIntStateOf(currentPercent) }
             val decimals = Currency.getDecimals(currencyCode)
             val isZeroDecimal = decimals == 0
             val stepSize = if (isZeroDecimal) 500_000L else 5_000L
@@ -358,6 +364,7 @@ fun AnalyticsScreen(
                 modifier = Modifier.padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                // Header with Title and Mode Switcher Chips
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -387,15 +394,31 @@ fun AnalyticsScreen(
                     }
 
                     Column(horizontalAlignment = Alignment.End) {
+                        val headerLabel = if (currentMode == BudgetMode.PERCENTAGE_OF_FUNDS) {
+                            String.format(strings.targetBudgetPercentageFormat, sliderPercent)
+                        } else {
+                            if (state.userPreferences.language == "in") "TARGET ANGGARAN" else "TARGET BUDGET"
+                        }
+
                         Text(
-                            text = if (state.userPreferences.language == "in") "TARGET ANGGARAN" else "TARGET BUDGET",
+                            text = headerLabel,
                             fontFamily = SpaceGroteskFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 9.sp,
                             letterSpacing = 0.8.sp,
                             color = Slate400
                         )
-                        if (sliderBudget > 0L) {
+
+                        if (currentMode == BudgetMode.PERCENTAGE_OF_FUNDS) {
+                            Text(
+                                text = "${sliderPercent}% (${Currency.formatMinor(safe.budget, currencyCode)})",
+                                fontFamily = SpaceGroteskFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = Cobalt,
+                                maxLines = 1
+                            )
+                        } else if (sliderBudget > 0L) {
                             Text(
                                 text = Currency.formatMinor(sliderBudget, currencyCode),
                                 fontFamily = SpaceGroteskFamily,
@@ -417,67 +440,205 @@ fun AnalyticsScreen(
                     }
                 }
 
-                // Square "−" button, Slider, and Square "+" button
+                // Mode Selector Chips
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Minus Button
-                    Box(
+                    val isFixed = currentMode == BudgetMode.FIXED_NOMINAL
+                    val fixedBg = if (isFixed) Cobalt else Slate100
+                    val fixedTextColor = if (isFixed) Color.White else Charcoal
+
+                    Row(
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Slate100)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(fixedBg)
                             .clickable {
-                                val next = (sliderBudget - stepSize).coerceAtLeast(minBudget)
-                                sliderBudget = next
-                                onBudgetChange(next)
-                            },
-                        contentAlignment = Alignment.Center
+                                onBudgetPlanChange(
+                                    BudgetMode.FIXED_NOMINAL,
+                                    sliderPercent,
+                                    sliderBudget
+                                )
+                            }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = PhosphorIcons.Regular.Minus,
-                            contentDescription = "Decrease Budget",
-                            tint = Charcoal,
-                            modifier = Modifier.size(16.dp)
+                        Text(
+                            text = strings.budgetModeFixed,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 11.sp,
+                            color = fixedTextColor
                         )
                     }
 
-                    // Interactive Slider
-                    Slider(
-                        value = sliderBudget.toFloat().coerceIn(minBudget.toFloat(), maxBudget.toFloat()),
-                        onValueChange = { sliderBudget = it.toLong() },
-                        onValueChangeFinished = { onBudgetChange(sliderBudget) },
-                        valueRange = minBudget.toFloat()..maxBudget.toFloat(),
-                        steps = 25,
-                        colors = SliderDefaults.colors(
-                            thumbColor = Cobalt,
-                            activeTrackColor = Cobalt,
-                            inactiveTrackColor = Slate200
-                        ),
-                        modifier = Modifier.weight(1f)
-                    )
+                    val isPercent = currentMode == BudgetMode.PERCENTAGE_OF_FUNDS
+                    val percentBg = if (isPercent) Cobalt else Slate100
+                    val percentTextColor = if (isPercent) Color.White else Charcoal
 
-                    // Plus Button
-                    Box(
+                    Row(
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Slate100)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(percentBg)
                             .clickable {
-                                val next = (sliderBudget + stepSize).coerceAtMost(maxBudget)
-                                sliderBudget = next
-                                onBudgetChange(next)
-                            },
-                        contentAlignment = Alignment.Center
+                                onBudgetPlanChange(
+                                    BudgetMode.PERCENTAGE_OF_FUNDS,
+                                    sliderPercent,
+                                    sliderBudget
+                                )
+                            }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = PhosphorIcons.Regular.Plus,
-                            contentDescription = "Increase Budget",
-                            tint = Charcoal,
-                            modifier = Modifier.size(16.dp)
+                        Text(
+                            text = strings.budgetModePercentage,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 11.sp,
+                            color = percentTextColor
                         )
+                    }
+                }
+
+                if (currentMode == BudgetMode.PERCENTAGE_OF_FUNDS) {
+                    Text(
+                        text = strings.budgetModePercentageDesc,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontSize = 11.sp,
+                        color = Slate500
+                    )
+                }
+
+                // Interactive Controls (Slider + Step Buttons)
+                if (currentMode == BudgetMode.PERCENTAGE_OF_FUNDS) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Minus Button (decreases percent by 1%)
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Slate100)
+                                .clickable {
+                                    val next = (sliderPercent - 1).coerceAtLeast(1)
+                                    sliderPercent = next
+                                    onBudgetPlanChange(currentMode, next, sliderBudget)
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = PhosphorIcons.Regular.Minus,
+                                contentDescription = "Decrease Percentage",
+                                tint = Charcoal,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+
+                        // Percentage Slider (1% to 50%)
+                        Slider(
+                            value = sliderPercent.toFloat().coerceIn(1f, 50f),
+                            onValueChange = { sliderPercent = it.roundToInt() },
+                            onValueChangeFinished = {
+                                onBudgetPlanChange(currentMode, sliderPercent, sliderBudget)
+                            },
+                            valueRange = 1f..50f,
+                            steps = 48,
+                            colors = SliderDefaults.colors(
+                                thumbColor = Cobalt,
+                                activeTrackColor = Cobalt,
+                                inactiveTrackColor = Slate200
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        // Plus Button (increases percent by 1%)
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Slate100)
+                                .clickable {
+                                    val next = (sliderPercent + 1).coerceAtMost(50)
+                                    sliderPercent = next
+                                    onBudgetPlanChange(currentMode, next, sliderBudget)
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = PhosphorIcons.Regular.Plus,
+                                contentDescription = "Increase Percentage",
+                                tint = Charcoal,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Minus Button
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Slate100)
+                                .clickable {
+                                    val next = (sliderBudget - stepSize).coerceAtLeast(minBudget)
+                                    sliderBudget = next
+                                    onBudgetPlanChange(currentMode, sliderPercent, next)
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = PhosphorIcons.Regular.Minus,
+                                contentDescription = "Decrease Budget",
+                                tint = Charcoal,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+
+                        // Interactive Slider
+                        Slider(
+                            value = sliderBudget.toFloat().coerceIn(minBudget.toFloat(), maxBudget.toFloat()),
+                            onValueChange = { sliderBudget = it.toLong() },
+                            onValueChangeFinished = {
+                                onBudgetPlanChange(currentMode, sliderPercent, sliderBudget)
+                            },
+                            valueRange = minBudget.toFloat()..maxBudget.toFloat(),
+                            steps = 25,
+                            colors = SliderDefaults.colors(
+                                thumbColor = Cobalt,
+                                activeTrackColor = Cobalt,
+                                inactiveTrackColor = Slate200
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        // Plus Button
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Slate100)
+                                .clickable {
+                                    val next = (sliderBudget + stepSize).coerceAtMost(maxBudget)
+                                    sliderBudget = next
+                                    onBudgetPlanChange(currentMode, sliderPercent, next)
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = PhosphorIcons.Regular.Plus,
+                                contentDescription = "Increase Budget",
+                                tint = Charcoal,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
 
@@ -503,6 +664,79 @@ fun AnalyticsScreen(
                     fontSize = 12.sp,
                     color = feedbackColor
                 )
+
+                // Capital Survival Runway Metric
+                if (state.totalNetWorth > 0L) {
+                    SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                                Text(
+                                    text = strings.survivalRunwayTitle.uppercase(),
+                                    fontFamily = SpaceGroteskFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp,
+                                    letterSpacing = 0.8.sp,
+                                    color = Slate500
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                val runwayEstimate = if (safe.survivalMonths >= 1f) {
+                                    String.format(Locale.US, strings.survivalRunwayMonthsFormat, safe.survivalMonths)
+                                } else if (safe.survivalDays > 0) {
+                                    String.format(Locale.US, strings.survivalRunwayDaysFormat, safe.survivalDays)
+                                } else {
+                                    null
+                                }
+
+                                if (runwayEstimate != null) {
+                                    Text(
+                                        text = String.format(
+                                            strings.survivalRunwayBurnSubline,
+                                            Currency.formatMinor(safe.dailyBurnRate, currencyCode),
+                                            runwayEstimate
+                                        ),
+                                        fontFamily = PlusJakartaSansFamily,
+                                        fontSize = 12.sp,
+                                        color = Charcoal
+                                    )
+                                } else {
+                                    Text(
+                                        text = strings.survivalRunwayIndeterminate,
+                                        fontFamily = PlusJakartaSansFamily,
+                                        fontSize = 12.sp,
+                                        color = Slate500
+                                    )
+                                }
+                            }
+
+                            if (safe.survivalMonths > 0f) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Emerald.copy(alpha = 0.12f))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = if (safe.survivalMonths >= 1f) {
+                                            String.format(Locale.US, strings.survivalRunwayMonthsFormat, safe.survivalMonths)
+                                        } else {
+                                            String.format(Locale.US, strings.survivalRunwayDaysFormat, safe.survivalDays)
+                                        },
+                                        fontFamily = SpaceGroteskFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = Emerald
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 

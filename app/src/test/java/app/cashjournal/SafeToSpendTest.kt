@@ -1,5 +1,6 @@
 package app.cashjournal
 
+import app.cashjournal.domain.model.BudgetMode
 import app.cashjournal.domain.model.MonthlyPlan
 import app.cashjournal.domain.model.SafeToSpendCalculator
 import app.cashjournal.domain.model.SafeToSpendStatus
@@ -253,5 +254,134 @@ class SafeToSpendTest {
         // startingSpent must NOT be reset to 0 even though calendar month is November
         assertEquals(2000000L, result.spentThisMonth) // 1,500,000 starting + 500,000 tx
         assertEquals(3000000L, result.remaining)
+    }
+
+    @Test
+    fun testPercentageOfFundsBudgetMode() {
+        // Net worth: 50,000,000 IDR
+        // Budget percent: 10%
+        // Computed budget = 5,000,000 IDR
+        val cal = createUtcCalendar(2026, Calendar.OCTOBER, 15)
+        val plan = MonthlyPlan(
+            monthKey = "2026-10",
+            budget = 0L,
+            budgetMode = BudgetMode.PERCENTAGE_OF_FUNDS,
+            budgetPercent = 10
+        )
+
+        val tx = Transaction(
+            title = "Living Expenses",
+            amount = 1500000L,
+            type = TransactionType.EXPENSE,
+            date = cal.timeInMillis
+        )
+
+        val result = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = listOf(tx),
+            calendar = cal,
+            totalNetWorth = 50000000L
+        )
+
+        assertEquals(BudgetMode.PERCENTAGE_OF_FUNDS, result.budgetMode)
+        assertEquals(10, result.budgetPercent)
+        assertEquals(5000000L, result.budget) // 10% of 50M
+        assertEquals(1500000L, result.spentThisMonth)
+        assertEquals(3500000L, result.remaining)
+        assertEquals(30, result.displayPercent) // 1.5M / 5M = 30%
+        assertEquals(SafeToSpendStatus.SAFE, result.status)
+    }
+
+    @Test
+    fun testPercentageOfFundsZeroOrNegativeNetWorth() {
+        val cal = createUtcCalendar(2026, Calendar.OCTOBER, 15)
+        val plan = MonthlyPlan(
+            budgetMode = BudgetMode.PERCENTAGE_OF_FUNDS,
+            budgetPercent = 15
+        )
+
+        val resultZero = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = emptyList(),
+            calendar = cal,
+            totalNetWorth = 0L
+        )
+
+        assertEquals(0L, resultZero.budget)
+        assertEquals(SafeToSpendStatus.NO_FUNDS, resultZero.status)
+        assertEquals(0L, resultZero.safeToSpendToday)
+
+        val resultNegative = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = emptyList(),
+            calendar = cal,
+            totalNetWorth = -5000000L
+        )
+
+        assertEquals(0L, resultNegative.budget)
+        assertEquals(SafeToSpendStatus.NO_FUNDS, resultNegative.status)
+    }
+
+    @Test
+    fun testCapitalSurvivalRunwayCalculation() {
+        // Oct 10, 2026 with cycle starting on 1st -> 10 days elapsed (Oct 1..10)
+        val cal = createUtcCalendar(2026, Calendar.OCTOBER, 10)
+        val plan = MonthlyPlan(
+            monthKey = "2026-10",
+            budget = 10000000L
+        )
+
+        // Total expenses in cycle = 3,000,000 IDR
+        val tx = Transaction(
+            title = "Food and Utilities",
+            amount = 3000000L,
+            type = TransactionType.EXPENSE,
+            date = cal.timeInMillis
+        )
+
+        // Total net worth = 60,000,000 IDR
+        val result = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = listOf(tx),
+            calendar = cal,
+            totalNetWorth = 60000000L,
+            cycleStartDay = 1
+        )
+
+        // Daily burn rate = 3,000,000 / 10 days = 300,000 / day
+        assertEquals(300000L, result.dailyBurnRate)
+
+        // Survival days = 60,000,000 / 300,000 = 200 days
+        assertEquals(200, result.survivalDays)
+
+        // Survival months = 200 / 30 = 6.666... -> ~6.67 months
+        assertTrue(result.survivalMonths in 6.6f..6.7f)
+    }
+
+    @Test
+    fun testCapitalSurvivalRunwayZeroBurn() {
+        val cal = createUtcCalendar(2026, Calendar.OCTOBER, 10)
+        val plan = MonthlyPlan(budget = 5000000L)
+
+        val result = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = emptyList(),
+            calendar = cal,
+            totalNetWorth = 50000000L
+        )
+
+        assertEquals(0L, result.dailyBurnRate)
+        assertEquals(0, result.survivalDays)
+        assertEquals(0f, result.survivalMonths, 0.001f)
+    }
+
+    @Test
+    fun testBudgetModeEnumFromKey() {
+        assertEquals(BudgetMode.FIXED_NOMINAL, BudgetMode.fromKey("FIXED_NOMINAL"))
+        assertEquals(BudgetMode.PERCENTAGE_OF_FUNDS, BudgetMode.fromKey("PERCENTAGE_OF_FUNDS"))
+        assertEquals(BudgetMode.PERCENTAGE_OF_FUNDS, BudgetMode.fromKey("percentage"))
+        assertEquals(BudgetMode.PERCENTAGE_OF_FUNDS, BudgetMode.fromKey("percent"))
+        assertEquals(BudgetMode.FIXED_NOMINAL, BudgetMode.fromKey(null))
+        assertEquals(BudgetMode.FIXED_NOMINAL, BudgetMode.fromKey("unknown"))
     }
 }
