@@ -259,6 +259,14 @@ This log is kept up to date after every step. Any AI assistant or developer read
   - Tag: `v1.0.22-dev`
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.22-dev
   - Artifacts: `app-debug.apk` (17.5 MB), `app-release.apk` (12.3 MB).
+- [x] **Phase 19: Public Documentation & Open-Source Repository Showcase**
+  - [x] **Item 84: Comprehensive Play Store Style README & Open-Source Showcase**:
+    - **Context**: The GitHub repository is now public; created a comprehensive, store-page style `README.md` and MIT `LICENSE` to present CashJournal's engineering, features, privacy guarantees, and build instructions to developers and users.
+    - **Method**:
+      1. Created `README.md` structured like a Google Play Store showcase: About summary, Why CashJournal value propositions, deep feature breakdowns across all 8 feature pillars, architecture & tech stack specifications, build instructions, and privacy guarantee.
+      2. Created standard MIT `LICENSE` file for the repository.
+    - **Verification**: Verified Markdown formatting, header structure, and repository cleanliness.
+
 
 
 
