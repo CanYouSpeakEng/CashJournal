@@ -80,7 +80,14 @@ fun MaskedAmountText(
         mutableStateOf(if (balancesVisible) MaskVisualState.REVEALED_IDLE else MaskVisualState.MASKED_IDLE)
     }
 
+    var isInitial by remember { mutableStateOf(true) }
+
     LaunchedEffect(balancesVisible) {
+        if (isInitial) {
+            isInitial = false
+            visualState = if (balancesVisible) MaskVisualState.REVEALED_IDLE else MaskVisualState.MASKED_IDLE
+            return@LaunchedEffect
+        }
         val totalDigits = amountText.count { it.isDigit() }
         if (balancesVisible) {
             visualState = MaskVisualState.WAVE_REVEALING

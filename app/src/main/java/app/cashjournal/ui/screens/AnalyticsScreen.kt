@@ -361,30 +361,46 @@ fun AnalyticsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = strings.runwayCardTitle,
-                        fontFamily = PlusJakartaSansFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = Charcoal
-                    )
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 12.dp)
+                    ) {
+                        Text(
+                            text = strings.runwayCardTitle,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = Charcoal
+                        )
+                    }
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = if (state.userPreferences.language == "in") "TARGET ANGGARAN" else "TARGET BUDGET",
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 9.sp,
+                            letterSpacing = 0.8.sp,
+                            color = Slate400
+                        )
                         if (currentBudget > 0L) {
                             Text(
                                 text = Currency.formatMinor(currentBudget, currencyCode),
                                 fontFamily = SpaceGroteskFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
-                                color = Cobalt
+                                color = Cobalt,
+                                maxLines = 1
                             )
                         } else {
                             Text(
                                 text = "0 (${strings.statusSetBudget})",
                                 fontFamily = SpaceGroteskFamily,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                color = Slate500
+                                fontSize = 13.sp,
+                                color = Slate500,
+                                maxLines = 1
                             )
                         }
                     }
@@ -547,18 +563,17 @@ fun AnalyticsScreen(
 
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = "Spent",
+                                    text = if (state.userPreferences.language == "in") "Total" else "Spent",
                                     fontFamily = PlusJakartaSansFamily,
                                     fontSize = 9.sp,
                                     color = Slate500
                                 )
                                 Text(
-                                    text = Currency.formatMinor(totalMonthExpense, currencyCode),
+                                    text = "100%",
                                     fontFamily = SpaceGroteskFamily,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp,
-                                    color = Charcoal,
-                                    maxLines = 1
+                                    fontSize = 11.sp,
+                                    color = Charcoal
                                 )
                             }
                         }
@@ -566,8 +581,18 @@ fun AnalyticsScreen(
                         // Legend with Categories & Percentages
                         Column(
                             verticalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.padding(start = 12.dp)
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 16.dp)
                         ) {
+                            Text(
+                                text = "${if (state.userPreferences.language == "in") "Total Pengeluaran" else "Total Spent"}: ${Currency.formatMinor(totalMonthExpense, currencyCode)}",
+                                fontFamily = SpaceGroteskFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = Charcoal,
+                                modifier = Modifier.padding(bottom = 2.dp)
+                            )
                             categorySpends.forEach { item ->
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,

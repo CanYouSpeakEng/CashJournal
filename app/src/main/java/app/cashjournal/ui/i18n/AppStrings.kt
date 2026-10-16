@@ -148,7 +148,7 @@ object AppStrings {
         lastDayLabel = "Last day",
         remainingFormat = "%s remaining",
         noFundsSubline = "Add funds or accounts to enable spending",
-        recentActivityTitle = "RECENT ACTIVITY",
+        recentActivityTitle = "Recent Activity",
         viewAllAction = "View All",
         noTransactionsYet = "No transactions yet",
 
@@ -259,7 +259,7 @@ object AppStrings {
         lastDayLabel = "Hari terakhir",
         remainingFormat = "tersisa %s",
         noFundsSubline = "Tambahkan saldo atau akun untuk mulai berbelanja",
-        recentActivityTitle = "AKTIVITAS TERBARU",
+        recentActivityTitle = "Aktivitas Terbaru",
         viewAllAction = "Lihat Semua",
         noTransactionsYet = "Belum ada transaksi",
 

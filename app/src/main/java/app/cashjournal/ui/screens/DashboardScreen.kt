@@ -508,22 +508,39 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = strings.runwayCardTitle.uppercase(),
-                        fontFamily = SpaceGroteskFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp,
-                        letterSpacing = 0.8.sp,
-                        color = Slate500
-                    )
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 12.dp)
+                    ) {
+                        Text(
+                            text = strings.runwayCardTitle.uppercase(),
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp,
+                            letterSpacing = 0.8.sp,
+                            color = Slate500
+                        )
+                    }
 
-                    Text(
-                        text = "Budget ${Currency.formatMinor(safe.budget, state.userPreferences.currencyCode)}",
-                        fontFamily = SpaceGroteskFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        color = Charcoal
-                    )
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = if (state.userPreferences.language == "in") "ANGGARAN" else "BUDGET",
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 9.sp,
+                            letterSpacing = 0.8.sp,
+                            color = Slate400
+                        )
+                        Text(
+                            text = Currency.formatMinor(safe.budget, state.userPreferences.currencyCode),
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = Charcoal,
+                            maxLines = 1
+                        )
+                    }
                 }
 
                 // Progress Bar
@@ -550,14 +567,14 @@ fun DashboardScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Spent ${Currency.formatMinor(safe.spentThisMonth, state.userPreferences.currencyCode)}",
+                        text = "${if (state.userPreferences.language == "in") "Terpakai" else "Spent"} ${Currency.formatMinor(safe.spentThisMonth, state.userPreferences.currencyCode)}",
                         fontFamily = PlusJakartaSansFamily,
                         fontSize = 11.sp,
                         color = Slate600
                     )
 
                     Text(
-                        text = if (safe.isLastDay) "Last day" else "Days left: ${safe.daysLeft} days",
+                        text = if (safe.isLastDay) strings.lastDayLabel else String.format(strings.daysLeftFormat, safe.daysLeft),
                         fontFamily = PlusJakartaSansFamily,
                         fontSize = 11.sp,
                         color = Slate500

@@ -28,6 +28,8 @@ import app.cashjournal.ui.theme.CashJournalTheme
 class MainActivity : FragmentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
+    private var lastBackgroundTimestamp: Long = 0L
+    private val isAppLocked = mutableStateOf(true)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,6 +43,10 @@ class MainActivity : FragmentActivity() {
             CashJournalTheme {
                 val state by viewModel.uiState.collectAsState()
 
+                // Synchronize lock state with PIN configuration
+                val hasPin = state.userPreferences.pinEnabled && state.userPreferences.pinHash.isNotEmpty()
+                val locked = isAppLocked.value && hasPin
+
                 // Screen Privacy (FLAG_SECURE)
                 LaunchedEffect(state.userPreferences.screenPrivacyEnabled) {
                     if (state.userPreferences.screenPrivacyEnabled) {
@@ -50,37 +56,6 @@ class MainActivity : FragmentActivity() {
                         )
                     } else {
                         window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-                    }
-                }
-
-                // App Lock State: locked if pinEnabled and pinHash is not empty
-                var isAppLocked by rememberSaveable(state.userPreferences.pinEnabled) {
-                    mutableStateOf(state.userPreferences.pinEnabled && state.userPreferences.pinHash.isNotEmpty())
-                }
-
-                val lifecycleOwner = this@MainActivity
-                var lastBackgroundTime by rememberSaveable { mutableStateOf(0L) }
-
-                DisposableEffect(lifecycleOwner, state.userPreferences.pinEnabled) {
-                    val observer = LifecycleEventObserver { _, event ->
-                        when (event) {
-                            Lifecycle.Event.ON_STOP -> {
-                                lastBackgroundTime = System.currentTimeMillis()
-                            }
-                            Lifecycle.Event.ON_START -> {
-                                if (state.userPreferences.pinEnabled && state.userPreferences.pinHash.isNotEmpty()) {
-                                    val elapsed = System.currentTimeMillis() - lastBackgroundTime
-                                    if (lastBackgroundTime > 0L && elapsed > 15_000L) {
-                                        isAppLocked = true
-                                    }
-                                }
-                            }
-                            else -> {}
-                        }
-                    }
-                    lifecycleOwner.lifecycle.addObserver(observer)
-                    onDispose {
-                        lifecycleOwner.lifecycle.removeObserver(observer)
                     }
                 }
 
@@ -107,18 +82,18 @@ class MainActivity : FragmentActivity() {
                             viewModel.refreshWeather()
                         }
                     )
-                } else if (isAppLocked && state.userPreferences.pinEnabled && state.userPreferences.pinHash.isNotEmpty()) {
+                } else if (locked) {
                     AppLockScreen(
                         pinHash = state.userPreferences.pinHash,
                         biometricsEnabled = state.userPreferences.biometricsEnabled,
-                        onUnlock = { isAppLocked = false },
+                        onUnlock = { isAppLocked.value = false },
                         onBiometricRequest = if (state.userPreferences.biometricsEnabled) {
                             {
                                 BiometricAuthHelper.promptBiometric(
                                     activity = this@MainActivity,
                                     title = "Unlock CashJournal",
                                     subtitle = "Confirm biometric to unlock",
-                                    onSuccess = { isAppLocked = false },
+                                    onSuccess = { isAppLocked.value = false },
                                     onError = { /* fallback to PIN */ }
                                 )
                             }
@@ -128,14 +103,29 @@ class MainActivity : FragmentActivity() {
                     MainAppScaffold(
                         viewModel = viewModel,
                         onLockApp = {
-                            if (state.userPreferences.pinEnabled && state.userPreferences.pinHash.isNotEmpty()) {
-                                isAppLocked = true
+                            if (hasPin) {
+                                isAppLocked.value = true
                             }
                         }
                     )
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (lastBackgroundTimestamp > 0L) {
+            val elapsed = System.currentTimeMillis() - lastBackgroundTimestamp
+            if (elapsed > 15_000L) {
+                isAppLocked.value = true
+            }
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        lastBackgroundTimestamp = System.currentTimeMillis()
     }
 
     override fun onNewIntent(intent: Intent) {

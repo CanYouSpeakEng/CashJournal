@@ -228,34 +228,34 @@ fun AccountsScreen(
                         color = Slate600
                     )
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(
-                            text = "${strings.baseNetWorthLabel}:",
-                            fontFamily = PlusJakartaSansFamily,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 11.sp,
-                            color = Slate500
-                        )
-                        MaskedAmount(
-                            amountMinor = state.totalNetWorth,
-                            currencyCode = mainCurrency.code,
-                            isMasked = state.hideBalances,
-                            textStyle = CashTypography.Mono12.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Slate600)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = PhosphorIcons.Regular.ArrowsClockwise,
-                            contentDescription = "Refresh",
-                            tint = Slate500,
-                            modifier = Modifier
-                                .size(16.dp)
-                                .clip(CircleShape)
-                                .clickable { onRefreshRates() }
-                        )
-                    }
+                    Icon(
+                        imageVector = PhosphorIcons.Regular.ArrowsClockwise,
+                        contentDescription = "Refresh",
+                        tint = Slate500,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clip(CircleShape)
+                            .clickable { onRefreshRates() }
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "${strings.baseNetWorthLabel}:",
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.sp,
+                        color = Slate500
+                    )
+                    MaskedAmount(
+                        amountMinor = state.totalNetWorth,
+                        currencyCode = mainCurrency.code,
+                        isMasked = state.hideBalances,
+                        textStyle = CashTypography.Mono12.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Slate600)
+                    )
                 }
 
                 val rateForOneUnit = if (cachedRates != null && cachedRates.rates.isNotEmpty()) {
