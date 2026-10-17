@@ -416,6 +416,41 @@ Based on the comprehensive audit (Rev 3.0) and external review notes ([`docs/cas
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.30-dev
   - Artifacts: `app-debug.apk` (17.6 MB), `app-release.apk` (12.3 MB).
 
+---
+
+### [x] **Hotfix v1.0.31-dev & v1.0.32-dev: Startup Crash Postmortem & Root Cause Resolution (COMPLETED)**
+- **Incident Summary**: Updating to `v1.0.30-dev` via OTA on physical devices and emulators resulted in an immediate launch crash on the splash screen ("CashJournal keeps crashing").
+- **Investigation & Diagnostic Findings**:
+  1. Booted Android 14 AVD (`CashJournal_Pixel`) and captured logcat on process initialization.
+  2. Identified primary root cause: `java.lang.VerifyError: Verifier rejected class app.cashjournal.ui.i18n.AppStrings: void app.cashjournal.ui.i18n.AppStrings.<clinit>() failed to verify: [0x29A] Rejecting invocation, expected 28 argument registers, method signature has 29 or more`.
+     - `ScreenStrings` was structured as a flat Kotlin `data class` with 301 constructor parameters.
+     - Kotlin generates synthetic constructor overloads with integer bitmasks for default parameters (301 + 10 masks + 1 marker = 312 arguments).
+     - Android Dalvik/ART virtual machine imposes a strict architectural limit of 255 method parameter registers in DEX bytecode (`invoke-range`).
+     - While desktop JVM unit tests permitted this, ART's strict runtime verifier on Android devices rejected the class during `<clinit>`, causing an immediate uncatchable process abort before Compose could render.
+  3. Identified secondary vulnerabilities:
+     - `AppDatabase` had `.fallbackToDestructiveMigrationOnDowngrade()` but lacked `.fallbackToDestructiveMigration()`. Any schema divergence during OTA upgrade threw an unhandled `IllegalStateException`.
+     - Kotlin coroutine flows emitting into `combine` operators lacked `.catch` handlers; upstream Room exceptions could abort `viewModelScope`.
+     - Hardware queries in `RailStatusCluster.kt` (telephony signal level, battery) lacked API level checks (`Build.VERSION.SDK_INT >= P`) and `Throwable` catches.
+- **Resolutions Implemented**:
+  1. **Refactored `AppStrings.kt`**: Converted `data class ScreenStrings` into an `interface ScreenStrings`. Concrete implementations `EnglishScreenStrings` and `IndonesianScreenStrings` implement all properties via zero-parameter property getters. Eliminates constructor parameter registers entirely, ensuring 100% bytecode verification safety across all Android versions while maintaining complete source-compatibility with existing UI code.
+  2. **Room Database Safeguards**: Added `.fallbackToDestructiveMigration()` in `AppDatabase.kt`. Aligned SQL syntax and backticks in `MIGRATION_4_5` to match Room schema verification character-for-character. Added `MigrationTest.kt` unit test suite covering migrations v1 through v5.
+  3. **Defensive Coroutine Flow Boundaries**: Attached `.catch { emit(...) }` handlers to all database and DataStore flows in `MainViewModel.kt` `uiState` combine pipeline. Wrapped `init` background coroutines in defensive `try-catch`.
+  4. **Hardware Hardening**: Added API level guards and `Throwable` catches around telephony and battery reads in `RailStatusCluster.kt`.
+  5. **Casual User Release Notes**: Updated `ReleaseNotesSheet.kt` and GitHub release notes to friendly, non-technical language tailored for everyday users in English and Indonesian.
+- **Verification**:
+  - Ran `./gradlew testDebugUnitTest` (all 101 tests passed).
+  - Installed and verified `app-release.apk` on Android 14 emulator (`CashJournal_Pixel`).
+  - Confirmed immediate startup (`ActivityTaskManager: Displayed app.cashjournal/.MainActivity for user 0: +2s794ms`, active PID, zero crashes).
+  - Verified onboarding steps, language switching, and dashboard rendering.
+  - Published hotfix release `v1.0.32-dev` on GitHub with both `app-release.apk` (11.8 MB) and `app-debug.apk` (16.8 MB) attached.
+
+- [x] **Release v1.0.32-dev (Hotfix: ART VerifyError Resolution & Defensive Startup Boundaries)**
+  - Tag: `v1.0.32-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.32-dev
+  - Artifacts: `app-debug.apk` (16.8 MB), `app-release.apk` (11.8 MB).
+
+---
+
 ### [ ] **Phase 28: CSV / Bank Statement Import & Duplicate Detection**
 - [ ] **Item 118**: Statement parser supporting standard Indonesian bank CSV formats (BCA, Mandiri, BNI, BRI) and generic CSVs.
 - [ ] **Item 119**: Column mapping preview modal and hash-based duplicate transaction detector (`date + amount + accountId + title`) to avoid double-counting.
