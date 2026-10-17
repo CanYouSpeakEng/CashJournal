@@ -7,7 +7,7 @@ This log is kept up to date after every step. Any AI assistant or developer read
 ## 1. Project Overview & Rules Summary
 - **App Name**: CashJournal
 - **Application ID**: `app.cashjournal`
-- **Target OS**: Android 8.0 (API 26) to latest stable target SDK (API 34/35), portrait only, phone only, edge-to-edge.
+- **Target OS**: Android 8.0 (API 26) to latest stable target SDK (API 34/35), portrait only for core navigation tabs, phone only, edge-to-edge. Exception: Dedicated landscape activity for Phase 36 Simulation Studio (`SimulationStudioActivity`, `android:screenOrientation="sensorLandscape"`).
 - **Tech Stack**: Kotlin, Jetpack Compose, Room, DataStore, OkHttp, Phosphor Icons (`com.adamglin:phosphor-icon:1.0.0`), Fonts: Plus Jakarta Sans & Space Grotesk.
 - **Strict Non-Negotiable Rules**:
   1. 100% Free: No paid libraries, no accounts, no API keys.
@@ -20,6 +20,7 @@ This log is kept up to date after every step. Any AI assistant or developer read
 ---
 
 ## 2. Key Decisions & Formulas
+- **Screen Orientation Rule**: The core app (`MainActivity`) is strictly portrait-only (`android:screenOrientation="portrait"`), preserving the signature persistent `SideRail` across Dashboard, Accounts, Ledger, Analytics, and Settings without layout degradation or configuration churn. The upcoming Phase 36 Simulation Studio runs in a dedicated isolated activity (`SimulationStudioActivity`, `sensorLandscape`) to unlock the full horizontal canvas for timeline charts and thumb controls without affecting `MainActivity`'s lifecycle.
 - **Per-day Safe-to-Spend formula**: `floor(remaining / max(1, daysLeft))` (per user decision to satisfy acceptance test Rp 91.470).
 - **Stored Money**: Minor units stored as whole `Long`. Floating point never used for stored currency.
 - **Number formatting**: Based on `Locale(language, region)`. Indonesia uses dots for thousands and comma for decimal (`Rp 12.500.000` / `US$ 1.176,66`).
@@ -553,4 +554,55 @@ Based on the comprehensive audit (Rev 3.0) and external review notes ([`docs/cas
   - Tag: `v1.0.38-dev`
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.38-dev
   - Artifacts: `app-debug.apk` (16.9 MB), `app-release.apk` (7.47 MB).
+
+### [x] **Phase 33: Core Money Rules Part 1 — Transfer Fees, Refunds, Negative Warning & Backup Health (COMPLETED)**
+- [x] **Item 139 (Transfer Fees & Zero-Drift Math — Room Schema v6)**:
+  - Added `feeAmount: Long = 0L` to `TransactionEntity` and `Transaction` domain model.
+  - Implemented non-destructive Room `MIGRATION_5_6` and bumped database version to 6 in `AppDatabase.kt`.
+  - Updated `AccountDao.kt` recalculation queries: outgoing transfers deduct `(amount + feeAmount)`.
+  - Added `Category.TRANSFER_FEE` and `Category.INTEREST` to `Category.kt`.
+  - Included `feeAmount` in offline encrypted JSON backup and restore schemas in `BackupManager.kt`.
+  - Updated `SafeToSpendCalculator.kt` to include transfer fees in cycle spend and 30-day burn rate.
+- [x] **Item 140 (Transfer Fee UX & Direction Toggle)**:
+  - Added instant preset fee chips (Rp 0, Rp 1.000, Rp 2.500, Rp 6.500) in `LogTransactionSheet.kt` and `TransactionEditSheet.kt`.
+  - Implemented direction toggle: "Taken from amount" vs "Added on top".
+  - Implemented live 3-way balance breakdown pill maintaining mathematical invariant `Amount sent = Amount received + Fee`.
+  - Added destination account auto-defaulting in `LogTransactionSheet.kt` to select the first eligible non-source account.
+- [x] **Item 141 (Pre-Commit Negative Balance Warning & Direct Refunds)**:
+  - Added `TransactionType.REFUND` to `TransactionType.kt`, `SegmentedControl.kt`, and `TransactionRow.kt`.
+  - Refunds credit destination account directly, offsetting expenses and reducing category spend without distorting gross income.
+  - Pre-commit live amber warning banner in `LogTransactionSheet.kt` and `TransactionEditSheet.kt` alerting user if an expense or transfer causes an account balance to drop below zero, displaying projected negative balance without blocking transaction commit.
+- [x] **Item 142 (30-Day Backup Reminder & Health Status)**:
+  - Added `lastBackupTimestamp` and `backupReminderDismissedAt` tracking to `UserPreferencesRepository.kt`.
+  - Added proactive 30-day backup reminder card to `DashboardScreen.kt` with "Back Up Now" and "Dismiss" actions.
+  - Added last backup status line in `SettingsScreen.kt`.
+  - Comprehensive bilingual strings (EN/IN) added to `AppStrings.kt`.
+- [x] **Item 143 (Verification & Release Deployment)**:
+  - Unit tests updated and verified in `MigrationTest.kt`, `LedgerIntegrityTest.kt`, and `SafeToSpendTest.kt` (100% pass rate).
+  - Verified live on Android emulator with screenshot artifacts covering transfer fees, direction toggle, 3-way breakdown, negative balance alert banner, refund tab, and dashboard backup reminder.
+  - Updated `ReleaseNotesSheet.kt` with bilingual highlights.
+  - Bumped `versionName` to `1.0.39-dev` in `app/build.gradle.kts`.
+
+- [x] **Release v1.0.39-dev (Phase 33: Core Money Rules Part 1 — Transfer Fees, Refunds, Negative Balance Alert & Backup Health)**:
+  - Tag: `v1.0.39-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.39-dev
+  - Artifacts: `app-debug.apk` (16.9 MB), `app-release.apk` (7.47 MB).
+
+---
+
+### [ ] **Upcoming Phases Status: Core Money Rules, Forecast & Simulation Studio (Phases 34–38)**
+- **Design & Formula Source of Truth**: [`docs/cashjournal_projection_simulation_spec.md`](file:///c:/Users/Yahya/Projects/CashJournal/docs/cashjournal_projection_simulation_spec.md) (Sections 10–12).
+- **Execution Task List**: [`master_tasks_roadmap.md`](file:///C:/Users/Yahya/.gemini/antigravity/brain/0a2612ed-736b-482e-9005-143d315d1357/master_tasks_roadmap.md) (Items 143–153).
+
+#### Phase Status Summary:
+- **Phase 34 (Core Money Rules Part 2 — Room Schema v7)**: [Status: Ready to Build | Items 144–145 | Spec: 10.2, 10.3, 12.2]
+  - Credit card limits, payment mode (statement target default), double-counting safeguard vs recurring bills, and manual investment holdings.
+- **Phase 35 (Ledger Power Tools — Room Schema v8)**: [Status: Planned | Items 146–147 | Spec: 10.4, 12.2]
+  - Split transactions (`splitGroupId`) and 50-action local undo/change history (excluded from backups per Section 11.3).
+- **Phase 36 (Forecast & Simulation Studio Part 1 — F1, F2, F3, F8)**: [Status: Planned | Items 148–150 | Spec: F1–F3, F8, 12.3]
+  - Portrait summary widget on `AnalyticsScreen`, dedicated landscape `SimulationStudioActivity` cockpit, current-pace projection, known-events forecast, and purchase simulator.
+- **Phase 37 (Forecast & Simulation Studio Part 2 — F4, F5, F6, F7)**: [Status: Planned | Items 151–153 | Spec: F4–F7, 12.3]
+  - Goal reachability, scenario sliders, pause-bill toggles, irregular-income mode, and saved scenario comparisons.
+- **Phase 38 (Calm Habit Guidance & Milestones — Section 9)**: [Status: Planned | Item 154 | Spec: 9.1–9.6, 12.2]
+  - Master Settings toggle, logging streaks with 2 grace days/week, monthly review card, and concept cards.
 

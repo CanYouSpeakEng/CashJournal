@@ -620,6 +620,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         destAccountId: String?,
         note: String,
         amount: Long,
+        feeAmount: Long = 0L,
         date: Long = System.currentTimeMillis(),
         category: Category? = null
     ) {
@@ -649,6 +650,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 TransactionType.EXPENSE -> note.ifBlank { finalCategory.defaultName }
                 TransactionType.INCOME -> note.ifBlank { "Income" }
                 TransactionType.TRANSFER -> "${sourceAcc?.name ?: "Source"} \u2192 ${destAcc?.name ?: "Destination"}"
+                TransactionType.REFUND -> note.ifBlank { "Refund: ${finalCategory.defaultName}" }
             }
 
             val txCategory = if (type == TransactionType.TRANSFER) "TRANSFER" else finalCategory.key
@@ -656,14 +658,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 TransactionType.EXPENSE -> finalCategory.key
                 TransactionType.INCOME -> "ArrowDownLeft"
                 TransactionType.TRANSFER -> "ArrowsLeftRight"
+                TransactionType.REFUND -> "ArrowDownLeft"
             }
             val accentKey = when (type) {
                 TransactionType.EXPENSE -> finalCategory.defaultAccent.name
                 TransactionType.INCOME -> "EMERALD"
                 TransactionType.TRANSFER -> "COBALT"
+                TransactionType.REFUND -> "EMERALD"
             }
 
             val finalDestAccountId = if (type == TransactionType.TRANSFER) destAccountId else null
+            val finalFee = if (type == TransactionType.TRANSFER) feeAmount.coerceAtLeast(0L) else 0L
 
             val tx = TransactionEntity(
                 id = UUID.randomUUID().toString(),
@@ -671,6 +676,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 destinationAccountId = finalDestAccountId,
                 type = type.name,
                 amount = amount,
+                feeAmount = finalFee,
                 title = title,
                 category = txCategory,
                 date = date,
@@ -695,6 +701,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         id: String,
         title: String,
         amount: Long,
+        feeAmount: Long = 0L,
         category: Category,
         type: TransactionType,
         sourceAccountId: String?,
@@ -726,20 +733,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 TransactionType.EXPENSE -> category.key
                 TransactionType.INCOME -> "ArrowDownLeft"
                 TransactionType.TRANSFER -> "ArrowsLeftRight"
+                TransactionType.REFUND -> "ArrowDownLeft"
             }
             val accentKey = when (type) {
                 TransactionType.EXPENSE -> category.defaultAccent.name
                 TransactionType.INCOME -> "EMERALD"
                 TransactionType.TRANSFER -> "COBALT"
+                TransactionType.REFUND -> "EMERALD"
             }
 
             val finalDestAccountId = if (type == TransactionType.TRANSFER) destAccountId else null
+            val finalFee = if (type == TransactionType.TRANSFER) feeAmount.coerceAtLeast(0L) else 0L
 
             val updatedTx = existing.copy(
                 title = title,
                 category = txCategory,
                 type = type.name,
                 amount = amount,
+                feeAmount = finalFee,
                 date = date,
                 iconKey = iconKey,
                 accentKey = accentKey,
@@ -1339,8 +1350,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 database.monthlyPlanDao().deleteAll()
                 database.recurringTransactionDao().deleteAll()
             }
+            preferencesRepository.resetBackupReminders()
             setScreen(AppScreen.DASHBOARD)
             showToast(currentStrings().allDataDeletedToast)
+        }
+    }
+
+    fun dismissBackupReminder() {
+        viewModelScope.launch {
+            preferencesRepository.dismissBackupReminder(System.currentTimeMillis())
         }
     }
 
@@ -1362,6 +1380,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 val result = backupManager.exportToStream(outputStream)
                 if (result.isSuccess) {
+                    preferencesRepository.updateLastBackupTimestamp(System.currentTimeMillis())
                     showToast(strings.backupExportSuccess)
                 } else {
                     showToast(strings.backupExportFailed)
@@ -1385,6 +1404,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 val result = backupManager.exportToEncryptedStream(outputStream, password)
                 if (result.isSuccess) {
+                    preferencesRepository.updateLastBackupTimestamp(System.currentTimeMillis())
                     showToast(strings.backupExportSuccess)
                 } else {
                     showToast(strings.backupExportFailed)
@@ -1546,6 +1566,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     TransactionType.EXPENSE -> item.category.key
                     TransactionType.INCOME -> "ArrowDownLeft"
                     TransactionType.TRANSFER -> "ArrowsLeftRight"
+                    TransactionType.REFUND -> "ArrowDownLeft"
                 }
                 TransactionEntity(
                     id = UUID.randomUUID().toString(),

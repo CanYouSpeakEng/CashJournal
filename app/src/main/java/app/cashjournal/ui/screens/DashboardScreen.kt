@@ -73,6 +73,7 @@ import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
+import com.adamglin.phosphoricons.regular.ArrowClockwise
 import com.adamglin.phosphoricons.regular.CaretRight
 import com.adamglin.phosphoricons.regular.Receipt
 import com.adamglin.phosphoricons.regular.Wallet
@@ -90,6 +91,8 @@ fun DashboardScreen(
     onAddAccountClick: () -> Unit,
     onTransactionClick: ((Transaction) -> Unit)? = null,
     onOpenRecurringBills: () -> Unit = {},
+    onBackupClick: () -> Unit = {},
+    onDismissBackupReminder: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val currency = Currency.findByCode(state.userPreferences.currencyCode)
@@ -386,7 +389,110 @@ fun DashboardScreen(
             }
         }
 
-        // 2b. Upcoming Bills Card (if recurring transactions exist)
+        // 2b. 30-Day Backup Reminder Card
+        val now = System.currentTimeMillis()
+        val lastBackupTime = state.userPreferences.lastBackupTimestamp
+        val dismissedAt = state.userPreferences.backupReminderDismissedAt
+        val isBackupOverdue = state.transactions.size >= 5 &&
+            (lastBackupTime == 0L || now - lastBackupTime >= 30 * 86_400_000L) &&
+            (dismissedAt == 0L || now - dismissedAt >= 30 * 86_400_000L)
+
+        if (isBackupOverdue) {
+            GlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                cornerRadius = 20.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(Cobalt.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = PhosphorIcons.Regular.ArrowClockwise,
+                                contentDescription = "Backup",
+                                tint = Cobalt,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = strings.backupReminderTitle,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Charcoal
+                            )
+                            val backupSubtitle = if (lastBackupTime <= 0L) {
+                                strings.lastBackupNever
+                            } else {
+                                val daysAgo = ((now - lastBackupTime) / 86_400_000L).coerceAtLeast(0L)
+                                String.format(strings.lastBackupDaysAgoFormat, daysAgo)
+                            }
+                            Text(
+                                text = backupSubtitle,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontSize = 11.sp,
+                                color = Slate500
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = strings.backupReminderDesc,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontSize = 12.sp,
+                        color = Slate600,
+                        lineHeight = 16.sp
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = strings.backupReminderDismiss,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.sp,
+                            color = Slate500,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onDismissBackupReminder() }
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Cobalt)
+                                .clickable { onBackupClick() }
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = strings.backupReminderAction,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2c. Upcoming Bills Card (if recurring transactions exist)
         if (state.recurringTransactions.isNotEmpty()) {
             val activeBills = remember(state.recurringTransactions) {
                 state.recurringTransactions.filter { it.isActive }

@@ -8,6 +8,7 @@ data class Transaction(
     val category: Category = Category.OTHER,
     val type: TransactionType = TransactionType.EXPENSE,
     val amount: Long, // Minor units (always positive in storage, signed on display)
+    val feeAmount: Long = 0L, // Minor units for transfer fee (always non-negative)
     val date: Long = System.currentTimeMillis(),
     val iconKey: String = "Tag",
     val accentKey: AccentKey = AccentKey.COBALT,

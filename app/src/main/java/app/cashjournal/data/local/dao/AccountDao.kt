@@ -44,9 +44,10 @@ interface AccountDao {
             SELECT COALESCE(SUM(
                 CASE 
                     WHEN type = 'INCOME' AND sourceAccountId = accounts.id THEN amount
+                    WHEN type = 'REFUND' AND sourceAccountId = accounts.id THEN amount
                     WHEN type = 'TRANSFER' AND destinationAccountId = accounts.id THEN amount
                     WHEN type = 'EXPENSE' AND sourceAccountId = accounts.id THEN -amount
-                    WHEN type = 'TRANSFER' AND sourceAccountId = accounts.id THEN -amount
+                    WHEN type = 'TRANSFER' AND sourceAccountId = accounts.id THEN -(amount + feeAmount)
                     ELSE 0 
                 END
             ), 0)
@@ -64,9 +65,10 @@ interface AccountDao {
             SELECT COALESCE(SUM(
                 CASE 
                     WHEN type = 'INCOME' AND sourceAccountId = accounts.id THEN amount
+                    WHEN type = 'REFUND' AND sourceAccountId = accounts.id THEN amount
                     WHEN type = 'TRANSFER' AND destinationAccountId = accounts.id THEN amount
                     WHEN type = 'EXPENSE' AND sourceAccountId = accounts.id THEN -amount
-                    WHEN type = 'TRANSFER' AND sourceAccountId = accounts.id THEN -amount
+                    WHEN type = 'TRANSFER' AND sourceAccountId = accounts.id THEN -(amount + feeAmount)
                     ELSE 0 
                 END
             ), 0)

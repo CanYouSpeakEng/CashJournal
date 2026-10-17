@@ -48,10 +48,10 @@ import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
-import com.adamglin.phosphoricons.regular.DeviceMobile
-import com.adamglin.phosphoricons.regular.SidebarSimple
-import com.adamglin.phosphoricons.regular.SlidersHorizontal
-import com.adamglin.phosphoricons.regular.Tag
+import com.adamglin.phosphoricons.regular.ArrowCounterClockwise
+import com.adamglin.phosphoricons.regular.ArrowsLeftRight
+import com.adamglin.phosphoricons.regular.ShieldCheck
+import com.adamglin.phosphoricons.regular.WarningCircle
 import com.adamglin.phosphoricons.regular.X
 
 data class ReleaseHighlight(
@@ -78,35 +78,35 @@ fun ReleaseNotesSheet(
 
     val highlights = listOf(
         ReleaseHighlight(
-            titleEn = "Adaptive Responsive Layouts",
-            titleIn = "Tata Letak Responsif Adaptif",
-            descEn = "Safe-to-Spend and survival runway cards automatically adapt hero fonts, gauge dials, and card spacing on narrow and high-density screens.",
-            descIn = "Kartu Saldo Aman dan landasan kas otomatis menyesuaikan ukuran font, dial meteran, dan jarak kartu pada layar sempit dan densitas tinggi.",
-            icon = PhosphorIcons.Regular.DeviceMobile,
+            titleEn = "Transfer Fees & Zero-Drift Math",
+            titleIn = "Biaya Transfer & Hitungan Presisi",
+            descEn = "Log transfer fees with presets (Rp 1.000, Rp 2.500, Rp 6.500) and toggle between deducted or added fee with a live 3-way balance breakdown.",
+            descIn = "Catat biaya transfer dengan preset instan dan pilih pemotongan atau penambahan nominal biaya lewat perincian 3 arah yang presisi.",
+            icon = PhosphorIcons.Regular.ArrowsLeftRight,
             iconTint = Cobalt
         ),
         ReleaseHighlight(
-            titleEn = "Syllable-Safe Fluid Badges",
-            titleIn = "Lencana Dinamis Aman Suku Kata",
-            descEn = "Status pills and runway metrics now flow smoothly into flexible rows, eliminating awkward syllable wraps and word splitting in Indonesian.",
-            descIn = "Pill status dan metrik landasan mengalir luwes dalam baris dinamis, mencegah pemotongan kata dan pemisahan suku kata dalam bahasa Indonesia.",
-            icon = PhosphorIcons.Regular.Tag,
+            titleEn = "Direct Refund Accounting",
+            titleIn = "Pencatatan Pengembalian Dana",
+            descEn = "Reclaim money directly into accounts with dedicated Refund transaction logging, automatically offsetting category expenses and burn rates.",
+            descIn = "Kembalikan dana langsung ke akun dengan tipe transaksi Pengembalian Dana, otomatis mengurangi pengeluaran kategori dan laju belanja.",
+            icon = PhosphorIcons.Regular.ArrowCounterClockwise,
             iconTint = Emerald
         ),
         ReleaseHighlight(
-            titleEn = "Proportional Mode Switching",
-            titleIn = "Pilihan Mode Proporsional",
-            descEn = "Monthly budget selector chips divide available width equally with centered text, guaranteeing zero label truncation across all languages.",
-            descIn = "Pilihan mode anggaran bulanan membagi lebar kartu secara merata dengan teks rata tengah, menjamin tidak ada label yang terpotong di semua bahasa.",
-            icon = PhosphorIcons.Regular.SlidersHorizontal,
+            titleEn = "Pre-Commit Balance Protection",
+            titleIn = "Peringatan Saldo Menipis Pra-Komit",
+            descEn = "Live warning banner alerts you before committing expenses or transfers that would cause an account balance to drop below zero.",
+            descIn = "Peringatan visual langsung memberi tahu Anda sebelum menyimpan pengeluaran atau transfer yang akan membuat saldo akun menjadi minus.",
+            icon = PhosphorIcons.Regular.WarningCircle,
             iconTint = Persimmon
         ),
         ReleaseHighlight(
-            titleEn = "Screen-Aware Rail Margins",
-            titleIn = "Margin Navigasi Sadar Layar",
-            descEn = "The persistent navigation rail dynamically tightens padding on compact viewports (<= 380dp), reclaiming precious canvas space for your data.",
-            descIn = "Bilah navigasi samping secara cerdas merapatkan margin pada layar kompak (<= 380dp), menghemat ruang berharga untuk visualisasi data Anda.",
-            icon = PhosphorIcons.Regular.SidebarSimple,
+            titleEn = "30-Day Offline Backup Health",
+            titleIn = "Pengingat Cadangan Offline 30 Hari",
+            descEn = "Proactive dashboard reminder card ensures your offline encrypted ledger stays backed up regularly with one-tap export.",
+            descIn = "Kartu pengingat berkala di beranda memastikan jurnal keuangan offline Anda selalu dicadangkan secara rutin dengan satu ketukan.",
+            icon = PhosphorIcons.Regular.ShieldCheck,
             iconTint = Cobalt
         )
     )

@@ -99,7 +99,21 @@ enum class Category(
         defaultName = "Salary",
         indonesianName = "Gaji",
         defaultAccent = AccentKey.EMERALD,
-        keywords = listOf("salary", "gaji", "bonus", "freelance", "side", "project", "dividend", "dividen", "interest", "bunga", "income")
+        keywords = listOf("salary", "gaji", "bonus", "freelance", "side", "project", "dividend", "dividen", "income")
+    ),
+    INTEREST(
+        key = "INTEREST",
+        defaultName = "Interest",
+        indonesianName = "Bunga Bank",
+        defaultAccent = AccentKey.EMERALD,
+        keywords = listOf("interest", "bunga", "bunga bank", "bagi hasil")
+    ),
+    TRANSFER_FEE(
+        key = "TRANSFER_FEE",
+        defaultName = "Transfer Fee",
+        indonesianName = "Biaya Transfer",
+        defaultAccent = AccentKey.PERSIMMON,
+        keywords = listOf("transfer fee", "admin fee", "biaya transfer", "biaya admin", "fee transfer", "biaya topup", "topup fee")
     ),
     OTHER(
         key = "OTHER",
@@ -122,6 +136,8 @@ enum class Category(
             EDUCATION -> PhosphorIcons.Regular.Tag
             INVESTMENT -> PhosphorIcons.Regular.ChartLineUp
             SALARY -> PhosphorIcons.Regular.Money
+            INTEREST -> PhosphorIcons.Regular.Money
+            TRANSFER_FEE -> PhosphorIcons.Regular.ArrowsLeftRight
             OTHER -> PhosphorIcons.Regular.Tag
         }
 

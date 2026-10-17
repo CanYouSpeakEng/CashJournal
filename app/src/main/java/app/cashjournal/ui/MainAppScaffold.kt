@@ -287,7 +287,9 @@ fun MainAppScaffold(
                         onSetBudgetClick = { viewModel.setScreen(AppScreen.ANALYTICS) },
                         onAddAccountClick = { viewModel.openSheet(ActiveSheet.NEW_ACCOUNT) },
                         onTransactionClick = { viewModel.showEditTransaction(it) },
-                        onOpenRecurringBills = { viewModel.openRecurringBillsSheet() }
+                        onOpenRecurringBills = { viewModel.openRecurringBillsSheet() },
+                        onBackupClick = { viewModel.setScreen(AppScreen.SETTINGS) },
+                        onDismissBackupReminder = { viewModel.dismissBackupReminder() }
                     )
 
                     AppScreen.LEDGER -> LedgerScreen(
@@ -437,8 +439,8 @@ fun MainAppScaffold(
                     ActiveSheet.LOG_TRANSACTION -> LogTransactionSheet(
                         accounts = state.accounts,
                         currencyCode = state.userPreferences.currencyCode,
-                        onSaveTransaction = { type, src, dst, note, amount, date, cat ->
-                            viewModel.logTransaction(type, src, dst, note, amount, date, cat)
+                        onSaveTransaction = { type, src, dst, note, amount, feeAmount, date, cat ->
+                            viewModel.logTransaction(type, src, dst, note, amount, feeAmount, date, cat)
                         },
                         onDismiss = { viewModel.dismissSheet() },
                         soundEffectsEnabled = state.userPreferences.soundEffectsEnabled,
@@ -452,8 +454,8 @@ fun MainAppScaffold(
                                 transaction = tx,
                                 accounts = state.accounts,
                                 currencyCode = state.userPreferences.currencyCode,
-                                onUpdateTransaction = { id, title, amount, cat, type, src, dst, date ->
-                                    viewModel.editTransaction(id, title, amount, cat, type, src, dst, date)
+                                onUpdateTransaction = { id, title, amount, feeAmount, cat, type, src, dst, date ->
+                                    viewModel.editTransaction(id, title, amount, feeAmount, cat, type, src, dst, date)
                                 },
                                 onDeleteTransaction = { id ->
                                     viewModel.deleteTransaction(id)

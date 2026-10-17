@@ -659,4 +659,46 @@ class SafeToSpendTest {
         assertEquals(100, result.survivalDays)
         assertEquals(3.33f, result.survivalMonths, 0.05f)
     }
+
+    @Test
+    fun testSafeToSpendIncludesTransferFeesAndRefunds() {
+        val cal = createUtcCalendar(2026, Calendar.OCTOBER, 20)
+        val plan = MonthlyPlan(budget = 10_000_000L)
+
+        val txExpense = Transaction(
+            id = "tx-1",
+            title = "Groceries",
+            amount = 2_000_000L,
+            type = TransactionType.EXPENSE,
+            date = createUtcCalendar(2026, Calendar.OCTOBER, 5).timeInMillis
+        )
+        val txTransfer = Transaction(
+            id = "tx-2",
+            title = "Bank to Wallet",
+            amount = 1_000_000L,
+            feeAmount = 6_500L,
+            type = TransactionType.TRANSFER,
+            date = createUtcCalendar(2026, Calendar.OCTOBER, 10).timeInMillis
+        )
+        val txRefund = Transaction(
+            id = "tx-3",
+            title = "Returned Shoes",
+            amount = 500_000L,
+            type = TransactionType.REFUND,
+            date = createUtcCalendar(2026, Calendar.OCTOBER, 15).timeInMillis
+        )
+
+        val result = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = listOf(txExpense, txTransfer, txRefund),
+            calendar = cal,
+            totalNetWorth = 20_000_000L,
+            cycleStartDay = 1
+        )
+
+        // Spent = 2,000,000 (expense) + 6,500 (fee) - 500,000 (refund) = 1,506,500
+        assertEquals(1_506_500L, result.spentThisMonth)
+        // Remaining = 10,000,000 - 1,506,500 = 8,493,500
+        assertEquals(8_493_500L, result.remaining)
+    }
 }

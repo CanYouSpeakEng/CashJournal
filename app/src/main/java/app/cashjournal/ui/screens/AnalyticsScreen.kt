@@ -125,7 +125,10 @@ fun AnalyticsScreen(
             }
 
             val income = monthTxs.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
-            val expense = monthTxs.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
+            val rawExpense = monthTxs.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
+            val transferFees = monthTxs.filter { it.type == TransactionType.TRANSFER }.sumOf { it.feeAmount }
+            val refunds = monthTxs.filter { it.type == TransactionType.REFUND }.sumOf { it.amount }
+            val expense = (rawExpense + transferFees - refunds).coerceAtLeast(0L)
 
             list.add(MonthFlow(monthLabel, income, expense))
         }
@@ -142,19 +145,37 @@ fun AnalyticsScreen(
     }
 
     val (categorySpends, totalMonthExpense) = remember(state.transactions, cycleRange) {
-        val thisCycleExpenses = state.transactions.filter { tx ->
-            tx.type == TransactionType.EXPENSE && tx.date >= cycleRange.startMillis && tx.date <= cycleRange.endMillis
+        val thisCycleTxs = state.transactions.filter { tx ->
+            tx.date >= cycleRange.startMillis && tx.date <= cycleRange.endMillis
+        }
+        val thisCycleExpenses = thisCycleTxs.filter { it.type == TransactionType.EXPENSE }
+        val thisCycleTransferFees = thisCycleTxs.filter { it.type == TransactionType.TRANSFER && it.feeAmount > 0L }
+        val thisCycleRefunds = thisCycleTxs.filter { it.type == TransactionType.REFUND }
+
+        val categoryTotals = mutableMapOf<Category, Long>()
+        for (tx in thisCycleExpenses) {
+            categoryTotals[tx.category] = (categoryTotals[tx.category] ?: 0L) + tx.amount
+        }
+        for (tx in thisCycleRefunds) {
+            val current = categoryTotals[tx.category] ?: 0L
+            val updated = (current - tx.amount).coerceAtLeast(0L)
+            if (updated > 0L) {
+                categoryTotals[tx.category] = updated
+            } else {
+                categoryTotals.remove(tx.category)
+            }
+        }
+        val totalFees = thisCycleTransferFees.sumOf { it.feeAmount }
+        if (totalFees > 0L) {
+            categoryTotals[Category.TRANSFER_FEE] = (categoryTotals[Category.TRANSFER_FEE] ?: 0L) + totalFees
         }
 
-        val total = thisCycleExpenses.sumOf { it.amount }
+        val total = categoryTotals.values.sum()
 
         if (total == 0L) {
             Pair(emptyList<CategorySpend>(), 0L)
         } else {
-            val grouped = thisCycleExpenses.groupBy { it.category }
-                .mapValues { (_, txs) -> txs.sumOf { it.amount } }
-                .toList()
-                .sortedByDescending { it.second }
+            val grouped = categoryTotals.toList().sortedByDescending { it.second }
 
             val top4 = grouped.take(4)
             val remaining = grouped.drop(4)

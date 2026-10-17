@@ -8,6 +8,7 @@ import app.cashjournal.domain.model.SafeToSpendCalculator
 import app.cashjournal.domain.model.Transaction
 import app.cashjournal.domain.model.TransactionType
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Calendar
 import java.util.TimeZone
@@ -19,9 +20,10 @@ class LedgerIntegrityTest {
         val netFlows = transactions.sumOf { tx ->
             when {
                 tx.type == TransactionType.INCOME && tx.sourceAccountId == account.id -> tx.amount
+                tx.type == TransactionType.REFUND && tx.sourceAccountId == account.id -> tx.amount
                 tx.type == TransactionType.TRANSFER && tx.destinationAccountId == account.id -> tx.amount
                 tx.type == TransactionType.EXPENSE && tx.sourceAccountId == account.id -> -tx.amount
-                tx.type == TransactionType.TRANSFER && tx.sourceAccountId == account.id -> -tx.amount
+                tx.type == TransactionType.TRANSFER && tx.sourceAccountId == account.id -> -(tx.amount + tx.feeAmount)
                 else -> 0L
             }
         }
@@ -301,6 +303,111 @@ class LedgerIntegrityTest {
 
         val rsRec = stmt.executeQuery("SELECT count(*) FROM recurring_transactions")
         assertEquals(0, rsRec.getInt(1))
+
+        conn.close()
+    }
+
+    @Test
+    fun testTransferFeeAccountingZeroDrift() {
+        val src = Account(id = "acc-src", name = "BCA Checking", initialBalance = 1_000_000L, balance = 1_000_000L)
+        val dst = Account(id = "acc-dst", name = "GoPay Wallet", initialBalance = 200_000L, balance = 200_000L)
+
+        // Transfer: 100,000 sent with 2,500 fee -> dst receives 100,000, fee is 2,500, src pays 102,500
+        val tx = Transaction(
+            id = "tx-transfer-1",
+            title = "Top up GoPay",
+            type = TransactionType.TRANSFER,
+            amount = 100_000L,
+            feeAmount = 2_500L,
+            sourceAccountId = src.id,
+            destinationAccountId = dst.id
+        )
+
+        val srcDerived = computeDerivedBalance(src, listOf(tx))
+        val dstDerived = computeDerivedBalance(dst, listOf(tx))
+
+        // Invariant: Amount Sent (102,500) = Amount Received (100,000) + Fee (2,500)
+        assertEquals(897_500L, srcDerived)
+        assertEquals(300_000L, dstDerived)
+
+        val initialNetWorth = src.initialBalance + dst.initialBalance // 1,200,000
+        val finalNetWorth = srcDerived + dstDerived // 1,197,500
+        val netWorthLoss = initialNetWorth - finalNetWorth
+        assertEquals(2_500L, netWorthLoss)
+    }
+
+    @Test
+    fun testRefundAccountingZeroDrift() {
+        val acc = Account(id = "acc-1", name = "Mandiri Debit", initialBalance = 500_000L, balance = 500_000L)
+
+        val expense = Transaction(
+            id = "tx-exp",
+            title = "Tokopedia Purchase",
+            type = TransactionType.EXPENSE,
+            amount = 150_000L,
+            sourceAccountId = acc.id
+        )
+        val refund = Transaction(
+            id = "tx-ref",
+            title = "Tokopedia Refund",
+            type = TransactionType.REFUND,
+            amount = 150_000L,
+            sourceAccountId = acc.id
+        )
+
+        val afterExpense = computeDerivedBalance(acc, listOf(expense))
+        assertEquals(350_000L, afterExpense)
+
+        val afterRefund = computeDerivedBalance(acc, listOf(expense, refund))
+        assertEquals(500_000L, afterRefund)
+    }
+
+    @Test
+    fun testSqliteAccountRecalculationWithFeesAndRefunds() {
+        val conn = java.sql.DriverManager.getConnection("jdbc:sqlite::memory:")
+        val stmt = conn.createStatement()
+
+        stmt.execute("CREATE TABLE accounts (id TEXT PRIMARY KEY, initialBalance INTEGER, balance INTEGER)")
+        stmt.execute("CREATE TABLE transactions (id TEXT PRIMARY KEY, type TEXT, amount INTEGER, feeAmount INTEGER, sourceAccountId TEXT, destinationAccountId TEXT)")
+
+        stmt.execute("INSERT INTO accounts VALUES ('acc-a', 1000000, 1000000)")
+        stmt.execute("INSERT INTO accounts VALUES ('acc-b', 500000, 500000)")
+
+        // Transfer with fee: 200,000 amount, 6,500 fee
+        stmt.execute("INSERT INTO transactions VALUES ('tx-1', 'TRANSFER', 200000, 6500, 'acc-a', 'acc-b')")
+        // Refund on acc-a: 50,000
+        stmt.execute("INSERT INTO transactions VALUES ('tx-2', 'REFUND', 50000, 0, 'acc-a', NULL)")
+
+        // Execute recalculate SQL for acc-a
+        val recalcSql = """
+            UPDATE accounts
+            SET balance = initialBalance + COALESCE((
+                SELECT SUM(
+                    CASE
+                        WHEN type = 'INCOME' AND sourceAccountId = accounts.id THEN amount
+                        WHEN type = 'REFUND' AND sourceAccountId = accounts.id THEN amount
+                        WHEN type = 'TRANSFER' AND destinationAccountId = accounts.id THEN amount
+                        WHEN type = 'EXPENSE' AND sourceAccountId = accounts.id THEN -amount
+                        WHEN type = 'TRANSFER' AND sourceAccountId = accounts.id THEN -(amount + feeAmount)
+                        ELSE 0
+                    END
+                )
+                FROM transactions
+                WHERE sourceAccountId = accounts.id OR destinationAccountId = accounts.id
+            ), 0)
+        """.trimIndent()
+
+        stmt.execute(recalcSql)
+
+        val rsA = stmt.executeQuery("SELECT balance FROM accounts WHERE id = 'acc-a'")
+        assertTrue(rsA.next())
+        // 1,000,000 - (200,000 + 6,500) + 50,000 = 843,500
+        assertEquals(843_500L, rsA.getLong("balance"))
+
+        val rsB = stmt.executeQuery("SELECT balance FROM accounts WHERE id = 'acc-b'")
+        assertTrue(rsB.next())
+        // 500,000 + 200,000 = 700,000
+        assertEquals(700_000L, rsB.getLong("balance"))
 
         conn.close()
     }

@@ -155,10 +155,14 @@ object SafeToSpendCalculator {
             0L
         }
 
-        // Expenses for current cycle
-        val currentCycleExpenses = transactions.filter { tx ->
-            tx.type == TransactionType.EXPENSE && tx.date >= cycle.startMillis && tx.date <= cycle.endMillis
-        }.sumOf { it.amount }
+        // Net expenses for current cycle (Expenses + Transfer Fees - Refunds)
+        val cycleTxs = transactions.filter { tx ->
+            tx.date in cycle.startMillis..cycle.endMillis
+        }
+        val currentCycleExpenses = cycleTxs.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
+        val currentCycleFees = cycleTxs.filter { it.type == TransactionType.TRANSFER }.sumOf { it.feeAmount }
+        val currentCycleRefunds = cycleTxs.filter { it.type == TransactionType.REFUND }.sumOf { it.amount }
+        val netCycleSpending = (currentCycleExpenses + currentCycleFees - currentCycleRefunds).coerceAtLeast(0L)
 
         val effectiveBudget = when (plan.budgetMode) {
             BudgetMode.PERCENTAGE_OF_FUNDS -> {
@@ -178,7 +182,7 @@ object SafeToSpendCalculator {
         }
         val committedBills = upcomingBills.sumOf { it.amount }
 
-        val totalSpent = startingSpent + currentCycleExpenses
+        val totalSpent = (startingSpent + netCycleSpending).coerceAtLeast(0L)
         val remaining = (effectiveBudget - totalSpent - committedBills).coerceAtLeast(0L)
 
         val divisor = if (cycle.daysLeft > 0) cycle.daysLeft else 1
@@ -209,13 +213,21 @@ object SafeToSpendCalculator {
         val daysElapsedInCycle = ((elapsedMillis / (24 * 60 * 60 * 1000L)) + 1).toInt().coerceAtLeast(1)
 
         val windowStartMillis = nowMillis - (30L * 24 * 60 * 60 * 1000L)
-        val rollingExpenseTxs = transactions.filter {
-            it.type == TransactionType.EXPENSE && it.date in windowStartMillis..calendar.timeInMillis
+        val rollingTxs = transactions.filter {
+            it.date in windowStartMillis..calendar.timeInMillis
         }
+        val rollingExpenses = rollingTxs.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
+        val rollingFees = rollingTxs.filter { it.type == TransactionType.TRANSFER }.sumOf { it.feeAmount }
+        val rollingRefunds = rollingTxs.filter { it.type == TransactionType.REFUND }.sumOf { it.amount }
+        val netRollingSpent = (rollingExpenses + rollingFees - rollingRefunds).coerceAtLeast(0L)
 
-        val hasAnyExpenses = rollingExpenseTxs.isNotEmpty() || startingSpent > 0L || currentCycleExpenses > 0L
-        val trailingDays = if (rollingExpenseTxs.isNotEmpty()) {
-            val earliest = rollingExpenseTxs.minOf { it.date }
+        val hasAnyExpenses = netRollingSpent > 0L || startingSpent > 0L || netCycleSpending > 0L
+        val expenseLikeTxs = rollingTxs.filter {
+            (it.type == TransactionType.EXPENSE && it.amount > 0L) ||
+            (it.type == TransactionType.TRANSFER && it.feeAmount > 0L)
+        }
+        val trailingDays = if (expenseLikeTxs.isNotEmpty()) {
+            val earliest = expenseLikeTxs.minOf { it.date }
             (((nowMillis - earliest) / (24 * 60 * 60 * 1000L)) + 1).toInt().coerceAtLeast(1)
         } else {
             0
@@ -229,8 +241,7 @@ object SafeToSpendCalculator {
             Triple(0L, 0, 0f)
         } else {
             val effectiveWindowDays = minOf(30, effectiveHistoryDays)
-            val rollingExpenses = rollingExpenseTxs.sumOf { it.amount }
-            val effectiveSpent = maxOf(rollingExpenses, startingSpent + currentCycleExpenses)
+            val effectiveSpent = maxOf(netRollingSpent, startingSpent + netCycleSpending)
             val burnRate = if (effectiveSpent > 0L && effectiveWindowDays > 0) {
                 (effectiveSpent.toDouble() / effectiveWindowDays.toDouble()).toLong()
             } else {

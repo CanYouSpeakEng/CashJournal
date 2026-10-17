@@ -52,6 +52,7 @@ fun TransactionRow(
     val icon = when (transaction.type) {
         TransactionType.TRANSFER -> Category.transferIcon
         TransactionType.INCOME -> PhosphorIcons.Regular.ArrowDownLeft
+        TransactionType.REFUND -> PhosphorIcons.Regular.ArrowDownLeft
         TransactionType.EXPENSE -> transaction.category.icon
     }
 
@@ -80,7 +81,7 @@ fun TransactionRow(
             accountLabel = srcAccount?.name
             accountColor = srcAccount?.accentKey?.color
         }
-        TransactionType.INCOME -> {
+        TransactionType.INCOME, TransactionType.REFUND -> {
             val acc = srcAccount ?: dstAccount
             accountLabel = acc?.name
             accountColor = acc?.accentKey?.color
@@ -211,6 +212,10 @@ fun TransactionRow(
         val signPrefix: String
         when (type) {
             TransactionType.INCOME -> {
+                amountColor = Emerald
+                signPrefix = "+"
+            }
+            TransactionType.REFUND -> {
                 amountColor = Emerald
                 signPrefix = "+"
             }

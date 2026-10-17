@@ -27,7 +27,9 @@ import androidx.compose.material3.TextButton
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Check
+import com.adamglin.phosphoricons.regular.WarningCircle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cashjournal.domain.model.Account
+import app.cashjournal.domain.model.AccountType
 import app.cashjournal.domain.model.Category
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.domain.model.TransactionType
@@ -58,6 +61,9 @@ import app.cashjournal.ui.theme.Cobalt
 import app.cashjournal.ui.theme.Emerald
 import app.cashjournal.ui.theme.Persimmon
 import app.cashjournal.ui.theme.PlusJakartaSansFamily
+import app.cashjournal.ui.theme.SaffronLight
+import app.cashjournal.ui.theme.SaffronDark
+import app.cashjournal.ui.theme.Slate100
 import app.cashjournal.ui.theme.Slate200
 import app.cashjournal.ui.theme.Slate400
 import app.cashjournal.ui.theme.Slate500
@@ -88,6 +94,7 @@ fun LogTransactionSheet(
         destAccountId: String?,
         note: String,
         amount: Long,
+        feeAmount: Long,
         date: Long,
         category: Category?
     ) -> Unit,
@@ -105,6 +112,16 @@ fun LogTransactionSheet(
     var selectedDestAccountId by remember {
         mutableStateOf(accounts.drop(1).firstOrNull()?.id ?: accounts.firstOrNull()?.id)
     }
+    var feeAmount by remember { mutableLongStateOf(0L) }
+    var feeDirectionTaken by remember { mutableStateOf(false) }
+
+    val destAccount = remember(selectedDestAccountId, accounts) {
+        accounts.find { it.id == selectedDestAccountId }
+    }
+    LaunchedEffect(selectedDestAccountId) {
+        feeDirectionTaken = destAccount?.accountType == AccountType.E_WALLET
+    }
+
     var note by remember { mutableStateOf("") }
     var rawDigits by remember { mutableStateOf("0") }
     var selectedDateMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -192,7 +209,7 @@ fun LogTransactionSheet(
     if (showCategoryPicker) {
         val availableCategories = remember(selectedType) {
             if (selectedType == TransactionType.INCOME) {
-                listOf(Category.SALARY, Category.INVESTMENT, Category.OTHER)
+                listOf(Category.SALARY, Category.INTEREST, Category.INVESTMENT, Category.OTHER)
             } else {
                 Category.entries.filter { it != Category.SALARY }
             }
@@ -297,11 +314,12 @@ fun LogTransactionSheet(
                 .background(Slate200)
         )
 
-        // Segmented Control: Expense, Income, Transfer
+        // Segmented Control: Expense, Income, Transfer, Refund
         val segmentItems = listOf(
             SegmentItem(TransactionType.EXPENSE, "Expense", Persimmon),
             SegmentItem(TransactionType.INCOME, "Income", Emerald),
-            SegmentItem(TransactionType.TRANSFER, "Transfer", Cobalt)
+            SegmentItem(TransactionType.TRANSFER, "Transfer", Cobalt),
+            SegmentItem(TransactionType.REFUND, strings.typeRefund, Emerald)
         )
 
         SegmentedControl(
@@ -313,10 +331,10 @@ fun LogTransactionSheet(
                     ChimeGenerator.playChime(soundEffectsEnabled, scope)
                     selectedType = type
                     if (type == TransactionType.INCOME) {
-                        if (customCategory == null || customCategory !in listOf(Category.SALARY, Category.INVESTMENT, Category.OTHER)) {
+                        if (customCategory == null || customCategory !in listOf(Category.SALARY, Category.INTEREST, Category.INVESTMENT, Category.OTHER)) {
                             customCategory = Category.SALARY
                         }
-                    } else if (type == TransactionType.EXPENSE) {
+                    } else if (type == TransactionType.EXPENSE || type == TransactionType.REFUND) {
                         if (customCategory == Category.SALARY) {
                             customCategory = null
                         }
@@ -351,7 +369,11 @@ fun LogTransactionSheet(
         // Account Chips Row
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                text = if (selectedType == TransactionType.TRANSFER) strings.sourceAccountLabel else strings.accountLabel,
+                text = when (selectedType) {
+                    TransactionType.TRANSFER -> strings.sourceAccountLabel
+                    TransactionType.REFUND -> strings.refundAccountPrompt
+                    else -> strings.accountLabel
+                },
                 fontFamily = PlusJakartaSansFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 12.sp,
@@ -403,10 +425,152 @@ fun LogTransactionSheet(
                             enabled = !isSource,
                             onClick = { selectedDestAccountId = account.id }
                         )
+                }
+            }
+
+            // Transfer Fee Section (Transfer only)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = strings.transferFeeLabel,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
+                        color = Slate500
+                    )
+                    if (feeAmount > 0L) {
+                        Text(
+                            text = Currency.formatMinor(feeAmount, currencyCode),
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = Persimmon
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val feeOptions = listOf(0L, 1_000L, 2_500L, 6_500L)
+                    feeOptions.forEach { feeVal ->
+                        val isSelected = feeAmount == feeVal
+                        val feeLabel = if (feeVal == 0L) {
+                            "Rp 0"
+                        } else {
+                            Currency.formatMinor(feeVal, currencyCode)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSelected) Cobalt else Slate100)
+                                .clickable { feeAmount = feeVal }
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = feeLabel,
+                                fontFamily = SpaceGroteskFamily,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 12.sp,
+                                color = if (isSelected) Color.White else Slate600
+                            )
+                        }
+                    }
+                }
+
+                if (feeAmount > 0L) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Slate100)
+                            .padding(3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (feeDirectionTaken) Cobalt else Color.Transparent)
+                                .clickable { feeDirectionTaken = true }
+                                .padding(vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = strings.feeDirectionTaken,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = if (feeDirectionTaken) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 11.sp,
+                                color = if (feeDirectionTaken) Color.White else Slate600
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (!feeDirectionTaken) Cobalt else Color.Transparent)
+                                .clickable { feeDirectionTaken = false }
+                                .padding(vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = strings.feeDirectionAdded,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = if (!feeDirectionTaken) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 11.sp,
+                                color = if (!feeDirectionTaken) Color.White else Slate600
+                            )
+                        }
+                    }
+
+                    val sent = if (feeDirectionTaken) parsedAmount else (parsedAmount + feeAmount)
+                    val received = if (feeDirectionTaken) (parsedAmount - feeAmount).coerceAtLeast(0L) else parsedAmount
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Cobalt.copy(alpha = 0.08f))
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${strings.transferSentLabel}: ${Currency.formatMinor(sent, currencyCode)}",
+                            fontFamily = SpaceGroteskFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Charcoal
+                        )
+                        Text(
+                            text = "${strings.transferFeeAmountLabel}: ${Currency.formatMinor(feeAmount, currencyCode)}",
+                            fontFamily = SpaceGroteskFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Persimmon
+                        )
+                        Text(
+                            text = "${strings.transferReceivedLabel}: ${Currency.formatMinor(received, currencyCode)}",
+                            fontFamily = SpaceGroteskFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Emerald
+                        )
                     }
                 }
             }
         }
+    }
 
         // Note Field with Category Pill (Hidden for Transfer)
         if (selectedType != TransactionType.TRANSFER) {
@@ -517,6 +681,58 @@ fun LogTransactionSheet(
             modifier = Modifier.fillMaxWidth()
         )
 
+        // Soft Negative Balance Warning Banner
+        val sourceAccount = remember(selectedSourceAccountId, accounts) {
+            accounts.find { it.id == selectedSourceAccountId }
+        }
+        val outflowAmount = remember(selectedType, parsedAmount, feeAmount, feeDirectionTaken) {
+            when (selectedType) {
+                TransactionType.EXPENSE -> parsedAmount
+                TransactionType.TRANSFER -> if (feeDirectionTaken) parsedAmount else (parsedAmount + feeAmount)
+                else -> 0L
+            }
+        }
+        val willBeNegative = remember(sourceAccount, outflowAmount, selectedType) {
+            if (sourceAccount != null && sourceAccount.accountType != AccountType.CREDIT_CARD &&
+                (selectedType == TransactionType.EXPENSE || selectedType == TransactionType.TRANSFER) &&
+                outflowAmount > 0L
+            ) {
+                (sourceAccount.balance - outflowAmount) < 0L
+            } else {
+                false
+            }
+        }
+        val resultingBalance = if (sourceAccount != null) sourceAccount.balance - outflowAmount else 0L
+
+        if (willBeNegative) {
+            sourceAccount?.let { acc ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(SaffronLight)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = PhosphorIcons.Regular.WarningCircle,
+                        contentDescription = "Warning",
+                        tint = SaffronDark,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = "${strings.negativeBalanceWarning}: ${acc.name} (${Currency.formatMinor(resultingBalance, currencyCode)})",
+                        fontFamily = PlusJakartaSansFamily,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = SaffronDark,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+
         // Save Transaction Button with Droplet Particle Splash Effect
         Box(
             modifier = Modifier
@@ -529,12 +745,19 @@ fun LogTransactionSheet(
                     triggerSplash = true
                     scope.launch {
                         delay(900L)
+                        val amountToSave = if (selectedType == TransactionType.TRANSFER) {
+                            if (feeDirectionTaken) (parsedAmount - feeAmount).coerceAtLeast(0L) else parsedAmount
+                        } else {
+                            parsedAmount
+                        }
+                        val feeToSave = if (selectedType == TransactionType.TRANSFER) feeAmount else 0L
                         onSaveTransaction(
                             selectedType,
                             selectedSourceAccountId,
                             if (selectedType == TransactionType.TRANSFER) selectedDestAccountId else null,
                             note,
-                            parsedAmount,
+                            amountToSave,
+                            feeToSave,
                             selectedDateMillis,
                             activeCategory
                         )

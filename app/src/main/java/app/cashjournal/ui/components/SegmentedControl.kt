@@ -50,12 +50,14 @@ fun TransactionTypeSegmentedControl(
     expenseLabel: String = "Expense",
     incomeLabel: String = "Income",
     transferLabel: String = "Transfer",
+    refundLabel: String = "Refund",
     hapticsEnabled: Boolean = true
 ) {
     val items = listOf(
         SegmentItem(TransactionType.EXPENSE, expenseLabel, Persimmon),
         SegmentItem(TransactionType.INCOME, incomeLabel, Emerald),
-        SegmentItem(TransactionType.TRANSFER, transferLabel, Cobalt)
+        SegmentItem(TransactionType.TRANSFER, transferLabel, Cobalt),
+        SegmentItem(TransactionType.REFUND, refundLabel, Emerald)
     )
 
     SegmentedControl(

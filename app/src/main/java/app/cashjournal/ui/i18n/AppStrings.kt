@@ -333,6 +333,26 @@ interface ScreenStrings {
     val csvExportSubtitle: String
     val csvExportSuccessToast: String
     val csvExportFailedToast: String
+
+    // Phase 33: Core Money Rules Strings
+    val transferFeeLabel: String
+    val transferFeeToggle: String
+    val feeDirectionTaken: String
+    val feeDirectionAdded: String
+    val transferSentLabel: String
+    val transferFeeAmountLabel: String
+    val transferReceivedLabel: String
+    val typeRefund: String
+    val refundAccountPrompt: String
+    val negativeBalanceWarning: String
+    val backupReminderTitle: String
+    val backupReminderDesc: String
+    val backupReminderAction: String
+    val backupReminderDismiss: String
+    val lastBackupLabel: String
+    val lastBackupNever: String
+    val lastBackupDaysAgoFormat: String
+    val lastBackupToday: String
 }
 
 
@@ -658,9 +678,29 @@ private class EnglishScreenStrings : ScreenStrings {
     override val csvImportSelectAll: String = "Select All"
     override val csvImportDeselectAll: String = "Deselect All"
     override val csvExportTitle: String = "Export Ledger (CSV)"
-    override val csvExportSubtitle: String = "Export complete transaction history as spreadsheet"
+    override val csvExportSubtitle: String = "Export all transactions to a CSV spreadsheet"
     override val csvExportSuccessToast: String = "Ledger exported successfully"
     override val csvExportFailedToast: String = "Failed to export ledger"
+
+    // Phase 33: Core Money Rules Strings
+    override val transferFeeLabel: String = "Transfer Fee"
+    override val transferFeeToggle: String = "Transfer Fee"
+    override val feeDirectionTaken: String = "Taken from amount"
+    override val feeDirectionAdded: String = "Added on top"
+    override val transferSentLabel: String = "Sent"
+    override val transferFeeAmountLabel: String = "Fee"
+    override val transferReceivedLabel: String = "Received"
+    override val typeRefund: String = "Refund"
+    override val refundAccountPrompt: String = "Select account to refund"
+    override val negativeBalanceWarning: String = "Account balance will drop below zero"
+    override val backupReminderTitle: String = "Monthly Backup Reminder"
+    override val backupReminderDesc: String = "Your last backup was over 30 days ago. Keep an offline copy of your financial journal safe."
+    override val backupReminderAction: String = "Back Up Now"
+    override val backupReminderDismiss: String = "Dismiss"
+    override val lastBackupLabel: String = "Last backup"
+    override val lastBackupNever: String = "Never backed up"
+    override val lastBackupDaysAgoFormat: String = "%d days ago"
+    override val lastBackupToday: String = "Today"
 }
 
 
@@ -986,9 +1026,29 @@ private class IndonesianScreenStrings : ScreenStrings {
     override val csvImportSelectAll: String = "Pilih Semua"
     override val csvImportDeselectAll: String = "Batal Pilih Semua"
     override val csvExportTitle: String = "Ekspor Riwayat (CSV)"
-    override val csvExportSubtitle: String = "Ekspor riwayat transaksi lengkap ke spreadsheet"
+    override val csvExportSubtitle: String = "Ekspor semua transaksi ke spreadsheet CSV"
     override val csvExportSuccessToast: String = "Riwayat transaksi berhasil diekspor"
     override val csvExportFailedToast: String = "Gagal mengekspor riwayat transaksi"
+
+    // Phase 33: Core Money Rules Strings
+    override val transferFeeLabel: String = "Biaya Transfer"
+    override val transferFeeToggle: String = "Biaya Transfer"
+    override val feeDirectionTaken: String = "Dipotong dari nominal"
+    override val feeDirectionAdded: String = "Ditambahkan di atas"
+    override val transferSentLabel: String = "Terkirim"
+    override val transferFeeAmountLabel: String = "Biaya"
+    override val transferReceivedLabel: String = "Diterima"
+    override val typeRefund: String = "Pengembalian"
+    override val refundAccountPrompt: String = "Pilih akun tujuan pengembalian"
+    override val negativeBalanceWarning: String = "Saldo akun akan menjadi negatif"
+    override val backupReminderTitle: String = "Pengingat Cadangan Bulanan"
+    override val backupReminderDesc: String = "Cadangan terakhir dibuat lebih dari 30 hari yang lalu. Amankan salinan offline jurnal keuangan Anda."
+    override val backupReminderAction: String = "Cadangkan Sekarang"
+    override val backupReminderDismiss: String = "Nanti"
+    override val lastBackupLabel: String = "Cadangan terakhir"
+    override val lastBackupNever: String = "Belum pernah dicadangkan"
+    override val lastBackupDaysAgoFormat: String = "%d hari yang lalu"
+    override val lastBackupToday: String = "Hari ini"
 }
 
 object AppStrings {

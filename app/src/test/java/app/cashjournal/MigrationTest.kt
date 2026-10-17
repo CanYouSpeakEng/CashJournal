@@ -313,6 +313,49 @@ class MigrationTest {
         conn.close()
     }
 
+    @Test
+    fun testMigration_5_6_transactionsFeeAmountColumn() {
+        val conn = DriverManager.getConnection("jdbc:sqlite::memory:")
+        val stmt = conn.createStatement()
+
+        // Create v5 transactions table
+        val v5Sql = """
+            CREATE TABLE transactions (
+                id TEXT PRIMARY KEY NOT NULL,
+                title TEXT NOT NULL,
+                category TEXT NOT NULL,
+                type TEXT NOT NULL,
+                amount INTEGER NOT NULL,
+                date INTEGER NOT NULL,
+                iconKey TEXT NOT NULL,
+                accentKey TEXT NOT NULL,
+                sourceAccountId TEXT,
+                destinationAccountId TEXT,
+                createdAt INTEGER NOT NULL,
+                updatedAt INTEGER NOT NULL
+            )
+        """.trimIndent()
+        stmt.execute(v5Sql)
+        stmt.execute("INSERT INTO transactions VALUES ('tx-1', 'Lunch', 'FOOD_DRINK', 'EXPENSE', 45000, 1000, 'Utensils', 'BERRY', 'acc-1', NULL, 1000, 1000)")
+
+        // Apply MIGRATION_5_6
+        stmt.execute("ALTER TABLE transactions ADD COLUMN feeAmount INTEGER NOT NULL DEFAULT 0")
+
+        val rs = stmt.executeQuery("SELECT id, amount, feeAmount FROM transactions WHERE id = 'tx-1'")
+        assertTrue(rs.next())
+        assertEquals("tx-1", rs.getString("id"))
+        assertEquals(45000L, rs.getLong("amount"))
+        assertEquals(0L, rs.getLong("feeAmount"))
+
+        // Insert new transfer with fee
+        stmt.execute("INSERT INTO transactions VALUES ('tx-2', 'Bank Transfer', 'TRANSFER', 'TRANSFER', 100000, 2000, 'ArrowsLeftRight', 'COBALT', 'acc-1', 'acc-2', 2000, 2000, 2500)")
+        val rs2 = stmt.executeQuery("SELECT feeAmount FROM transactions WHERE id = 'tx-2'")
+        assertTrue(rs2.next())
+        assertEquals(2500L, rs2.getLong("feeAmount"))
+
+        conn.close()
+    }
+
 
     private fun getTableInfoFor(conn: java.sql.Connection, table: String): Map<String, String> {
         val map = mutableMapOf<String, String>()

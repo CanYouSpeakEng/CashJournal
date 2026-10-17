@@ -45,7 +45,9 @@ data class UserPreferences(
     val selectedWorldCurrency: String = "USD",
     val immersiveModeEnabled: Boolean = true,
     val lastSeenVersion: String = "",
-    val lastUpdateCheckDateWib: String = ""
+    val lastUpdateCheckDateWib: String = "",
+    val lastBackupTimestamp: Long = 0L,
+    val backupReminderDismissedAt: Long = 0L
 )
 
 class UserPreferencesRepository(private val context: Context) {
@@ -77,6 +79,8 @@ class UserPreferencesRepository(private val context: Context) {
         val IMMERSIVE_MODE_ENABLED = booleanPreferencesKey("immersive_mode_enabled")
         val LAST_SEEN_VERSION = stringPreferencesKey("last_seen_version")
         val LAST_UPDATE_CHECK_DATE_WIB = stringPreferencesKey("last_update_check_date_wib")
+        val LAST_BACKUP_TIMESTAMP = longPreferencesKey("last_backup_timestamp")
+        val BACKUP_REMINDER_DISMISSED_AT = longPreferencesKey("backup_reminder_dismissed_at")
 
         // Weather Cache
         val CACHED_WEATHER_TEMP = doublePreferencesKey("cached_weather_temp")
@@ -126,7 +130,9 @@ class UserPreferencesRepository(private val context: Context) {
                 selectedWorldCurrency = preferences[PreferencesKeys.SELECTED_WORLD_CURRENCY] ?: "USD",
                 immersiveModeEnabled = preferences[PreferencesKeys.IMMERSIVE_MODE_ENABLED] ?: true,
                 lastSeenVersion = preferences[PreferencesKeys.LAST_SEEN_VERSION] ?: "",
-                lastUpdateCheckDateWib = preferences[PreferencesKeys.LAST_UPDATE_CHECK_DATE_WIB] ?: ""
+                lastUpdateCheckDateWib = preferences[PreferencesKeys.LAST_UPDATE_CHECK_DATE_WIB] ?: "",
+                lastBackupTimestamp = preferences[PreferencesKeys.LAST_BACKUP_TIMESTAMP] ?: 0L,
+                backupReminderDismissedAt = preferences[PreferencesKeys.BACKUP_REMINDER_DISMISSED_AT] ?: 0L
             )
         }
 
@@ -333,6 +339,25 @@ class UserPreferencesRepository(private val context: Context) {
             weatherCityLon?.let { prefs[PreferencesKeys.WEATHER_CITY_LON] = it }
             selectedWorldCurrency?.let { prefs[PreferencesKeys.SELECTED_WORLD_CURRENCY] = it }
             immersiveModeEnabled?.let { prefs[PreferencesKeys.IMMERSIVE_MODE_ENABLED] = it }
+        }
+    }
+
+    suspend fun updateLastBackupTimestamp(timestamp: Long = System.currentTimeMillis()) {
+        context.dataStore.edit { prefs ->
+            prefs[PreferencesKeys.LAST_BACKUP_TIMESTAMP] = timestamp
+        }
+    }
+
+    suspend fun dismissBackupReminder(timestamp: Long = System.currentTimeMillis()) {
+        context.dataStore.edit { prefs ->
+            prefs[PreferencesKeys.BACKUP_REMINDER_DISMISSED_AT] = timestamp
+        }
+    }
+
+    suspend fun resetBackupReminders() {
+        context.dataStore.edit { prefs ->
+            prefs[PreferencesKeys.LAST_BACKUP_TIMESTAMP] = 0L
+            prefs[PreferencesKeys.BACKUP_REMINDER_DISMISSED_AT] = 0L
         }
     }
 

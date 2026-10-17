@@ -1154,6 +1154,42 @@ fun SettingsScreen(
                     color = Slate500
                 )
 
+                // Last Backup Status
+                val lastBackupTime = state.userPreferences.lastBackupTimestamp
+                val lastBackupString = remember(lastBackupTime, strings) {
+                    if (lastBackupTime <= 0L) {
+                        strings.lastBackupNever
+                    } else {
+                        val daysAgo = ((System.currentTimeMillis() - lastBackupTime) / 86_400_000L).coerceAtLeast(0L)
+                        if (daysAgo == 0L) {
+                            strings.lastBackupToday
+                        } else {
+                            String.format(strings.lastBackupDaysAgoFormat, daysAgo)
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = strings.lastBackupLabel,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Slate500
+                    )
+                    Text(
+                        text = lastBackupString,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Cobalt
+                    )
+                }
+
                 // 1. Export Encrypted Backup (.enc)
                 Row(
                     modifier = Modifier
