@@ -7,6 +7,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
@@ -76,6 +79,7 @@ import com.adamglin.phosphoricons.regular.Wallet
 import androidx.compose.material3.Icon
 import app.cashjournal.ui.i18n.AppStrings
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DashboardScreen(
     state: MainUiState,
@@ -177,10 +181,17 @@ fun DashboardScreen(
                 SafeToSpendStatus.NO_FUNDS -> strings.statusNoFunds
             }
 
+            val configuration = LocalConfiguration.current
+            val isCompactScreen = configuration.screenWidthDp <= 380
+            val cardPadding = if (isCompactScreen) 16.dp else 20.dp
+            val heroFontSize = if (isCompactScreen) 21.sp else 26.sp
+            val perDayFontSize = if (isCompactScreen) 12.sp else 14.sp
+            val gaugeSize = if (isCompactScreen) 54.dp else 64.dp
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
+                    .padding(cardPadding),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -207,30 +218,35 @@ fun DashboardScreen(
                             modifier = Modifier.clickable { onSetBudgetClick() }
                         )
                     } else {
-                        Row(verticalAlignment = Alignment.Bottom) {
+                        Row(
+                            verticalAlignment = Alignment.Bottom,
+                            modifier = Modifier.padding(bottom = 2.dp)
+                        ) {
                             MaskedAmount(
                                 amountMinor = safe.safeToSpendToday,
                                 currencyCode = state.userPreferences.currencyCode,
                                 isMasked = state.hideBalances,
                                 showSymbol = true,
-                                textStyle = CashTypography.HeroAmount.copy(fontSize = 26.sp)
+                                textStyle = CashTypography.HeroAmount.copy(fontSize = heroFontSize)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = strings.safeToSpendPerDay,
                                 fontFamily = PlusJakartaSansFamily,
                                 fontWeight = FontWeight.Medium,
-                                fontSize = 14.sp,
+                                fontSize = perDayFontSize,
                                 color = Slate500,
+                                maxLines = 1,
+                                softWrap = false,
                                 modifier = Modifier.padding(bottom = 2.dp)
                             )
                         }
                     }
 
-                    // Row 1: Status badge and survival runway badge
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    // Row 1: Status badge and survival runway badge (FlowRow avoids syllable breaking)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Box(
                             modifier = Modifier
@@ -243,7 +259,9 @@ fun DashboardScreen(
                                 fontFamily = PlusJakartaSansFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp,
-                                color = statusColor
+                                color = statusColor,
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
 
@@ -259,7 +277,9 @@ fun DashboardScreen(
                                     fontFamily = PlusJakartaSansFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
-                                    color = Slate500
+                                    color = Slate500,
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                             }
                         } else if (safe.survivalMonths > 0f) {
@@ -279,13 +299,15 @@ fun DashboardScreen(
                                     fontFamily = PlusJakartaSansFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
-                                    color = Emerald
+                                    color = Emerald,
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                             }
                         }
                     }
 
-                    // Row 2: Budget details subline (Full column width, zero bunching)
+                    // Row 2: Budget details subline
                     if (safe.status == SafeToSpendStatus.NO_FUNDS) {
                         Text(
                             text = strings.noFundsSubline,
@@ -302,7 +324,7 @@ fun DashboardScreen(
                         Text(
                             text = "$daysLabel · $remText$modeSuffix",
                             fontFamily = PlusJakartaSansFamily,
-                            fontSize = 11.sp,
+                            fontSize = if (isCompactScreen) 10.5.sp else 11.sp,
                             color = Slate500,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -311,7 +333,7 @@ fun DashboardScreen(
                             Text(
                                 text = "· " + String.format(strings.committedBillsSubline, Currency.formatMinor(safe.committedBills, state.userPreferences.currencyCode)),
                                 fontFamily = PlusJakartaSansFamily,
-                                fontSize = 10.sp,
+                                fontSize = if (isCompactScreen) 9.5.sp else 10.sp,
                                 color = Cobalt,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -320,13 +342,15 @@ fun DashboardScreen(
                     }
                 }
 
-                // 64dp Circular Gauge Ring
+                // Circular Gauge Ring (Responsive: 54dp on compact, 64dp on wide)
                 Box(
-                    modifier = Modifier.size(64.dp),
+                    modifier = Modifier
+                        .size(gaugeSize)
+                        .padding(start = 4.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Canvas(modifier = Modifier.size(64.dp)) {
-                        val strokeWidth = 6.dp.toPx()
+                    Canvas(modifier = Modifier.size(gaugeSize)) {
+                        val strokeWidth = (if (isCompactScreen) 5.dp else 6.dp).toPx()
                         drawArc(
                             color = Slate200,
                             startAngle = -90f,
@@ -348,13 +372,13 @@ fun DashboardScreen(
                             text = "${safe.displayPercent}%",
                             fontFamily = SpaceGroteskFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
+                            fontSize = if (isCompactScreen) 11.sp else 13.sp,
                             color = Charcoal
                         )
                         Text(
                             text = "spent",
                             fontFamily = PlusJakartaSansFamily,
-                            fontSize = 9.sp,
+                            fontSize = if (isCompactScreen) 8.sp else 9.sp,
                             color = Slate500
                         )
                     }

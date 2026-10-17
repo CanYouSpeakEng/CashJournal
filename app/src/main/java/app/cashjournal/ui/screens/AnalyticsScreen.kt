@@ -23,6 +23,8 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -228,54 +230,104 @@ fun AnalyticsScreen(
             )
         }
 
+        val configuration = LocalConfiguration.current
+        val isCompactScreen = configuration.screenWidthDp <= 380
+
         // 1. Last 6 Months Bar Chart Card
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column(
-                modifier = Modifier.padding(18.dp),
+                modifier = Modifier.padding(if (isCompactScreen) 16.dp else 18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = strings.last6MonthsTitle,
-                        fontFamily = PlusJakartaSansFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = Charcoal
-                    )
+                if (isCompactScreen) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = strings.last6MonthsTitle,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = Charcoal
+                        )
 
-                    // Legend: Inflow (emerald), Outflow (persimmon)
+                        // Legend: Inflow (emerald), Outflow (persimmon)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Emerald))
+                                Text(
+                                    text = strings.inflowLegend,
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontSize = 11.sp,
+                                    color = Slate600
+                                )
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Persimmon))
+                                Text(
+                                    text = strings.outflowLegend,
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontSize = 11.sp,
+                                    color = Slate600
+                                )
+                            }
+                        }
+                    }
+                } else {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Emerald))
-                            Text(
-                                text = strings.inflowLegend,
-                                fontFamily = PlusJakartaSansFamily,
-                                fontSize = 11.sp,
-                                color = Slate600
-                            )
-                        }
+                        Text(
+                            text = strings.last6MonthsTitle,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = Charcoal
+                        )
 
+                        // Legend: Inflow (emerald), Outflow (persimmon)
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Persimmon))
-                            Text(
-                                text = strings.outflowLegend,
-                                fontFamily = PlusJakartaSansFamily,
-                                fontSize = 11.sp,
-                                color = Slate600
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Emerald))
+                                Text(
+                                    text = strings.inflowLegend,
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontSize = 11.sp,
+                                    color = Slate600
+                                )
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Persimmon))
+                                Text(
+                                    text = strings.outflowLegend,
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontSize = 11.sp,
+                                    color = Slate600
+                                )
+                            }
                         }
                     }
                 }
@@ -361,7 +413,7 @@ fun AnalyticsScreen(
             val maxBudget = if (isZeroDecimal) 30_000_000L else 500_000L
 
             Column(
-                modifier = Modifier.padding(18.dp),
+                modifier = Modifier.padding(if (isCompactScreen) 16.dp else 18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // Header with Title and Mode Switcher Chips
@@ -373,16 +425,15 @@ fun AnalyticsScreen(
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .padding(end = 12.dp)
+                            .padding(end = 8.dp)
                     ) {
                         Text(
                             text = strings.runwayCardTitle,
                             fontFamily = PlusJakartaSansFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
+                            fontSize = if (isCompactScreen) 13.sp else 14.sp,
                             color = Charcoal,
-                            maxLines = 1,
-                            softWrap = false
+                            maxLines = 1
                         )
                         if (safe.cycleLabel.isNotEmpty()) {
                             Text(
@@ -406,7 +457,7 @@ fun AnalyticsScreen(
                             text = headerLabel,
                             fontFamily = SpaceGroteskFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 9.sp,
+                            fontSize = if (isCompactScreen) 8.5.sp else 9.sp,
                             letterSpacing = 0.8.sp,
                             color = Slate400,
                             maxLines = 1
@@ -417,7 +468,7 @@ fun AnalyticsScreen(
                                 text = "${sliderPercent}% \u00B7 ${Currency.formatMinor(safe.budget, currencyCode)}",
                                 fontFamily = SpaceGroteskFamily,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
+                                fontSize = if (isCompactScreen) 14.sp else 15.sp,
                                 color = Cobalt,
                                 maxLines = 1
                             )
@@ -426,7 +477,7 @@ fun AnalyticsScreen(
                                 text = Currency.formatMinor(sliderBudget, currencyCode),
                                 fontFamily = SpaceGroteskFamily,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
+                                fontSize = if (isCompactScreen) 14.sp else 15.sp,
                                 color = Cobalt,
                                 maxLines = 1
                             )
@@ -435,7 +486,7 @@ fun AnalyticsScreen(
                                 text = "0 (${strings.statusSetBudget})",
                                 fontFamily = SpaceGroteskFamily,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
+                                fontSize = if (isCompactScreen) 12.sp else 13.sp,
                                 color = Slate500,
                                 maxLines = 1
                             )
@@ -443,7 +494,7 @@ fun AnalyticsScreen(
                     }
                 }
 
-                // Mode Selector Chips
+                // Mode Selector Chips (Responsive 50/50 flex weights)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -454,6 +505,7 @@ fun AnalyticsScreen(
 
                     Row(
                         modifier = Modifier
+                            .weight(1f)
                             .clip(RoundedCornerShape(10.dp))
                             .background(fixedBg)
                             .clickable {
@@ -463,15 +515,19 @@ fun AnalyticsScreen(
                                     sliderBudget
                                 )
                             }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(horizontal = 8.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ) {
                         Text(
                             text = strings.budgetModeFixed,
                             fontFamily = PlusJakartaSansFamily,
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 11.sp,
-                            color = fixedTextColor
+                            fontSize = if (isCompactScreen) 10.5.sp else 11.sp,
+                            color = fixedTextColor,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
 
@@ -481,6 +537,7 @@ fun AnalyticsScreen(
 
                     Row(
                         modifier = Modifier
+                            .weight(1f)
                             .clip(RoundedCornerShape(10.dp))
                             .background(percentBg)
                             .clickable {
@@ -490,15 +547,19 @@ fun AnalyticsScreen(
                                     sliderBudget
                                 )
                             }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(horizontal = 8.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ) {
                         Text(
                             text = strings.budgetModePercentage,
                             fontFamily = PlusJakartaSansFamily,
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 11.sp,
-                            color = percentTextColor
+                            fontSize = if (isCompactScreen) 10.5.sp else 11.sp,
+                            color = percentTextColor,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                 }
@@ -671,61 +732,17 @@ fun AnalyticsScreen(
                 // Capital Survival Runway Metric
                 if (state.totalNetWorth > 0L) {
                     SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                                Text(
-                                    text = strings.survivalRunwayTitle.uppercase(),
-                                    fontFamily = SpaceGroteskFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp,
-                                    letterSpacing = 0.8.sp,
-                                    color = Slate500
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                val runwayEstimate = if (safe.isCalibrating) {
-                                    String.format(strings.survivalRunwayCalibratingFormat, safe.calibrationDaysNeeded)
-                                } else if (safe.survivalMonths >= 1f) {
-                                    String.format(Locale.US, strings.survivalRunwayMonthsFormat, safe.survivalMonths)
-                                } else if (safe.survivalDays > 0) {
-                                    String.format(Locale.US, strings.survivalRunwayDaysFormat, safe.survivalDays)
-                                } else {
-                                    null
-                                }
+                        val runwayEstimate = if (safe.isCalibrating) {
+                            String.format(strings.survivalRunwayCalibratingFormat, safe.calibrationDaysNeeded)
+                        } else if (safe.survivalMonths >= 1f) {
+                            String.format(Locale.US, strings.survivalRunwayMonthsFormat, safe.survivalMonths)
+                        } else if (safe.survivalDays > 0) {
+                            String.format(Locale.US, strings.survivalRunwayDaysFormat, safe.survivalDays)
+                        } else {
+                            null
+                        }
 
-                                if (safe.isCalibrating) {
-                                    Text(
-                                        text = String.format(strings.survivalRunwayCalibratingFormat, safe.calibrationDaysNeeded),
-                                        fontFamily = PlusJakartaSansFamily,
-                                        fontSize = 12.sp,
-                                        color = Slate500
-                                    )
-                                } else if (runwayEstimate != null) {
-                                    Text(
-                                        text = String.format(
-                                            strings.survivalRunwayBurnSubline,
-                                            Currency.formatMinor(safe.dailyBurnRate, currencyCode),
-                                            runwayEstimate
-                                        ),
-                                        fontFamily = PlusJakartaSansFamily,
-                                        fontSize = 12.sp,
-                                        color = Charcoal
-                                    )
-                                } else {
-                                    Text(
-                                        text = strings.survivalRunwayIndeterminate,
-                                        fontFamily = PlusJakartaSansFamily,
-                                        fontSize = 12.sp,
-                                        color = Slate500
-                                    )
-                                }
-                            }
-
+                        val badgeComposable: @Composable () -> Unit = {
                             if (safe.isCalibrating) {
                                 Box(
                                     modifier = Modifier
@@ -737,8 +754,10 @@ fun AnalyticsScreen(
                                         text = String.format(strings.survivalRunwayCalibratingFormat, safe.calibrationDaysNeeded),
                                         fontFamily = SpaceGroteskFamily,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp,
-                                        color = Slate500
+                                        fontSize = 11.sp,
+                                        color = Slate500,
+                                        maxLines = 1,
+                                        softWrap = false
                                     )
                                 }
                             } else if (safe.survivalMonths > 0f) {
@@ -756,10 +775,89 @@ fun AnalyticsScreen(
                                         },
                                         fontFamily = SpaceGroteskFamily,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp,
-                                        color = Emerald
+                                        fontSize = 11.sp,
+                                        color = Emerald,
+                                        maxLines = 1,
+                                        softWrap = false
                                     )
                                 }
+                            }
+                        }
+
+                        val descriptionComposable: @Composable () -> Unit = {
+                            if (safe.isCalibrating) {
+                                Text(
+                                    text = String.format(strings.survivalRunwayCalibratingFormat, safe.calibrationDaysNeeded),
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontSize = if (isCompactScreen) 11.sp else 12.sp,
+                                    color = Slate500
+                                )
+                            } else if (runwayEstimate != null) {
+                                Text(
+                                    text = String.format(
+                                        strings.survivalRunwayBurnSubline,
+                                        Currency.formatMinor(safe.dailyBurnRate, currencyCode),
+                                        runwayEstimate
+                                    ),
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontSize = if (isCompactScreen) 11.sp else 12.sp,
+                                    color = Charcoal
+                                )
+                            } else {
+                                Text(
+                                    text = strings.survivalRunwayIndeterminate,
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontSize = if (isCompactScreen) 11.sp else 12.sp,
+                                    color = Slate500
+                                )
+                            }
+                        }
+
+                        if (isCompactScreen) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = strings.survivalRunwayTitle.uppercase(),
+                                        fontFamily = SpaceGroteskFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp,
+                                        letterSpacing = 0.8.sp,
+                                        color = Slate500
+                                    )
+                                    badgeComposable()
+                                }
+                                descriptionComposable()
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                                    Text(
+                                        text = strings.survivalRunwayTitle.uppercase(),
+                                        fontFamily = SpaceGroteskFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp,
+                                        letterSpacing = 0.8.sp,
+                                        color = Slate500
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    descriptionComposable()
+                                }
+                                badgeComposable()
                             }
                         }
                     }

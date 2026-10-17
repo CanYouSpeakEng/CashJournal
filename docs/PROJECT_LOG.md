@@ -525,3 +525,32 @@ Based on the comprehensive audit (Rev 3.0) and external review notes ([`docs/cas
   - Tag: `v1.0.37-dev`
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.37-dev
   - Artifacts: `app-debug.apk` (16.9 MB), `app-release.apk` (7.47 MB).
+
+---
+
+### [x] **Phase 32: Adaptive Responsive Layouts & Compact Slab Screen Polish (COMPLETED)**
+- [x] **Item 134 (Adaptive Responsive Scaffold & SideRail Spacing)**:
+  - Added screen width detection in `MainAppScaffold.kt` (`isCompactScreen = screenWidthDp <= 380`).
+  - Dynamically compacted navigation rail padding from 78dp to 66dp and card content margins from 20dp to 16dp on compact screens, reclaiming 12-16dp of card width on tall/narrow slab phones and high display density modes (such as Galaxy Note 10 Lite at 480 DPI).
+- [x] **Item 135 (Dashboard Safe-to-Spend Responsive Refactor)**:
+  - In `DashboardScreen.kt`, dynamically scaled hero amount typography (21sp compact vs 26sp standard) and per-day subline (12sp vs 14sp) with non-breaking whitespace to prevent `/ hari` line breaks.
+  - Implemented `FlowRow` for status pill badges ("On Track" / "Terkendali", "Runway: X mo" / "Daya Tahan: X bln"), completely eliminating awkward syllable-level wrapping in Indonesian.
+  - Scaled circular progress gauge dial to 54dp on compact screens (vs 64dp standard) to prevent horizontal collisions.
+- [x] **Item 136 (Analytics Screen Card Responsive Polish)**:
+  - In `AnalyticsScreen.kt`, decoupled the "Last 6 Months" header from category legends on compact screens by stacking the legend cleanly below the title, eliminating truncated or broken text ("Pengeluaran").
+  - Refactored Monthly Budget mode selector chips ("Fixed Cap" / "Nominal Tetap" and "% of Funds" / "% dari Total Dana") to share width proportionally (`Modifier.weight(1f)`) with `TextAlign.Center`, guaranteeing zero label clipping.
+  - Re-architected Capital Survival Runway card layout to place runway duration pill directly in the top header row, leaving the entire card body width for the descriptive subline.
+- [x] **Item 137 (Version Bump & Release Highlights)**:
+  - Bumped `versionName` to `1.0.38-dev` in `app/build.gradle.kts`.
+  - Updated bilingual release highlights in `ReleaseNotesSheet.kt`.
+- [x] **Item 138 (Automated Test Pass, Dual-Density Verification & Release Deployment)**:
+  - Executed full test suite with 100% pass rate.
+  - Assembled signed release APK (`app-release.apk`) and debug APK (`app-debug.apk`).
+  - Verified on emulator at standard 420 DPI and simulated Galaxy Note 10 Lite 480 DPI display density across English and Indonesian locales with zero overlap or bunching.
+  - Deployed release tag `v1.0.38-dev` to GitHub.
+
+- [x] **Release v1.0.38-dev (Phase 32: Adaptive Responsive Layouts & Compact Slab Screen Polish)**:
+  - Tag: `v1.0.38-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.38-dev
+  - Artifacts: `app-debug.apk` (16.9 MB), `app-release.apk` (7.47 MB).
+

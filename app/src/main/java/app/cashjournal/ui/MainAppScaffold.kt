@@ -39,6 +39,7 @@ import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -126,14 +127,19 @@ fun MainAppScaffold(
         label = "rail_bias"
     )
 
+    val configuration = LocalConfiguration.current
+    val isCompactScreen = configuration.screenWidthDp <= 380
+    val railPadding = if (isCompactScreen) 66.dp else 78.dp
+    val contentMargin = if (isCompactScreen) 16.dp else 20.dp
+
     val contentStartPadding by animateDpAsState(
-        targetValue = if (railOnRight) 20.dp else 78.dp,
+        targetValue = if (railOnRight) contentMargin else railPadding,
         animationSpec = spring(stiffness = 320f, dampingRatio = 0.65f),
         label = "content_start_pad"
     )
 
     val contentEndPadding by animateDpAsState(
-        targetValue = if (railOnRight) 78.dp else 20.dp,
+        targetValue = if (railOnRight) railPadding else contentMargin,
         animationSpec = spring(stiffness = 320f, dampingRatio = 0.65f),
         label = "content_end_pad"
     )

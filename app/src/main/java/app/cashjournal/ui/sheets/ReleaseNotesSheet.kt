@@ -48,10 +48,10 @@ import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
-import com.adamglin.phosphoricons.regular.LockKey
-import com.adamglin.phosphoricons.regular.ShieldCheck
-import com.adamglin.phosphoricons.regular.SpeakerHigh
-import com.adamglin.phosphoricons.regular.Wallet
+import com.adamglin.phosphoricons.regular.DeviceMobile
+import com.adamglin.phosphoricons.regular.SidebarSimple
+import com.adamglin.phosphoricons.regular.SlidersHorizontal
+import com.adamglin.phosphoricons.regular.Tag
 import com.adamglin.phosphoricons.regular.X
 
 data class ReleaseHighlight(
@@ -78,35 +78,35 @@ fun ReleaseNotesSheet(
 
     val highlights = listOf(
         ReleaseHighlight(
-            titleEn = "6-Digit PIN & Throttled Lockout",
-            titleIn = "PIN 6 Digit & Penguncian Bertingkat",
-            descEn = "PIN security is upgraded to 6 digits (1,000,000 combinations). Consecutive failed attempts trigger an escalating lockout timer to prevent brute-force attacks.",
-            descIn = "Keamanan PIN ditingkatkan menjadi 6 digit (1.000.000 kombinasi). Percobaan gagal berulang memicu penguncian waktu bertingkat untuk mencegah pembobolan.",
-            icon = PhosphorIcons.Regular.LockKey,
+            titleEn = "Adaptive Responsive Layouts",
+            titleIn = "Tata Letak Responsif Adaptif",
+            descEn = "Safe-to-Spend and survival runway cards automatically adapt hero fonts, gauge dials, and card spacing on narrow and high-density screens.",
+            descIn = "Kartu Saldo Aman dan landasan kas otomatis menyesuaikan ukuran font, dial meteran, dan jarak kartu pada layar sempit dan densitas tinggi.",
+            icon = PhosphorIcons.Regular.DeviceMobile,
             iconTint = Cobalt
         ),
         ReleaseHighlight(
-            titleEn = "Audible Zero-Latency Chimes",
-            titleIn = "Nada Umpan Balik Instan & Jernih",
-            descEn = "The audio engine has been overhauled with direct system sonification, ensuring transaction and budget feedback chimes play crisply and reliably.",
-            descIn = "Mesin audio diperbarui dengan sonifikasi sistem langsung, memastikan nada umpan balik transaksi dan anggaran terdengar jernih dan andal.",
-            icon = PhosphorIcons.Regular.SpeakerHigh,
+            titleEn = "Syllable-Safe Fluid Badges",
+            titleIn = "Lencana Dinamis Aman Suku Kata",
+            descEn = "Status pills and runway metrics now flow smoothly into flexible rows, eliminating awkward syllable wraps and word splitting in Indonesian.",
+            descIn = "Pill status dan metrik landasan mengalir luwes dalam baris dinamis, mencegah pemotongan kata dan pemisahan suku kata dalam bahasa Indonesia.",
+            icon = PhosphorIcons.Regular.Tag,
             iconTint = Emerald
         ),
         ReleaseHighlight(
-            titleEn = "Liquid Capital Runway Isolation",
-            titleIn = "Pemisahan Saldo Likuid & Landasan Kas",
-            descEn = "Daily safe-to-spend and survival runway calculations now isolate spendable liquid cash from revolving credit card debt for pure accuracy.",
-            descIn = "Perhitungan saldo aman harian dan landasan bertahan hidup kini memisahkan dana tunai likuid dari utang kartu kredit demi ketepatan mutlak.",
-            icon = PhosphorIcons.Regular.Wallet,
+            titleEn = "Proportional Mode Switching",
+            titleIn = "Pilihan Mode Proporsional",
+            descEn = "Monthly budget selector chips divide available width equally with centered text, guaranteeing zero label truncation across all languages.",
+            descIn = "Pilihan mode anggaran bulanan membagi lebar kartu secara merata dengan teks rata tengah, menjamin tidak ada label yang terpotong di semua bahasa.",
+            icon = PhosphorIcons.Regular.SlidersHorizontal,
             iconTint = Persimmon
         ),
         ReleaseHighlight(
-            titleEn = "Absolute Non-Destructive Storage",
-            titleIn = "Penyimpanan Mutlak Tanpa Risiko Hapus",
-            descEn = "Database downgrade fallbacks have been removed so app rollbacks or older versions will never silently delete your financial records.",
-            descIn = "Pembalikan versi database telah dihilangkan sehingga penurunan versi aplikasi tidak akan pernah menghapus catatan keuangan Anda.",
-            icon = PhosphorIcons.Regular.ShieldCheck,
+            titleEn = "Screen-Aware Rail Margins",
+            titleIn = "Margin Navigasi Sadar Layar",
+            descEn = "The persistent navigation rail dynamically tightens padding on compact viewports (<= 380dp), reclaiming precious canvas space for your data.",
+            descIn = "Bilah navigasi samping secara cerdas merapatkan margin pada layar kompak (<= 380dp), menghemat ruang berharga untuk visualisasi data Anda.",
+            icon = PhosphorIcons.Regular.SidebarSimple,
             iconTint = Cobalt
         )
     )
