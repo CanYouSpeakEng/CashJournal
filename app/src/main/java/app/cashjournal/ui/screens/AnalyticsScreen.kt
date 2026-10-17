@@ -380,7 +380,9 @@ fun AnalyticsScreen(
                             fontFamily = PlusJakartaSansFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
-                            color = Charcoal
+                            color = Charcoal,
+                            maxLines = 1,
+                            softWrap = false
                         )
                         if (safe.cycleLabel.isNotEmpty()) {
                             Text(
@@ -406,12 +408,13 @@ fun AnalyticsScreen(
                             fontWeight = FontWeight.Bold,
                             fontSize = 9.sp,
                             letterSpacing = 0.8.sp,
-                            color = Slate400
+                            color = Slate400,
+                            maxLines = 1
                         )
 
                         if (currentMode == BudgetMode.PERCENTAGE_OF_FUNDS) {
                             Text(
-                                text = "${sliderPercent}% (${Currency.formatMinor(safe.budget, currencyCode)})",
+                                text = "${sliderPercent}% \u00B7 ${Currency.formatMinor(safe.budget, currencyCode)}",
                                 fontFamily = SpaceGroteskFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
@@ -537,15 +540,15 @@ fun AnalyticsScreen(
                             )
                         }
 
-                        // Percentage Slider (1% to 50%)
+                        // Percentage Slider (1% to 100%)
                         Slider(
-                            value = sliderPercent.toFloat().coerceIn(1f, 50f),
+                            value = sliderPercent.toFloat().coerceIn(1f, 100f),
                             onValueChange = { sliderPercent = it.roundToInt() },
                             onValueChangeFinished = {
                                 onBudgetPlanChange(currentMode, sliderPercent, sliderBudget)
                             },
-                            valueRange = 1f..50f,
-                            steps = 48,
+                            valueRange = 1f..100f,
+                            steps = 98,
                             colors = SliderDefaults.colors(
                                 thumbColor = Cobalt,
                                 activeTrackColor = Cobalt,
@@ -561,7 +564,7 @@ fun AnalyticsScreen(
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(Slate100)
                                 .clickable {
-                                    val next = (sliderPercent + 1).coerceAtMost(50)
+                                    val next = (sliderPercent + 1).coerceAtMost(100)
                                     sliderPercent = next
                                     onBudgetPlanChange(currentMode, next, sliderBudget)
                                 },

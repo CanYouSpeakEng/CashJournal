@@ -105,4 +105,53 @@ class CurrencyConverterTest {
         )
         assertEquals(2500L, result)
     }
+
+    @Test
+    fun testUsdBaseHighPrecisionIdrConversion() {
+        // High-precision live rates returned when USD is base
+        val liveRatesUsdBase = mapOf(
+            "USD" to 1.0,
+            "IDR" to 18014.635142,
+            "EUR" to 0.889517
+        )
+
+        // 1 USD (100 minor units) -> IDR (0 decimals)
+        val oneUsdInIdr = CurrencyConverter.convertMinorUnits(
+            amountMinor = 100L,
+            sourceCode = "USD",
+            targetCode = "IDR",
+            baseCode = "USD",
+            rates = liveRatesUsdBase,
+            sourceDecimals = 2,
+            targetDecimals = 0
+        )
+        // 1.0 * 18014.635142 = 18015 IDR (vs truncated 17857)
+        assertEquals(18015L, oneUsdInIdr)
+
+        // 1 EUR (100 minor units) -> IDR (0 decimals)
+        // 18014.635142 / 0.889517 = 20252.15 IDR
+        val oneEurInIdr = CurrencyConverter.convertMinorUnits(
+            amountMinor = 100L,
+            sourceCode = "EUR",
+            targetCode = "IDR",
+            baseCode = "USD",
+            rates = liveRatesUsdBase,
+            sourceDecimals = 2,
+            targetDecimals = 0
+        )
+        assertEquals(20252L, oneEurInIdr)
+
+        // Rp 100.000 IDR -> USD (2 decimals)
+        // 100000 / 18014.635142 = $5.5516 -> 555 cents
+        val idrToUsd = CurrencyConverter.convertMinorUnits(
+            amountMinor = 100000L,
+            sourceCode = "IDR",
+            targetCode = "USD",
+            baseCode = "USD",
+            rates = liveRatesUsdBase,
+            sourceDecimals = 0,
+            targetDecimals = 2
+        )
+        assertEquals(555L, idrToUsd)
+    }
 }

@@ -306,6 +306,35 @@ This log is kept up to date after every step. Any AI assistant or developer read
   - Tag: `v1.0.24-dev`
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.24-dev
   - Artifacts: `app-debug.apk` (17.5 MB), `app-release.apk` (12.3 MB).
+- [x] **Phase 22: Visual Polish, High-Precision Exchange Rates & Input Formatting**
+  - [x] **Item 89: Inclusive Fund Allocation Slider Expansion (1% to 100%)**:
+    - **Context**: The percentage-of-funds slider introduced in Phase 21 was capped at 1%..50%. For users with modest total savings (e.g., students or job seekers with small emergency reserves), budgeting higher allocations (up to 100%) is necessary.
+    - **Method**: Expand slider range in `AnalyticsScreen.kt` from `1f..50f` to `1f..100f` with `steps = 98` and adjust the increment button limit to `.coerceAtMost(100)`.
+    - **Verification**: Verified slider scrubbing and stepper buttons between 1% and 100% in UI tests and manual review.
+  - [x] **Item 90: Dedicated Currency Symbol & Prefix Rendering on Account Cards**:
+    - **Context**: On account cards (Dashboard horizontal carousel and Accounts screen list), balances are displayed with bare numbers (e.g. `549.760`) missing the currency symbol (`Rp` for IDR, `US$` for USD).
+    - **Root Cause**: `MaskedAmount.kt` hardcodes `includeSymbol = false` and omits passing `currencySymbol` to `MaskedAmountText`.
+    - **Method**: Add `showSymbol: Boolean = false` parameter to `MaskedAmount`, resolve `Currency.findByCode(currencyCode).symbol`, and forward it to `MaskedAmountText`. Set `showSymbol = true` on account cards in `DashboardScreen.kt`, `AccountsScreen.kt`, and `AccountDetailScreen.kt`. Increase Dashboard carousel card width to `138.dp` so multi-digit balances fit comfortably without clipping.
+    - **Verification**: Verified both unmasked (`Rp 549.760`) and masked (`Rp •••••••`) states preserve the currency symbol cleanly.
+  - [x] **Item 91: Visual Thousand-Separator Formatting & Numeric Keyboard for Starting Balance Input**:
+    - **Context**: In `NewAccountSheet.kt`, entering starting balance displays raw digits (`6000000`) instead of localized grouping separators (`6.000.000` for IDR or `6,000,000` for USD).
+    - **Method**: Implement `ThousandsSeparatorVisualTransformation` in Compose using localized symbols (`DecimalFormatSymbols`), with bi-directional `OffsetMapping` for cursor stability. Maintain `rawBalance` state as pure digits for numeric safety. Set `KeyboardOptions(keyboardType = KeyboardType.Number)`.
+    - **Verification**: Tested input of small and multi-million amounts; verified cursor movement, backspace, and account persistence. 5 unit tests in `ThousandsSeparatorVisualTransformationTest.kt` passing.
+  - [x] **Item 92: Responsive Card Header Layout & Text Wrap Prevention for Indonesian Localization ("Anggaran Bulanan")**:
+    - **Context**: On Indonesian language mode, the "Anggaran Bulanan" card header in `% dari Total Dana` mode wraps awkwardly into "Anggara" on the top line and "n Bulanan" on the second line.
+    - **Root Cause**: Right header label `targetBudgetPercentageFormat` ("TARGET ANGGARAN (50% DARI DANA)") is 33 characters long, consuming ~190 dp of width and squishing the left column into < 100 dp.
+    - **Method**: Shorten right badge to `"% DARI DANA"` (11 chars) in Indonesian and `"% OF FUNDS"` (10 chars) in English, and apply `maxLines = 1` and `softWrap = false` to `strings.runwayCardTitle` in `AnalyticsScreen.kt`.
+    - **Verification**: Tested on 360 dp narrow device widths in Indonesian locale; verified zero line breaks or word collisions.
+  - [x] **Item 93: Universal USD Base-Anchored Currency Rate Engine & High-Precision Cross-Rate Math**:
+    - **Context**: Exchange rates for IDR appeared stuck at `17,857` without changing, while live Google/market rates were ~`18,014`.
+    - **Root Cause**: Querying `https://open.er-api.com/v6/latest/IDR` with low-unit base currencies causes the free API to round foreign exchange rates to scientific notation with only 2 significant digits (`"USD": 5.6e-5` / `0.000056`). Inverting $1 / 0.000056$ results in $17{,}857.14$. In addition, daily API fixings at 00:00 UTC combined with 2-digit truncation prevented normal market fluctuations from registering.
+    - **Method**: Anchor all rate queries to USD (`https://open.er-api.com/v6/latest/USD`), which returns 6-digit floating-point precision for IDR (`18014.635142`) and all 160+ world currencies. Utilize `CurrencyConverter.convertMinorUnits` cross-rate mathematics (`rateTarget / rateSource`) to achieve exact conversions matching real-time market standards.
+    - **Verification**: Verified via `CurrencyConverterTest.kt` with live USD exchange rates and multi-currency cross-rate conversions.
+- [x] **Release v1.0.25-dev (Phase 22: Visual Polish, High-Precision Exchange Rates & Input Formatting)**
+  - Tag: `v1.0.25-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.25-dev
+  - Artifacts: `app-debug.apk` (17.6 MB), `app-release.apk` (12.3 MB).
+
 
 
 

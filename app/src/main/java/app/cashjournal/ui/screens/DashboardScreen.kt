@@ -206,6 +206,7 @@ fun DashboardScreen(
                                 amountMinor = safe.safeToSpendToday,
                                 currencyCode = state.userPreferences.currencyCode,
                                 isMasked = state.hideBalances,
+                                showSymbol = true,
                                 textStyle = CashTypography.HeroAmount.copy(fontSize = 26.sp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
@@ -395,7 +396,7 @@ fun DashboardScreen(
                     state.accounts.forEach { account ->
                         GlassCard(
                             modifier = Modifier
-                                .width(130.dp)
+                                .width(138.dp)
                                 .height(96.dp)
                                 .clickable { onAccountClick(account) },
                             cornerRadius = 22.dp
@@ -447,6 +448,7 @@ fun DashboardScreen(
                                     amountMinor = account.balance,
                                     currencyCode = state.userPreferences.currencyCode,
                                     isMasked = state.hideBalances,
+                                    showSymbol = true,
                                     textStyle = CashTypography.Mono12.copy(fontSize = 13.sp)
                                 )
                             }

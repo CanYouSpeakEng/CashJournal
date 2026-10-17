@@ -244,6 +244,7 @@ fun AccountDetailScreen(
                         amountMinor = account.balance,
                         currencyCode = state.userPreferences.currencyCode,
                         isMasked = state.hideBalances,
+                        showSymbol = true,
                         textStyle = CashTypography.HeroAmount.copy(fontSize = 28.sp),
                         modifier = Modifier.fillMaxWidth()
                     )

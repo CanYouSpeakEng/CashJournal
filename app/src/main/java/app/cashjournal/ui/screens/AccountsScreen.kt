@@ -282,6 +282,7 @@ fun AccountsScreen(
                         amountMinor = state.totalNetWorth,
                         currencyCode = mainCurrency.code,
                         isMasked = state.hideBalances,
+                        showSymbol = true,
                         textStyle = CashTypography.Mono12.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Slate600)
                     )
                 }
@@ -590,6 +591,7 @@ fun AccountsScreen(
                                 amountMinor = account.balance,
                                 currencyCode = state.userPreferences.currencyCode,
                                 isMasked = state.hideBalances,
+                                showSymbol = true,
                                 textStyle = CashTypography.Mono12.copy(fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
                             )
 

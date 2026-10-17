@@ -252,7 +252,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val prefs = preferencesFlow.first()
             val cachedRates = ratesFlow.first()
-            if (exchangeRateService.shouldAutoRefresh(cachedRates?.fetchedAt ?: 0L)) {
+            if (exchangeRateService.shouldAutoRefresh(cachedRates?.fetchedAt ?: 0L) || cachedRates?.baseCode != "USD") {
                 refreshRates(manual = false)
             }
             if (prefs.weatherOption != "not_now") {
@@ -313,9 +313,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun openSheet(sheet: ActiveSheet) {
         _activeSheet.value = sheet
         if (sheet == ActiveSheet.WORLD_CURRENCIES) {
-            // Check if rates cache is older than 12 hours per Section 10
-            val lastFetched = uiState.value.cachedRates?.fetchedAt ?: 0L
-            if (exchangeRateService.shouldAutoRefresh(lastFetched)) {
+            val cached = uiState.value.cachedRates
+            val lastFetched = cached?.fetchedAt ?: 0L
+            if (exchangeRateService.shouldAutoRefresh(lastFetched) || cached?.baseCode != "USD") {
                 refreshRates(manual = false)
             }
         }
@@ -966,13 +966,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val strings = currentStrings()
             val cached = preferencesRepository.cachedRatesFlow.first()
-            if (manual && !exchangeRateService.canManualRefresh(cached?.fetchedAt ?: 0L)) {
+            val isStaleOrNonUsd = cached == null || cached.baseCode != "USD"
+            if (manual && !exchangeRateService.canManualRefresh(cached?.fetchedAt ?: 0L) && !isStaleOrNonUsd) {
                 showToast(strings.toastRatesRecentlyUpdated)
                 return@launch
             }
 
-            val currentCode = preferencesRepository.userPreferencesFlow.first().currencyCode
-            val result = exchangeRateService.fetchRates(currentCode)
+            // Always anchor rate queries to USD to guarantee full 6-digit floating-point precision
+            // across all world currencies, bypassing the API's 2-significant-digit scientific notation
+            // rounding truncation on low-unit currencies like IDR.
+            val result = exchangeRateService.fetchRates("USD")
 
             result.onSuccess { freshRates ->
                 preferencesRepository.updateRatesCache(freshRates)

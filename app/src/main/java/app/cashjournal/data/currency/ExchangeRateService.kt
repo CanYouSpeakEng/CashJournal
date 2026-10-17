@@ -34,10 +34,12 @@ class ExchangeRateService {
     }
 
     /**
-     * Fetches the latest exchange rates for the given base currency code.
-     * Brief Section 3: https://open.er-api.com/v6/latest/{MAIN_CODE}
+     * Fetches the latest exchange rates anchored to USD (or specified baseCode).
+     * Anchoring to USD guarantees full 6-digit floating-point precision across all world currencies,
+     * completely avoiding the 2-significant-digit scientific notation rounding truncation returned
+     * by open.er-api.com when low-unit currencies like IDR, KRW, or VND are queried directly.
      */
-    suspend fun fetchRates(baseCode: String): Result<CachedExchangeRates> = withContext(Dispatchers.IO) {
+    suspend fun fetchRates(baseCode: String = "USD"): Result<CachedExchangeRates> = withContext(Dispatchers.IO) {
         try {
             val url = "https://open.er-api.com/v6/latest/${baseCode.uppercase()}"
             val request = Request.Builder()

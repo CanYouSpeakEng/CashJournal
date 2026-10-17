@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -32,12 +33,16 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cashjournal.domain.model.AccentKey
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.ui.components.GlassCard
 import app.cashjournal.ui.components.SubtleGlassCard
+import app.cashjournal.ui.components.ThousandsSeparatorVisualTransformation
+import java.text.DecimalFormatSymbols
+import java.util.Locale
 import app.cashjournal.ui.i18n.AppStrings
 import app.cashjournal.ui.theme.CashColors
 import app.cashjournal.ui.theme.Charcoal
@@ -245,6 +250,15 @@ fun NewAccountSheet(
             }
         }
 
+        val groupingSeparator = remember(currency.code, languageCode) {
+            val loc = if (currency.code.equals("IDR", ignoreCase = true) || languageCode.equals("in", ignoreCase = true)) {
+                Locale("id", "ID")
+            } else {
+                Locale.US
+            }
+            DecimalFormatSymbols(loc).groupingSeparator
+        }
+
         // Starting Balance Input
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
@@ -261,8 +275,13 @@ fun NewAccountSheet(
                     BasicTextField(
                         value = rawBalance,
                         onValueChange = { digits ->
-                            rawBalance = digits.filter { it.isDigit() }
+                            val cleaned = digits.filter { it.isDigit() }
+                            if (cleaned.length <= 15) {
+                                rawBalance = cleaned
+                            }
                         },
+                        visualTransformation = ThousandsSeparatorVisualTransformation(groupingSeparator),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         textStyle = androidx.compose.ui.text.TextStyle(
                             fontFamily = SpaceGroteskFamily,
                             fontWeight = FontWeight.Bold,
@@ -273,7 +292,7 @@ fun NewAccountSheet(
                         decorationBox = { innerTextField ->
                             if (rawBalance.isEmpty()) {
                                 Text(
-                                    text = "1000000",
+                                    text = if (groupingSeparator == '.') "1.000.000" else "1,000,000",
                                     fontFamily = SpaceGroteskFamily,
                                     fontSize = 16.sp,
                                     color = Slate400

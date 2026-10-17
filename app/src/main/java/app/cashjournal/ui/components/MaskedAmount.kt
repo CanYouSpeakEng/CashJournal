@@ -34,9 +34,12 @@ fun MaskedAmount(
     amountMinor: Long,
     currencyCode: String = "IDR",
     isMasked: Boolean = false,
+    showSymbol: Boolean = false,
+    symbolColor: Color? = null,
     textStyle: TextStyle = TextStyle.Default,
     modifier: Modifier = Modifier
 ) {
+    val currency = Currency.findByCode(currencyCode)
     val formatted = Currency.formatMinor(amountMinor, currencyCode, includeSymbol = false)
     val baseFontSize = textStyle.fontSize
     val effectiveFontSize = if (baseFontSize != TextUnit.Unspecified && baseFontSize.value >= 24f) {
@@ -51,10 +54,13 @@ fun MaskedAmount(
 
     MaskedAmountText(
         amountText = formatted,
+        currencySymbol = if (showSymbol) currency.symbol else "",
         balancesVisible = !isMasked,
+        keepSymbolVisible = true,
         fontSize = effectiveFontSize,
         fontWeight = textStyle.fontWeight ?: FontWeight.Normal,
         color = textStyle.color,
+        symbolColor = symbolColor ?: textStyle.color,
         modifier = modifier
     )
 }
