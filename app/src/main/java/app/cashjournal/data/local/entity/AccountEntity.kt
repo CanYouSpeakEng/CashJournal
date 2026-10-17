@@ -16,7 +16,16 @@ data class AccountEntity(
     val balance: Long,
     val initialBalance: Long = 0L,
     val sortIndex: Int,
-    val updatedAt: Long
+    val updatedAt: Long,
+    val creditLimit: Long = 0L,
+    val statementDueDay: Int = 0,
+    val statementPaymentMode: String = "TARGET",
+    val targetPaymentAmount: Long = 0L,
+    val investmentType: String? = null,
+    val unitsHeld: Double = 0.0,
+    val pricePerUnit: Long = 0L,
+    val previousPricePerUnit: Long = 0L,
+    val priceUpdatedAt: Long = 0L
 ) {
     fun toDomain(): Account = Account(
         id = id,
@@ -26,7 +35,16 @@ data class AccountEntity(
         balance = balance,
         initialBalance = initialBalance,
         sortIndex = sortIndex,
-        updatedAt = updatedAt
+        updatedAt = updatedAt,
+        creditLimit = creditLimit,
+        statementDueDay = statementDueDay,
+        statementPaymentMode = statementPaymentMode,
+        targetPaymentAmount = targetPaymentAmount,
+        investmentType = investmentType,
+        unitsHeld = unitsHeld,
+        pricePerUnit = pricePerUnit,
+        previousPricePerUnit = previousPricePerUnit,
+        priceUpdatedAt = priceUpdatedAt
     )
 
     companion object {
@@ -38,7 +56,16 @@ data class AccountEntity(
             balance = account.balance,
             initialBalance = account.initialBalance,
             sortIndex = account.sortIndex,
-            updatedAt = account.updatedAt
+            updatedAt = account.updatedAt,
+            creditLimit = account.creditLimit,
+            statementDueDay = account.statementDueDay,
+            statementPaymentMode = account.statementPaymentMode,
+            targetPaymentAmount = account.targetPaymentAmount,
+            investmentType = account.investmentType,
+            unitsHeld = account.unitsHeld,
+            pricePerUnit = account.pricePerUnit,
+            previousPricePerUnit = account.previousPricePerUnit,
+            priceUpdatedAt = account.priceUpdatedAt
         )
     }
 }

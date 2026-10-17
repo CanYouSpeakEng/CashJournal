@@ -38,7 +38,16 @@ data class AccountBackupDto(
     val balance: Long,
     val initialBalance: Long = 0L,
     val sortIndex: Int = 0,
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val creditLimit: Long = 0L,
+    val statementDueDay: Int = 0,
+    val statementPaymentMode: String = "TARGET",
+    val targetPaymentAmount: Long = 0L,
+    val investmentType: String? = null,
+    val unitsHeld: Double = 0.0,
+    val pricePerUnit: Long = 0L,
+    val previousPricePerUnit: Long = 0L,
+    val priceUpdatedAt: Long = 0L
 ) {
     fun toEntity(): AccountEntity = AccountEntity(
         id = id,
@@ -48,7 +57,16 @@ data class AccountBackupDto(
         balance = balance,
         initialBalance = initialBalance,
         sortIndex = sortIndex,
-        updatedAt = updatedAt
+        updatedAt = updatedAt,
+        creditLimit = creditLimit,
+        statementDueDay = statementDueDay,
+        statementPaymentMode = statementPaymentMode,
+        targetPaymentAmount = targetPaymentAmount,
+        investmentType = investmentType,
+        unitsHeld = unitsHeld,
+        pricePerUnit = pricePerUnit,
+        previousPricePerUnit = previousPricePerUnit,
+        priceUpdatedAt = priceUpdatedAt
     )
 
     companion object {
@@ -60,7 +78,16 @@ data class AccountBackupDto(
             balance = entity.balance,
             initialBalance = entity.initialBalance,
             sortIndex = entity.sortIndex,
-            updatedAt = entity.updatedAt
+            updatedAt = entity.updatedAt,
+            creditLimit = entity.creditLimit,
+            statementDueDay = entity.statementDueDay,
+            statementPaymentMode = entity.statementPaymentMode,
+            targetPaymentAmount = entity.targetPaymentAmount,
+            investmentType = entity.investmentType,
+            unitsHeld = entity.unitsHeld,
+            pricePerUnit = entity.pricePerUnit,
+            previousPricePerUnit = entity.previousPricePerUnit,
+            priceUpdatedAt = entity.priceUpdatedAt
         )
     }
 }

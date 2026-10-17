@@ -34,7 +34,8 @@ data class SafeToSpendState(
     val isCalibrating: Boolean = false,
     val calibrationDaysNeeded: Int = 0,
     val committedBills: Long = 0L,
-    val upcomingBillsCount: Int = 0
+    val upcomingBillsCount: Int = 0,
+    val cardReserves: Long = 0L
 )
 
 data class CycleRange(
@@ -135,7 +136,8 @@ object SafeToSpendCalculator {
         totalNetWorth: Long = 100_000_000L,
         hasAccounts: Boolean = true,
         cycleStartDay: Int = 1,
-        recurringTransactions: List<RecurringTransaction> = emptyList()
+        recurringTransactions: List<RecurringTransaction> = emptyList(),
+        accounts: List<Account> = emptyList()
     ): SafeToSpendState {
         val cycle = getCycleRange(cycleStartDay, calendar)
 
@@ -182,14 +184,33 @@ object SafeToSpendCalculator {
         }
         val committedBills = upcomingBills.sumOf { it.amount }
 
+        // Credit card statement payment reserves with double-counting safeguard
+        val creditCards = accounts.filter { it.accountType == AccountType.CREDIT_CARD }
+        val cardReserves = creditCards.sumOf { card ->
+            // Double counting safeguard: check if a recurring bill or transfer already pays this card
+            val hasRecurringBill = recurringTransactions.any {
+                it.isActive && (it.destinationAccountId == card.id || (it.sourceAccountId == card.id && it.type == TransactionType.EXPENSE))
+            }
+            if (hasRecurringBill) {
+                0L
+            } else {
+                val debt = (-card.balance).coerceAtLeast(0L)
+                if (card.statementPaymentMode.equals("TARGET", ignoreCase = true) && card.targetPaymentAmount > 0L) {
+                    minOf(debt, card.targetPaymentAmount)
+                } else {
+                    debt
+                }
+            }
+        }
+
         val totalSpent = (startingSpent + netCycleSpending).coerceAtLeast(0L)
-        val remaining = (effectiveBudget - totalSpent - committedBills).coerceAtLeast(0L)
+        val remaining = (effectiveBudget - totalSpent - committedBills - cardReserves).coerceAtLeast(0L)
 
         val divisor = if (cycle.daysLeft > 0) cycle.daysLeft else 1
         val hasNoFunds = !hasAccounts || totalNetWorth <= 0L
         val perDay = if (hasNoFunds) 0L else floor(remaining.toDouble() / divisor).toLong()
 
-        val totalCommittedOrSpent = totalSpent + committedBills
+        val totalCommittedOrSpent = totalSpent + committedBills + cardReserves
         val percent = if (effectiveBudget > 0) (totalCommittedOrSpent.toFloat() / effectiveBudget.toFloat()) else 0f
         val displayPct = min(100, (percent * 100).roundToInt())
 
@@ -277,7 +298,8 @@ object SafeToSpendCalculator {
             isCalibrating = isCalibrating,
             calibrationDaysNeeded = calibrationDaysNeeded,
             committedBills = committedBills,
-            upcomingBillsCount = upcomingBills.size
+            upcomingBillsCount = upcomingBills.size,
+            cardReserves = cardReserves
         )
     }
 }

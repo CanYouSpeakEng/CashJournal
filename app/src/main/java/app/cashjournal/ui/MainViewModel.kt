@@ -246,19 +246,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         val totalWorth = rawAccounts.sumOf { it.balance }
         val liquidFunds = rawAccounts
-            .filter { it.accountType != AccountType.CREDIT_CARD }
+            .filter { it.accountType != AccountType.CREDIT_CARD && it.accountType != AccountType.INVESTMENT }
             .sumOf { it.balance }
             .coerceAtLeast(0L)
         val recentTx = rawTransactions.take(5)
 
-        // Calculate Safe to Spend (using spendable liquid capital, excluding credit card debt)
+        // Calculate Safe to Spend (using spendable liquid capital, excluding credit card debt and illiquid holdings)
         val safeState = calculateSafeToSpend(
             plan = plan,
             transactions = rawTransactions,
             totalNetWorth = liquidFunds,
             hasAccounts = rawAccounts.isNotEmpty(),
             cycleStartDay = prefs.cycleStartDay,
-            recurringTransactions = rawRecurring
+            recurringTransactions = rawRecurring,
+            accounts = rawAccounts
         )
 
         MainUiState(
@@ -327,7 +328,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         totalNetWorth: Long = 0L,
         hasAccounts: Boolean = true,
         cycleStartDay: Int = 1,
-        recurringTransactions: List<RecurringTransaction> = emptyList()
+        recurringTransactions: List<RecurringTransaction> = emptyList(),
+        accounts: List<Account> = emptyList()
     ): SafeToSpendState {
         return SafeToSpendCalculator.calculate(
             plan = plan,
@@ -335,7 +337,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             totalNetWorth = totalNetWorth,
             hasAccounts = hasAccounts,
             cycleStartDay = cycleStartDay,
-            recurringTransactions = recurringTransactions
+            recurringTransactions = recurringTransactions,
+            accounts = accounts
         )
     }
 
@@ -940,7 +943,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         name: String,
         startingBalance: Long,
         accentKey: AccentKey,
-        accountType: AccountType = AccountType.BANK_DEBIT
+        accountType: AccountType = AccountType.BANK_DEBIT,
+        creditLimit: Long = 0L,
+        statementDueDay: Int = 0,
+        statementPaymentMode: String = "TARGET",
+        targetPaymentAmount: Long = 0L,
+        investmentType: String? = null,
+        unitsHeld: Double = 0.0,
+        pricePerUnit: Long = 0L
     ) {
         val strings = currentStrings()
         if (name.isBlank()) {
@@ -949,15 +959,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         viewModelScope.launch {
+            val initial = if (accountType == AccountType.CREDIT_CARD) {
+                if (startingBalance > 0L) -startingBalance else startingBalance
+            } else if (accountType == AccountType.INVESTMENT && unitsHeld > 0.0 && pricePerUnit > 0L) {
+                (unitsHeld * pricePerUnit).toLong()
+            } else {
+                startingBalance.coerceAtLeast(0L)
+            }
+
             val account = AccountEntity(
                 id = UUID.randomUUID().toString(),
                 name = name.take(28),
                 accentKey = accentKey.name,
                 accountType = accountType.name,
-                balance = startingBalance.coerceAtLeast(0L),
-                initialBalance = startingBalance.coerceAtLeast(0L),
+                balance = initial,
+                initialBalance = initial,
                 sortIndex = (uiState.value.accounts.size),
-                updatedAt = System.currentTimeMillis()
+                updatedAt = System.currentTimeMillis(),
+                creditLimit = creditLimit.coerceAtLeast(0L),
+                statementDueDay = statementDueDay.coerceIn(0, 31),
+                statementPaymentMode = statementPaymentMode,
+                targetPaymentAmount = targetPaymentAmount.coerceAtLeast(0L),
+                investmentType = investmentType,
+                unitsHeld = unitsHeld.coerceAtLeast(0.0),
+                pricePerUnit = pricePerUnit.coerceAtLeast(0L),
+                previousPricePerUnit = 0L,
+                priceUpdatedAt = if (pricePerUnit > 0L) System.currentTimeMillis() else 0L
             )
             database.accountDao().insert(account)
             dismissSheet()
@@ -971,7 +998,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         accountType: AccountType,
         accentKey: AccentKey,
         actualBalance: Long? = null,
-        reconcileNote: String? = null
+        reconcileNote: String? = null,
+        creditLimit: Long = 0L,
+        statementDueDay: Int = 0,
+        statementPaymentMode: String = "TARGET",
+        targetPaymentAmount: Long = 0L,
+        investmentType: String? = null,
+        unitsHeld: Double = 0.0,
+        pricePerUnit: Long = 0L
     ) {
         val strings = currentStrings()
         if (name.isBlank()) {
@@ -981,23 +1015,56 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             val existing = database.accountDao().getAccountById(accountId) ?: return@launch
+
+            val previousPrice = if (pricePerUnit != existing.pricePerUnit && existing.pricePerUnit > 0L) {
+                existing.pricePerUnit
+            } else {
+                existing.previousPricePerUnit
+            }
+            val priceUpdatedTime = if (pricePerUnit != existing.pricePerUnit && pricePerUnit > 0L) {
+                System.currentTimeMillis()
+            } else {
+                existing.priceUpdatedAt
+            }
+
             val updated = existing.copy(
                 name = name.take(28),
                 accountType = accountType.name,
                 accentKey = accentKey.name,
-                updatedAt = System.currentTimeMillis()
+                updatedAt = System.currentTimeMillis(),
+                creditLimit = creditLimit.coerceAtLeast(0L),
+                statementDueDay = statementDueDay.coerceIn(0, 31),
+                statementPaymentMode = statementPaymentMode,
+                targetPaymentAmount = targetPaymentAmount.coerceAtLeast(0L),
+                investmentType = investmentType,
+                unitsHeld = unitsHeld.coerceAtLeast(0.0),
+                pricePerUnit = pricePerUnit.coerceAtLeast(0L),
+                previousPricePerUnit = previousPrice,
+                priceUpdatedAt = priceUpdatedTime
             )
 
-            val balanceChanged = actualBalance != null && actualBalance != existing.balance
+            val targetBalance = if (accountType == AccountType.INVESTMENT && unitsHeld > 0.0 && pricePerUnit > 0L) {
+                (unitsHeld * pricePerUnit).toLong()
+            } else {
+                actualBalance
+            }
+
+            val balanceChanged = targetBalance != null && targetBalance != existing.balance
             database.withTransaction {
                 database.accountDao().update(updated)
 
                 if (balanceChanged) {
-                    val delta = actualBalance!! - existing.balance
+                    val delta = targetBalance!! - existing.balance
                     val isPositive = delta > 0L
                     val txType = if (isPositive) TransactionType.INCOME else TransactionType.EXPENSE
                     val txAmount = abs(delta)
-                    val title = if (!reconcileNote.isNullOrBlank()) reconcileNote else strings.defaultAdjustmentTitle
+                    val title = if (!reconcileNote.isNullOrBlank()) {
+                        reconcileNote
+                    } else if (accountType == AccountType.INVESTMENT) {
+                        "Valuation update"
+                    } else {
+                        strings.defaultAdjustmentTitle
+                    }
 
                     val tx = TransactionEntity(
                         id = UUID.randomUUID().toString(),
@@ -1026,10 +1093,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             if (balanceChanged) {
                 ChimeGenerator.playChime(uiState.value.userPreferences.soundEffectsEnabled, viewModelScope)
+                showToast(strings.accountUpdatedAndReconciledToast)
+            } else {
+                showToast(strings.accountUpdatedToast)
             }
-
             dismissSheet()
-            showToast(if (balanceChanged) strings.accountUpdatedAndReconciledToast else strings.accountUpdatedToast)
         }
     }
 

@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cashjournal.domain.model.Account
+import app.cashjournal.domain.model.AccountType
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.domain.model.Transaction
 import app.cashjournal.domain.model.TransactionType
@@ -48,7 +49,9 @@ import app.cashjournal.ui.theme.CashTypography
 import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Cobalt
 import app.cashjournal.ui.theme.Emerald
+import app.cashjournal.ui.theme.Persimmon
 import app.cashjournal.ui.theme.PlusJakartaSansFamily
+import app.cashjournal.ui.theme.Slate400
 import app.cashjournal.ui.theme.Slate500
 import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
@@ -280,6 +283,82 @@ fun AccountDetailScreen(
                         textStyle = CashTypography.HeroAmount.copy(fontSize = 28.sp),
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    if (account.accountType == AccountType.CREDIT_CARD) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${strings.availableCreditLabel}: ${Currency.formatMinor(account.availableCredit, state.userPreferences.currencyCode)}",
+                                fontFamily = SpaceGroteskFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = Emerald
+                            )
+                            Text(
+                                text = "${strings.creditLimitLabel}: ${Currency.formatMinor(account.creditLimit, state.userPreferences.currencyCode)}",
+                                fontFamily = PlusJakartaSansFamily,
+                                fontSize = 11.sp,
+                                color = Slate500
+                            )
+                        }
+                        if (account.statementDueDay > 0 || account.statementPaymentMode.isNotEmpty()) {
+                            val modeStr = if (account.statementPaymentMode == "FULL") strings.paymentModeFull else strings.paymentModeTarget
+                            val dueStr = if (account.statementDueDay > 0) String.format(strings.dueDayFormat, account.statementDueDay) else ""
+                            val targetStr = if (account.statementPaymentMode == "TARGET" && account.targetPaymentAmount > 0L) {
+                                " · Target ${Currency.formatMinor(account.targetPaymentAmount, state.userPreferences.currencyCode)}"
+                            } else ""
+                            Text(
+                                text = "$dueStr · $modeStr$targetStr".trim(' ', '·'),
+                                fontFamily = PlusJakartaSansFamily,
+                                fontSize = 11.sp,
+                                color = Slate500
+                            )
+                        }
+                    } else if (account.accountType == AccountType.INVESTMENT) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        if (account.unitsHeld > 0.0 && account.pricePerUnit > 0L) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "${account.unitsHeld} units @ ${Currency.formatMinor(account.pricePerUnit, state.userPreferences.currencyCode)}",
+                                    fontFamily = SpaceGroteskFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = Cobalt
+                                )
+                                if (account.previousPricePerUnit > 0L) {
+                                    val delta = account.pricePerUnit - account.previousPricePerUnit
+                                    val isPos = delta >= 0
+                                    val sign = if (isPos) "+" else ""
+                                    val pct = ((delta.toDouble() / account.previousPricePerUnit.toDouble()) * 100.0).roundToInt()
+                                    Text(
+                                        text = "$sign$pct%",
+                                        fontFamily = SpaceGroteskFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = if (isPos) Emerald else Persimmon
+                                    )
+                                }
+                            }
+                        }
+                        if (account.priceUpdatedAt > 0L) {
+                            val diffDays = ((System.currentTimeMillis() - account.priceUpdatedAt) / (24 * 60 * 60 * 1000L)).toInt()
+                            val updatedStr = if (diffDays <= 0) strings.priceUpdatedToday else String.format(strings.priceUpdatedDaysAgoFormat, diffDays)
+                            Text(
+                                text = updatedStr,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontSize = 11.sp,
+                                color = Slate400
+                            )
+                        }
+                    }
                 }
             }
         }

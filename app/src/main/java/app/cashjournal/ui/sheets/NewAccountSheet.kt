@@ -3,6 +3,7 @@ package app.cashjournal.ui.sheets
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,10 +14,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -37,16 +40,18 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cashjournal.domain.model.AccentKey
+import app.cashjournal.domain.model.AccountColor
+import app.cashjournal.domain.model.AccountType
+import app.cashjournal.domain.model.BrandProfile
+import app.cashjournal.domain.model.BrandRegistry
 import app.cashjournal.domain.model.Currency
-import app.cashjournal.ui.components.GlassCard
+import app.cashjournal.ui.components.CustomHexColorDialog
 import app.cashjournal.ui.components.SubtleGlassCard
 import app.cashjournal.ui.components.ThousandsSeparatorVisualTransformation
-import java.text.DecimalFormatSymbols
-import java.util.Locale
 import app.cashjournal.ui.i18n.AppStrings
-import app.cashjournal.ui.theme.CashColors
 import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Cobalt
+import app.cashjournal.ui.theme.Emerald
 import app.cashjournal.ui.theme.PlusJakartaSansFamily
 import app.cashjournal.ui.theme.Slate100
 import app.cashjournal.ui.theme.Slate200
@@ -58,19 +63,25 @@ import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Check
 import com.adamglin.phosphoricons.regular.X
-
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
-import app.cashjournal.domain.model.AccountColor
-import app.cashjournal.domain.model.AccountType
-import app.cashjournal.domain.model.BrandProfile
-import app.cashjournal.domain.model.BrandRegistry
-import app.cashjournal.ui.components.CustomHexColorDialog
+import java.text.DecimalFormatSymbols
+import java.util.Locale
 
 @Composable
 fun NewAccountSheet(
     currencyCode: String,
-    onCreateAccount: (name: String, startingBalance: Long, accentKey: AccentKey, accountType: AccountType) -> Unit,
+    onCreateAccount: (
+        name: String,
+        startingBalance: Long,
+        accentKey: AccentKey,
+        accountType: AccountType,
+        creditLimit: Long,
+        statementDueDay: Int,
+        statementPaymentMode: String,
+        targetPaymentAmount: Long,
+        investmentType: String?,
+        unitsHeld: Double,
+        pricePerUnit: Long
+    ) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     languageCode: String = "en"
@@ -81,18 +92,40 @@ fun NewAccountSheet(
     var userModifiedAccent by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
     var rawBalance by remember { mutableStateOf("") }
-    var selectedAccent by remember { mutableStateOf(AccentKey.COBALT) }
+    var selectedAccent by remember { mutableStateOf(AccountColor.COBALT) }
     var detectedBrand by remember { mutableStateOf<BrandProfile?>(null) }
     var showCustomHexDialog by remember { mutableStateOf(false) }
 
+    // Phase 34: Credit Card state
+    var rawCreditLimit by remember { mutableStateOf("") }
+    var rawDueDay by remember { mutableStateOf("") }
+    var statementPaymentMode by remember { mutableStateOf("TARGET") }
+    var rawTargetPayment by remember { mutableStateOf("") }
+
+    // Phase 34: Investment state
+    var selectedInvestmentType by remember { mutableStateOf("GOLD") }
+    var rawUnitsHeld by remember { mutableStateOf("") }
+    var rawPricePerUnit by remember { mutableStateOf("") }
+
     val currency = Currency.findByCode(currencyCode)
+    val groupingSeparator = remember(currency.code, languageCode) {
+        val loc = if (currency.code.equals("IDR", ignoreCase = true) || languageCode.equals("in", ignoreCase = true)) {
+            Locale("id", "ID")
+        } else {
+            Locale.US
+        }
+        DecimalFormatSymbols(loc).groupingSeparator
+    }
+
+    val scrollState = rememberScrollState()
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
             .background(Color.White)
-            .padding(20.dp),
+            .padding(20.dp)
+            .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Header Row with Title and X
@@ -138,13 +171,13 @@ fun NewAccountSheet(
             ) {
                 AccountType.entries.forEach { type ->
                     val isSelected = type == selectedType
-                    val chipBg = if (isSelected) Cobalt else Slate100
-                    val contentColor = if (isSelected) Color.White else Charcoal
+                    val bg = if (isSelected) Cobalt else Slate100
+                    val fg = if (isSelected) Color.White else Slate600
 
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(chipBg)
+                            .background(bg)
                             .clickable {
                                 userModifiedType = true
                                 selectedType = type
@@ -156,22 +189,22 @@ fun NewAccountSheet(
                         Icon(
                             imageVector = type.icon,
                             contentDescription = type.localizedTitle(languageCode),
-                            tint = contentColor,
-                            modifier = Modifier.size(15.dp)
+                            tint = fg,
+                            modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = type.localizedTitle(languageCode),
                             fontFamily = PlusJakartaSansFamily,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
-                            color = contentColor
+                            color = fg
                         )
                     }
                 }
             }
         }
 
-        // Account Name Input
+        // Account Name Input + Brand Auto-Match
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
                 text = strings.accountNameLabel,
@@ -189,14 +222,14 @@ fun NewAccountSheet(
                         onValueChange = { input ->
                             if (input.length <= 28) {
                                 name = input
-                                val matched = BrandRegistry.matchBrand(input)
-                                detectedBrand = matched
-                                if (matched != null) {
-                                    if (!userModifiedAccent) {
-                                        selectedAccent = matched.accountColor
-                                    }
+                                val brand = BrandRegistry.matchBrand(input)
+                                detectedBrand = brand
+                                if (brand != null) {
                                     if (!userModifiedType) {
-                                        selectedType = matched.defaultAccountType
+                                        selectedType = brand.defaultAccountType
+                                    }
+                                    if (!userModifiedAccent) {
+                                        selectedAccent = brand.accountColor
                                     }
                                 }
                             }
@@ -250,58 +283,553 @@ fun NewAccountSheet(
             }
         }
 
-        val groupingSeparator = remember(currency.code, languageCode) {
-            val loc = if (currency.code.equals("IDR", ignoreCase = true) || languageCode.equals("in", ignoreCase = true)) {
-                Locale("id", "ID")
-            } else {
-                Locale.US
-            }
-            DecimalFormatSymbols(loc).groupingSeparator
-        }
+        // Context-aware inputs based on selectedType
+        when (selectedType) {
+            AccountType.CREDIT_CARD -> {
+                // Credit Limit Input
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "${strings.creditLimitLabel} (${currency.symbol})",
+                        fontFamily = SpaceGroteskFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.8.sp,
+                        color = Slate500
+                    )
+                    SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                        Box(modifier = Modifier.padding(14.dp)) {
+                            BasicTextField(
+                                value = rawCreditLimit,
+                                onValueChange = { digits ->
+                                    val cleaned = digits.filter { it.isDigit() }
+                                    if (cleaned.length <= 15) rawCreditLimit = cleaned
+                                },
+                                visualTransformation = ThousandsSeparatorVisualTransformation(groupingSeparator),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    fontFamily = SpaceGroteskFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = Charcoal
+                                ),
+                                cursorBrush = SolidColor(Cobalt),
+                                decorationBox = { innerTextField ->
+                                    if (rawCreditLimit.isEmpty()) {
+                                        Text(
+                                            text = if (groupingSeparator == '.') "10.000.000" else "10,000,000",
+                                            fontFamily = SpaceGroteskFamily,
+                                            fontSize = 16.sp,
+                                            color = Slate400
+                                        )
+                                    }
+                                    innerTextField()
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
 
-        // Starting Balance Input
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                text = "${strings.startingBalanceLabel} (${currency.symbol})",
-                fontFamily = SpaceGroteskFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.sp,
-                letterSpacing = 0.8.sp,
-                color = Slate500
-            )
+                // Current Debt / Starting Balance Input
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "${strings.startingBalanceLabel} (${currency.symbol}) - 0 if paid off",
+                        fontFamily = SpaceGroteskFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.8.sp,
+                        color = Slate500
+                    )
+                    SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                        Box(modifier = Modifier.padding(14.dp)) {
+                            BasicTextField(
+                                value = rawBalance,
+                                onValueChange = { digits ->
+                                    val cleaned = digits.filter { it.isDigit() }
+                                    if (cleaned.length <= 15) rawBalance = cleaned
+                                },
+                                visualTransformation = ThousandsSeparatorVisualTransformation(groupingSeparator),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    fontFamily = SpaceGroteskFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = Charcoal
+                                ),
+                                cursorBrush = SolidColor(Cobalt),
+                                decorationBox = { innerTextField ->
+                                    if (rawBalance.isEmpty()) {
+                                        Text(
+                                            text = "0",
+                                            fontFamily = SpaceGroteskFamily,
+                                            fontSize = 16.sp,
+                                            color = Slate400
+                                        )
+                                    }
+                                    innerTextField()
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
 
-            SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
-                Box(modifier = Modifier.padding(14.dp)) {
-                    BasicTextField(
-                        value = rawBalance,
-                        onValueChange = { digits ->
-                            val cleaned = digits.filter { it.isDigit() }
-                            if (cleaned.length <= 15) {
-                                rawBalance = cleaned
-                            }
-                        },
-                        visualTransformation = ThousandsSeparatorVisualTransformation(groupingSeparator),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        textStyle = androidx.compose.ui.text.TextStyle(
+                // Available Credit Preview
+                val limitVal = rawCreditLimit.toLongOrNull() ?: 0L
+                val debtVal = rawBalance.toLongOrNull() ?: 0L
+                val availCredit = (limitVal - debtVal).coerceAtLeast(0L)
+                if (limitVal > 0L) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Emerald.copy(alpha = 0.08f))
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = strings.availableCreditLabel,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp,
+                            color = Slate600
+                        )
+                        Text(
+                            text = Currency.formatMinor(availCredit, currency.code),
                             fontFamily = SpaceGroteskFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            color = Charcoal
-                        ),
-                        cursorBrush = SolidColor(Cobalt),
-                        decorationBox = { innerTextField ->
-                            if (rawBalance.isEmpty()) {
-                                Text(
-                                    text = if (groupingSeparator == '.') "1.000.000" else "1,000,000",
-                                    fontFamily = SpaceGroteskFamily,
-                                    fontSize = 16.sp,
-                                    color = Slate400
+                            fontSize = 13.sp,
+                            color = Emerald
+                        )
+                    }
+                }
+
+                // Statement Due Day & Payment Mode Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.weight(0.4f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = strings.dueDayLabel,
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            letterSpacing = 0.8.sp,
+                            color = Slate500
+                        )
+                        SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Box(modifier = Modifier.padding(14.dp)) {
+                                BasicTextField(
+                                    value = rawDueDay,
+                                    onValueChange = { input ->
+                                        val filtered = input.filter { it.isDigit() }.take(2)
+                                        rawDueDay = filtered
+                                    },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    textStyle = androidx.compose.ui.text.TextStyle(
+                                        fontFamily = SpaceGroteskFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        color = Charcoal
+                                    ),
+                                    cursorBrush = SolidColor(Cobalt),
+                                    decorationBox = { inner ->
+                                        if (rawDueDay.isEmpty()) {
+                                            Text("20", fontFamily = SpaceGroteskFamily, color = Slate400, fontSize = 15.sp)
+                                        }
+                                        inner()
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             }
-                            innerTextField()
-                        },
-                        modifier = Modifier.fillMaxWidth()
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier.weight(0.6f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = strings.paymentModeLabel,
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            letterSpacing = 0.8.sp,
+                            color = Slate500
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            val isTarget = statementPaymentMode == "TARGET"
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isTarget) Cobalt else Slate100)
+                                    .clickable { statementPaymentMode = "TARGET" }
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = strings.paymentModeTarget,
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = if (isTarget) Color.White else Slate600
+                                )
+                            }
+
+                            val isFull = statementPaymentMode == "FULL"
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isFull) Cobalt else Slate100)
+                                    .clickable { statementPaymentMode = "FULL" }
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = strings.paymentModeFull,
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = if (isFull) Color.White else Slate600
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (statementPaymentMode == "TARGET") {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "${strings.targetPaymentAmountLabel} (${currency.symbol})",
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            letterSpacing = 0.8.sp,
+                            color = Slate500
+                        )
+                        SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Box(modifier = Modifier.padding(14.dp)) {
+                                BasicTextField(
+                                    value = rawTargetPayment,
+                                    onValueChange = { digits ->
+                                        val cleaned = digits.filter { it.isDigit() }
+                                        if (cleaned.length <= 15) rawTargetPayment = cleaned
+                                    },
+                                    visualTransformation = ThousandsSeparatorVisualTransformation(groupingSeparator),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    textStyle = androidx.compose.ui.text.TextStyle(
+                                        fontFamily = SpaceGroteskFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        color = Charcoal
+                                    ),
+                                    cursorBrush = SolidColor(Cobalt),
+                                    decorationBox = { innerTextField ->
+                                        if (rawTargetPayment.isEmpty()) {
+                                            Text(
+                                                text = if (groupingSeparator == '.') "2.000.000" else "2,000,000",
+                                                fontFamily = SpaceGroteskFamily,
+                                                fontSize = 15.sp,
+                                                color = Slate400
+                                            )
+                                        }
+                                        innerTextField()
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            AccountType.INVESTMENT -> {
+                // Investment Asset Type Chips
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = strings.investmentTypeLabel,
+                        fontFamily = SpaceGroteskFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.8.sp,
+                        color = Slate500
                     )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        val types = listOf(
+                            "GOLD" to "Gold",
+                            "MUTUAL_FUNDS" to "Reksadana",
+                            "STOCKS" to "Stocks",
+                            "OTHER" to "Other"
+                        )
+                        types.forEach { (key, label) ->
+                            val isSel = selectedInvestmentType == key
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isSel) Cobalt else Slate100)
+                                    .clickable { selectedInvestmentType = key }
+                                    .padding(vertical = 10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = if (isSel) Color.White else Slate600
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Units Held & Price Per Unit Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.weight(0.45f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = strings.unitsHeldLabel,
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            letterSpacing = 0.8.sp,
+                            color = Slate500
+                        )
+                        SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Box(modifier = Modifier.padding(14.dp)) {
+                                BasicTextField(
+                                    value = rawUnitsHeld,
+                                    onValueChange = { input ->
+                                        if (input.count { it == '.' } <= 1 && input.all { it.isDigit() || it == '.' }) {
+                                            rawUnitsHeld = input.take(10)
+                                        }
+                                    },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    textStyle = androidx.compose.ui.text.TextStyle(
+                                        fontFamily = SpaceGroteskFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        color = Charcoal
+                                    ),
+                                    cursorBrush = SolidColor(Cobalt),
+                                    decorationBox = { inner ->
+                                        if (rawUnitsHeld.isEmpty()) {
+                                            Text("10.5", fontFamily = SpaceGroteskFamily, color = Slate400, fontSize = 15.sp)
+                                        }
+                                        inner()
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier.weight(0.55f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "${strings.pricePerUnitLabel} (${currency.symbol})",
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            letterSpacing = 0.8.sp,
+                            color = Slate500
+                        )
+                        SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Box(modifier = Modifier.padding(14.dp)) {
+                                BasicTextField(
+                                    value = rawPricePerUnit,
+                                    onValueChange = { digits ->
+                                        val cleaned = digits.filter { it.isDigit() }
+                                        if (cleaned.length <= 15) rawPricePerUnit = cleaned
+                                    },
+                                    visualTransformation = ThousandsSeparatorVisualTransformation(groupingSeparator),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    textStyle = androidx.compose.ui.text.TextStyle(
+                                        fontFamily = SpaceGroteskFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        color = Charcoal
+                                    ),
+                                    cursorBrush = SolidColor(Cobalt),
+                                    decorationBox = { inner ->
+                                        if (rawPricePerUnit.isEmpty()) {
+                                            Text(
+                                                text = if (groupingSeparator == '.') "1.450.000" else "1,450,000",
+                                                fontFamily = SpaceGroteskFamily,
+                                                color = Slate400,
+                                                fontSize = 15.sp
+                                            )
+                                        }
+                                        inner()
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Valuation Preview or Direct Nominal
+                val u = rawUnitsHeld.toDoubleOrNull() ?: 0.0
+                val p = rawPricePerUnit.toLongOrNull() ?: 0L
+                val calculatedValuation = if (u > 0.0 && p > 0L) (u * p).toLong() else 0L
+
+                if (calculatedValuation > 0L) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Emerald.copy(alpha = 0.08f))
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Valuation ($u × ${Currency.formatMinor(p, currency.code)})",
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp,
+                            color = Slate600
+                        )
+                        Text(
+                            text = Currency.formatMinor(calculatedValuation, currency.code),
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = Emerald
+                        )
+                    }
+                } else {
+                    // Manual Nominal Valuation input if not unit-based
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "${strings.startingBalanceLabel} (${currency.symbol})",
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            letterSpacing = 0.8.sp,
+                            color = Slate500
+                        )
+                        SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Box(modifier = Modifier.padding(14.dp)) {
+                                BasicTextField(
+                                    value = rawBalance,
+                                    onValueChange = { digits ->
+                                        val cleaned = digits.filter { it.isDigit() }
+                                        if (cleaned.length <= 15) rawBalance = cleaned
+                                    },
+                                    visualTransformation = ThousandsSeparatorVisualTransformation(groupingSeparator),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    textStyle = androidx.compose.ui.text.TextStyle(
+                                        fontFamily = SpaceGroteskFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        color = Charcoal
+                                    ),
+                                    cursorBrush = SolidColor(Cobalt),
+                                    decorationBox = { innerTextField ->
+                                        if (rawBalance.isEmpty()) {
+                                            Text(
+                                                text = "0",
+                                                fontFamily = SpaceGroteskFamily,
+                                                fontSize = 16.sp,
+                                                color = Slate400
+                                            )
+                                        }
+                                        innerTextField()
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Spec 10.3 Disclaimer note
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Slate100)
+                        .padding(10.dp)
+                ) {
+                    Text(
+                        text = strings.investmentDisclaimer,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontSize = 11.sp,
+                        color = Slate500,
+                        lineHeight = 15.sp
+                    )
+                }
+            }
+
+            else -> {
+                // Standard Starting Balance Input
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "${strings.startingBalanceLabel} (${currency.symbol})",
+                        fontFamily = SpaceGroteskFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.8.sp,
+                        color = Slate500
+                    )
+
+                    SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                        Box(modifier = Modifier.padding(14.dp)) {
+                            BasicTextField(
+                                value = rawBalance,
+                                onValueChange = { digits ->
+                                    val cleaned = digits.filter { it.isDigit() }
+                                    if (cleaned.length <= 15) {
+                                        rawBalance = cleaned
+                                    }
+                                },
+                                visualTransformation = ThousandsSeparatorVisualTransformation(groupingSeparator),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    fontFamily = SpaceGroteskFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = Charcoal
+                                ),
+                                cursorBrush = SolidColor(Cobalt),
+                                decorationBox = { innerTextField ->
+                                    if (rawBalance.isEmpty()) {
+                                        Text(
+                                            text = if (groupingSeparator == '.') "1.000.000" else "1,000,000",
+                                            fontFamily = SpaceGroteskFamily,
+                                            fontSize = 16.sp,
+                                            color = Slate400
+                                        )
+                                    }
+                                    innerTextField()
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -406,7 +934,25 @@ fun NewAccountSheet(
         Button(
             onClick = {
                 val balance = rawBalance.toLongOrNull() ?: 0L
-                onCreateAccount(name, balance, selectedAccent, selectedType)
+                val creditLimit = rawCreditLimit.toLongOrNull() ?: 0L
+                val dueDay = rawDueDay.toIntOrNull() ?: 0
+                val targetPayment = rawTargetPayment.toLongOrNull() ?: 0L
+                val units = rawUnitsHeld.toDoubleOrNull() ?: 0.0
+                val price = rawPricePerUnit.toLongOrNull() ?: 0L
+
+                onCreateAccount(
+                    name,
+                    balance,
+                    AccentKey.fromKey(selectedAccent.key),
+                    selectedType,
+                    creditLimit,
+                    dueDay,
+                    statementPaymentMode,
+                    targetPayment,
+                    if (selectedType == AccountType.INVESTMENT) selectedInvestmentType else null,
+                    units,
+                    price
+                )
             },
             colors = ButtonDefaults.buttonColors(containerColor = Cobalt),
             shape = RoundedCornerShape(16.dp),

@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Bank
+import com.adamglin.phosphoricons.regular.ChartLineUp
 import com.adamglin.phosphoricons.regular.CreditCard
 import com.adamglin.phosphoricons.regular.DeviceMobile
 import com.adamglin.phosphoricons.regular.Vault
@@ -40,10 +41,16 @@ enum class AccountType(
         placeholderIn = "cth. Kartu Kredit BCA, Mandiri Visa"
     ),
     SAVINGS(
-        titleEn = "Savings / Invest",
-        titleIn = "Tabungan / Investasi",
-        placeholderEn = "e.g. Emergency Fund, Bibit",
-        placeholderIn = "cth. Dana Darurat, Tabungan Emas"
+        titleEn = "Savings / Emergency",
+        titleIn = "Tabungan / Dana Darurat",
+        placeholderEn = "e.g. Emergency Fund, High-Yield Vault",
+        placeholderIn = "cth. Dana Darurat, Kantong Tabungan"
+    ),
+    INVESTMENT(
+        titleEn = "Investment Holdings",
+        titleIn = "Investasi / Portofolio",
+        placeholderEn = "e.g. Gold Antam, Bibit Reksadana",
+        placeholderIn = "cth. Emas Antam, Bibit Reksadana"
     );
 
     val icon: ImageVector
@@ -53,6 +60,7 @@ enum class AccountType(
             E_WALLET -> PhosphorIcons.Regular.DeviceMobile
             CREDIT_CARD -> PhosphorIcons.Regular.CreditCard
             SAVINGS -> PhosphorIcons.Regular.Vault
+            INVESTMENT -> PhosphorIcons.Regular.ChartLineUp
         }
 
     fun localizedTitle(languageCode: String): String =

@@ -48,10 +48,10 @@ import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
-import com.adamglin.phosphoricons.regular.ArrowCounterClockwise
-import com.adamglin.phosphoricons.regular.ArrowsLeftRight
+import com.adamglin.phosphoricons.regular.ChartLineUp
+import com.adamglin.phosphoricons.regular.CreditCard
 import com.adamglin.phosphoricons.regular.ShieldCheck
-import com.adamglin.phosphoricons.regular.WarningCircle
+import com.adamglin.phosphoricons.regular.Vault
 import com.adamglin.phosphoricons.regular.X
 
 data class ReleaseHighlight(
@@ -78,35 +78,35 @@ fun ReleaseNotesSheet(
 
     val highlights = listOf(
         ReleaseHighlight(
-            titleEn = "Transfer Fees & Zero-Drift Math",
-            titleIn = "Biaya Transfer & Hitungan Presisi",
-            descEn = "Log transfer fees with presets (Rp 1.000, Rp 2.500, Rp 6.500) and toggle between deducted or added fee with a live 3-way balance breakdown.",
-            descIn = "Catat biaya transfer dengan preset instan dan pilih pemotongan atau penambahan nominal biaya lewat perincian 3 arah yang presisi.",
-            icon = PhosphorIcons.Regular.ArrowsLeftRight,
+            titleEn = "Credit Limits & Available Credit",
+            titleIn = "Batas Kredit & Sisa Limit Tersedia",
+            descEn = "Track card limits and live available credit dynamically. Stored debt is safely accounted for without inflating your spendable liquid funds.",
+            descIn = "Pantau batas kredit dan sisa limit kartu secara dinamis. Hutang kartu tercatat akurat tanpa menggelembungkan dana cair siap pakai.",
+            icon = PhosphorIcons.Regular.CreditCard,
             iconTint = Cobalt
         ),
         ReleaseHighlight(
-            titleEn = "Direct Refund Accounting",
-            titleIn = "Pencatatan Pengembalian Dana",
-            descEn = "Reclaim money directly into accounts with dedicated Refund transaction logging, automatically offsetting category expenses and burn rates.",
-            descIn = "Kembalikan dana langsung ke akun dengan tipe transaksi Pengembalian Dana, otomatis mengurangi pengeluaran kategori dan laju belanja.",
-            icon = PhosphorIcons.Regular.ArrowCounterClockwise,
+            titleEn = "Statement Payment Modes & Safeguards",
+            titleIn = "Mode Pembayaran Tagihan & Proteksi Dobel",
+            descEn = "Choose between Target Nominal and Full Balance for credit cards. Automated reserves intelligently step aside if an active recurring bill already pays the card.",
+            descIn = "Pilih antara Target Nominal atau Lunas Penuh. Cadangan dana otomatis akan menyesuaikan diri jika tagihan berulang sudah dijadwalkan.",
+            icon = PhosphorIcons.Regular.ShieldCheck,
             iconTint = Emerald
         ),
         ReleaseHighlight(
-            titleEn = "Pre-Commit Balance Protection",
-            titleIn = "Peringatan Saldo Menipis Pra-Komit",
-            descEn = "Live warning banner alerts you before committing expenses or transfers that would cause an account balance to drop below zero.",
-            descIn = "Peringatan visual langsung memberi tahu Anda sebelum menyimpan pengeluaran atau transfer yang akan membuat saldo akun menjadi minus.",
-            icon = PhosphorIcons.Regular.WarningCircle,
+            titleEn = "Manual Investment Holdings",
+            titleIn = "Portofolio Aset & Investasi Manual",
+            descEn = "Track Gold, Mutual Funds, Stocks, or custom holdings with unit-based tracking and price change history. Zero remote scrapers, 100% offline.",
+            descIn = "Catat Emas, Reksadana, Saham, atau portofolio lainnya dengan perhitungan unit dan riwayat perubahan harga. 100% offline tanpa scraper eksternal.",
+            icon = PhosphorIcons.Regular.ChartLineUp,
             iconTint = Persimmon
         ),
         ReleaseHighlight(
-            titleEn = "30-Day Offline Backup Health",
-            titleIn = "Pengingat Cadangan Offline 30 Hari",
-            descEn = "Proactive dashboard reminder card ensures your offline encrypted ledger stays backed up regularly with one-tap export.",
-            descIn = "Kartu pengingat berkala di beranda memastikan jurnal keuangan offline Anda selalu dicadangkan secara rutin dengan satu ketukan.",
-            icon = PhosphorIcons.Regular.ShieldCheck,
+            titleEn = "Liquid Funds vs Net Worth Integrity",
+            titleIn = "Integritas Dana Cair vs Total Kekayaan",
+            descEn = "Spendable liquid funds strictly excludes illiquid investments and card liabilities, keeping Safe-to-Spend and runway metrics authentic.",
+            descIn = "Dana cair siap pakai dipisahkan dari aset investasi dan kewajiban kartu kredit, menjaga perhitungan Aman Dibelanjakan tetap murni dan aman.",
+            icon = PhosphorIcons.Regular.Vault,
             iconTint = Cobalt
         )
     )

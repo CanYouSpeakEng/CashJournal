@@ -470,8 +470,20 @@ fun MainAppScaffold(
 
                     ActiveSheet.NEW_ACCOUNT -> NewAccountSheet(
                         currencyCode = state.userPreferences.currencyCode,
-                        onCreateAccount = { name, bal, accent, type ->
-                            viewModel.createAccount(name, bal, accent, type)
+                        onCreateAccount = { name, bal, accent, type, limit, dueDay, mode, targetPay, invType, units, price ->
+                            viewModel.createAccount(
+                                name = name,
+                                startingBalance = bal,
+                                accentKey = accent,
+                                accountType = type,
+                                creditLimit = limit,
+                                statementDueDay = dueDay,
+                                statementPaymentMode = mode,
+                                targetPaymentAmount = targetPay,
+                                investmentType = invType,
+                                unitsHeld = units,
+                                pricePerUnit = price
+                            )
                         },
                         onDismiss = { viewModel.dismissSheet() },
                         languageCode = state.userPreferences.language
@@ -481,8 +493,22 @@ fun MainAppScaffold(
                         state.selectedEditAccount?.let { acc ->
                             EditAccountSheet(
                                 account = acc,
-                                onSave = { name, accountType, accentKey, actualBalance, reconcileNote ->
-                                    viewModel.updateAccountDetails(acc.id, name, accountType, accentKey, actualBalance, reconcileNote)
+                                onSave = { name, accountType, accentKey, actualBalance, reconcileNote, limit, dueDay, mode, targetPay, invType, units, price ->
+                                    viewModel.updateAccountDetails(
+                                        accountId = acc.id,
+                                        name = name,
+                                        accountType = accountType,
+                                        accentKey = accentKey,
+                                        actualBalance = actualBalance,
+                                        reconcileNote = reconcileNote,
+                                        creditLimit = limit,
+                                        statementDueDay = dueDay,
+                                        statementPaymentMode = mode,
+                                        targetPaymentAmount = targetPay,
+                                        investmentType = invType,
+                                        unitsHeld = units,
+                                        pricePerUnit = price
+                                    )
                                 },
                                 onDelete = {
                                     viewModel.deleteAccount(acc.id)

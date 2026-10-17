@@ -332,9 +332,17 @@ fun DashboardScreen(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        if (safe.committedBills > 0) {
+                        val commitmentsText = buildList {
+                            if (safe.committedBills > 0) {
+                                add(String.format(strings.committedBillsSubline, Currency.formatMinor(safe.committedBills, state.userPreferences.currencyCode)))
+                            }
+                            if (safe.cardReserves > 0) {
+                                add(String.format(strings.cardReservesSubline, Currency.formatMinor(safe.cardReserves, state.userPreferences.currencyCode)))
+                            }
+                        }.joinToString(" · ")
+                        if (commitmentsText.isNotEmpty()) {
                             Text(
-                                text = "· " + String.format(strings.committedBillsSubline, Currency.formatMinor(safe.committedBills, state.userPreferences.currencyCode)),
+                                text = "· $commitmentsText",
                                 fontFamily = PlusJakartaSansFamily,
                                 fontSize = if (isCompactScreen) 9.5.sp else 10.sp,
                                 color = Cobalt,

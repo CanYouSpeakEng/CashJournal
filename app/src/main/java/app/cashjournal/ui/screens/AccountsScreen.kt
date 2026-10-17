@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cashjournal.data.currency.CurrencyConverter
 import app.cashjournal.domain.model.Account
+import app.cashjournal.domain.model.AccountType
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.ui.MainUiState
 import app.cashjournal.ui.components.CountryFlag
@@ -604,6 +605,22 @@ fun AccountsScreen(
                                 textStyle = CashTypography.Mono12.copy(fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
                             )
 
+                            if (account.accountType == AccountType.CREDIT_CARD && account.creditLimit > 0L) {
+                                Text(
+                                    text = "${strings.availableCreditLabel}: ${Currency.formatMinor(account.availableCredit, state.userPreferences.currencyCode)} · ${strings.creditLimitLabel}: ${Currency.formatMinor(account.creditLimit, state.userPreferences.currencyCode)}",
+                                    fontFamily = SpaceGroteskFamily,
+                                    fontSize = 11.sp,
+                                    color = Slate500
+                                )
+                            } else if (account.accountType == AccountType.INVESTMENT && account.unitsHeld > 0.0 && account.pricePerUnit > 0L) {
+                                Text(
+                                    text = "${account.unitsHeld} units @ ${Currency.formatMinor(account.pricePerUnit, state.userPreferences.currencyCode)}",
+                                    fontFamily = SpaceGroteskFamily,
+                                    fontSize = 11.sp,
+                                    color = Cobalt
+                                )
+                            }
+
                             // Thin bar against largest balance
                             Box(
                                 modifier = Modifier
@@ -621,6 +638,26 @@ fun AccountsScreen(
                             }
                         }
                     }
+                }
+            }
+        }
+
+        if (state.accounts.any { it.accountType == AccountType.INVESTMENT }) {
+            item(key = "investment_disclaimer") {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Slate100)
+                        .padding(14.dp)
+                ) {
+                    Text(
+                        text = strings.investmentDisclaimer,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontSize = 11.sp,
+                        color = Slate500,
+                        lineHeight = 15.sp
+                    )
                 }
             }
         }

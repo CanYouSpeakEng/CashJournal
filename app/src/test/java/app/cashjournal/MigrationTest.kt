@@ -356,6 +356,72 @@ class MigrationTest {
         conn.close()
     }
 
+    @Test
+    fun testMIGRATION_6_7() {
+        val conn = DriverManager.getConnection("jdbc:sqlite::memory:")
+        val stmt = conn.createStatement()
+
+        // Create v6 accounts table
+        stmt.execute("""
+            CREATE TABLE accounts (
+                id TEXT PRIMARY KEY NOT NULL,
+                name TEXT NOT NULL,
+                accentKey TEXT NOT NULL,
+                accountType TEXT NOT NULL,
+                balance INTEGER NOT NULL,
+                initialBalance INTEGER NOT NULL,
+                sortIndex INTEGER NOT NULL,
+                updatedAt INTEGER NOT NULL
+            )
+        """.trimIndent())
+
+        stmt.execute("INSERT INTO accounts VALUES ('acc-cc', 'BCA Visa', 'COBALT', 'CREDIT_CARD', -1500000, 0, 0, 1000)")
+
+        // Apply MIGRATION_6_7
+        stmt.execute("ALTER TABLE accounts ADD COLUMN creditLimit INTEGER NOT NULL DEFAULT 0")
+        stmt.execute("ALTER TABLE accounts ADD COLUMN statementDueDay INTEGER NOT NULL DEFAULT 0")
+        stmt.execute("ALTER TABLE accounts ADD COLUMN statementPaymentMode TEXT NOT NULL DEFAULT 'TARGET'")
+        stmt.execute("ALTER TABLE accounts ADD COLUMN targetPaymentAmount INTEGER NOT NULL DEFAULT 0")
+        stmt.execute("ALTER TABLE accounts ADD COLUMN investmentType TEXT DEFAULT NULL")
+        stmt.execute("ALTER TABLE accounts ADD COLUMN unitsHeld REAL NOT NULL DEFAULT 0.0")
+        stmt.execute("ALTER TABLE accounts ADD COLUMN pricePerUnit INTEGER NOT NULL DEFAULT 0")
+        stmt.execute("ALTER TABLE accounts ADD COLUMN previousPricePerUnit INTEGER NOT NULL DEFAULT 0")
+        stmt.execute("ALTER TABLE accounts ADD COLUMN priceUpdatedAt INTEGER NOT NULL DEFAULT 0")
+
+        // Check defaults on existing row
+        val rs = stmt.executeQuery("SELECT * FROM accounts WHERE id = 'acc-cc'")
+        assertTrue(rs.next())
+        assertEquals(-1500000L, rs.getLong("balance"))
+        assertEquals(0L, rs.getLong("creditLimit"))
+        assertEquals(0, rs.getInt("statementDueDay"))
+        assertEquals("TARGET", rs.getString("statementPaymentMode"))
+        assertEquals(0L, rs.getLong("targetPaymentAmount"))
+        assertEquals(null, rs.getString("investmentType"))
+        assertEquals(0.0, rs.getDouble("unitsHeld"), 0.001)
+        assertEquals(0L, rs.getLong("pricePerUnit"))
+        assertEquals(0L, rs.getLong("previousPricePerUnit"))
+        assertEquals(0L, rs.getLong("priceUpdatedAt"))
+
+        // Update with full credit card values
+        stmt.execute("UPDATE accounts SET creditLimit = 10000000, statementDueDay = 25, statementPaymentMode = 'FULL' WHERE id = 'acc-cc'")
+        val rs2 = stmt.executeQuery("SELECT creditLimit, statementDueDay, statementPaymentMode FROM accounts WHERE id = 'acc-cc'")
+        assertTrue(rs2.next())
+        assertEquals(10000000L, rs2.getLong("creditLimit"))
+        assertEquals(25, rs2.getInt("statementDueDay"))
+        assertEquals("FULL", rs2.getString("statementPaymentMode"))
+
+        // Insert investment account
+        stmt.execute("INSERT INTO accounts VALUES ('acc-gold', 'Emas Antam', 'GOLD', 'INVESTMENT', 14500000, 0, 1, 1000, 0, 0, 'TARGET', 0, 'GOLD', 10.0, 1450000, 1400000, 2000)")
+        val rs3 = stmt.executeQuery("SELECT unitsHeld, pricePerUnit, previousPricePerUnit, investmentType FROM accounts WHERE id = 'acc-gold'")
+        assertTrue(rs3.next())
+        assertEquals(10.0, rs3.getDouble("unitsHeld"), 0.001)
+        assertEquals(1450000L, rs3.getLong("pricePerUnit"))
+        assertEquals(1400000L, rs3.getLong("previousPricePerUnit"))
+        assertEquals("GOLD", rs3.getString("investmentType"))
+
+        conn.close()
+    }
+
 
     private fun getTableInfoFor(conn: java.sql.Connection, table: String): Map<String, String> {
         val map = mutableMapOf<String, String>()

@@ -588,16 +588,44 @@ Based on the comprehensive audit (Rev 3.0) and external review notes ([`docs/cas
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.39-dev
   - Artifacts: `app-debug.apk` (16.9 MB), `app-release.apk` (7.47 MB).
 
+### [x] **Phase 34: Core Money Rules Part 2 — Credit Card Reserves & Manual Investments (COMPLETED)**
+- [x] **Item 144 (Credit Card Statement Commitments & Safeguards — Room Schema v7)**:
+  - Added 9 new fields to `AccountEntity` and `Account` domain model: `creditLimit`, `statementDueDay`, `statementPaymentMode`, `targetPaymentAmount`, `investmentType`, `unitsHeld`, `pricePerUnit`, `previousPricePerUnit`, `priceUpdatedAt`.
+  - Implemented Room `MIGRATION_6_7` and bumped database version to 7 in `AppDatabase.kt`.
+  - Added full backup/restore DTO support in `BackupManager.kt` (`AccountBackupDto`).
+  - Implemented `availableCredit = max(0, creditLimit + balance)` on credit card accounts.
+  - Implemented credit card statement reserve computation in `SafeToSpendCalculator.kt`:
+    - Mode `TARGET`: reserves $\min(\text{targetPaymentAmount}, |\text{balance}|)$.
+    - Mode `FULL`: reserves full statement balance $|\text{balance}|$.
+    - Double-counting safeguard: automated reserve drops to `0L` when an active recurring bill exists with `destinationAccountId == card.id`.
+    - Integrated `cardReserves` into `SafeToSpendState`, remaining daily spend, display percentage, and dashboard card subtitle.
+- [x] **Item 145 (Manual Investment Holdings & Liquid Net Worth Integrity)**:
+  - Added `AccountType.INVESTMENT` with `ChartLineUp` icon and valuation tracking.
+  - Spendable liquid funds strictly excludes illiquid investments and credit card debt, preventing artificial inflation of daily spend and runway metrics.
+  - Total net worth accounts for investment holdings ($\text{unitsHeld} \times \text{pricePerUnit}$) and liabilities.
+  - Added investment valuation breakdown and price update age in `AccountDetailScreen.kt` and `AccountsScreen.kt`.
+  - Added bottom disclaimer card on `AccountsScreen.kt` indicating offline valuation.
+  - Inputs for credit limits, payment modes, target amounts, units held, and unit prices integrated with live preview in `NewAccountSheet.kt` and `EditAccountSheet.kt`.
+- [x] **Item 146 (Verification & Release Deployment)**:
+  - Unit tests verified in `MigrationTest.kt` (`testMIGRATION_6_7`) and `SafeToSpendTest.kt` (`testCreditCardAvailableCredit`, `testCreditCardStatementReservationAndRecurringDoubleCountingSafeguard`, `testLiquidFundsCalculationExcludesInvestmentsAndCreditCards`).
+  - `./gradlew testDebugUnitTest` and `./gradlew assembleRelease` passed with 100% success.
+  - Verified live on Android emulator with screenshot artifacts covering credit card inputs, payment modes, and accounts.
+  - Updated `ReleaseNotesSheet.kt` with bilingual highlights for `v1.0.40-dev`.
+  - Bumped `versionName` to `1.0.40-dev` in `app/build.gradle.kts`.
+
+- [x] **Release v1.0.40-dev (Phase 34: Core Money Rules Part 2 — Credit Card Reserves & Manual Investments)**:
+  - Tag: `v1.0.40-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.40-dev
+  - Artifacts: `app-debug.apk` (16.9 MB), `app-release.apk` (7.47 MB).
+
 ---
 
-### [ ] **Upcoming Phases Status: Core Money Rules, Forecast & Simulation Studio (Phases 34–38)**
+### [ ] **Upcoming Phases Status: Core Money Rules, Forecast & Simulation Studio (Phases 35–38)**
 - **Design & Formula Source of Truth**: [`docs/cashjournal_projection_simulation_spec.md`](file:///c:/Users/Yahya/Projects/CashJournal/docs/cashjournal_projection_simulation_spec.md) (Sections 10–12).
-- **Execution Task List**: [`master_tasks_roadmap.md`](file:///C:/Users/Yahya/.gemini/antigravity/brain/0a2612ed-736b-482e-9005-143d315d1357/master_tasks_roadmap.md) (Items 143–153).
+- **Execution Task List**: [`master_tasks_roadmap.md`](file:///C:/Users/Yahya/.gemini/antigravity/brain/0a2612ed-736b-482e-9005-143d315d1357/master_tasks_roadmap.md) (Items 146–153).
 
 #### Phase Status Summary:
-- **Phase 34 (Core Money Rules Part 2 — Room Schema v7)**: [Status: Ready to Build | Items 144–145 | Spec: 10.2, 10.3, 12.2]
-  - Credit card limits, payment mode (statement target default), double-counting safeguard vs recurring bills, and manual investment holdings.
-- **Phase 35 (Ledger Power Tools — Room Schema v8)**: [Status: Planned | Items 146–147 | Spec: 10.4, 12.2]
+- **Phase 35 (Ledger Power Tools — Room Schema v8)**: [Status: Ready to Build | Items 146–147 | Spec: 10.4, 12.2]
   - Split transactions (`splitGroupId`) and 50-action local undo/change history (excluded from backups per Section 11.3).
 - **Phase 36 (Forecast & Simulation Studio Part 1 — F1, F2, F3, F8)**: [Status: Planned | Items 148–150 | Spec: F1–F3, F8, 12.3]
   - Portrait summary widget on `AnalyticsScreen`, dedicated landscape `SimulationStudioActivity` cockpit, current-pace projection, known-events forecast, and purchase simulator.
@@ -605,4 +633,5 @@ Based on the comprehensive audit (Rev 3.0) and external review notes ([`docs/cas
   - Goal reachability, scenario sliders, pause-bill toggles, irregular-income mode, and saved scenario comparisons.
 - **Phase 38 (Calm Habit Guidance & Milestones — Section 9)**: [Status: Planned | Item 154 | Spec: 9.1–9.6, 12.2]
   - Master Settings toggle, logging streaks with 2 grace days/week, monthly review card, and concept cards.
+
 

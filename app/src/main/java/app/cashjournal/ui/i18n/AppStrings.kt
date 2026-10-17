@@ -353,6 +353,23 @@ interface ScreenStrings {
     val lastBackupNever: String
     val lastBackupDaysAgoFormat: String
     val lastBackupToday: String
+
+    // Phase 34: Core Money Rules Part 2 Strings
+    val creditLimitLabel: String
+    val availableCreditLabel: String
+    val dueDayFormat: String
+    val paymentModeLabel: String
+    val paymentModeTarget: String
+    val paymentModeFull: String
+    val targetPaymentAmountLabel: String
+    val cardReservesSubline: String
+    val investmentHoldingsSectionTitle: String
+    val investmentTypeLabel: String
+    val unitsHeldLabel: String
+    val pricePerUnitLabel: String
+    val priceUpdatedDaysAgoFormat: String
+    val priceUpdatedToday: String
+    val investmentDisclaimer: String
 }
 
 
@@ -701,6 +718,23 @@ private class EnglishScreenStrings : ScreenStrings {
     override val lastBackupNever: String = "Never backed up"
     override val lastBackupDaysAgoFormat: String = "%d days ago"
     override val lastBackupToday: String = "Today"
+
+    // Phase 34: Core Money Rules Part 2 Strings
+    override val creditLimitLabel: String = "Credit Limit"
+    override val availableCreditLabel: String = "Available Credit"
+    override val dueDayFormat: String = "Due day %d"
+    override val paymentModeLabel: String = "Statement Payment Mode"
+    override val paymentModeTarget: String = "Target Nominal"
+    override val paymentModeFull: String = "Full Balance"
+    override val targetPaymentAmountLabel: String = "Target Payment Nominal"
+    override val cardReservesSubline: String = "%s card reserves"
+    override val investmentHoldingsSectionTitle: String = "Investment Holdings"
+    override val investmentTypeLabel: String = "Asset Type"
+    override val unitsHeldLabel: String = "Units Held"
+    override val pricePerUnitLabel: String = "Price per Unit"
+    override val priceUpdatedDaysAgoFormat: String = "Updated %d days ago"
+    override val priceUpdatedToday: String = "Updated today"
+    override val investmentDisclaimer: String = "CashJournal does not scrape live asset prices. Update the unit price manually whenever you check your portfolio."
 }
 
 
@@ -1049,6 +1083,23 @@ private class IndonesianScreenStrings : ScreenStrings {
     override val lastBackupNever: String = "Belum pernah dicadangkan"
     override val lastBackupDaysAgoFormat: String = "%d hari yang lalu"
     override val lastBackupToday: String = "Hari ini"
+
+    // Phase 34: Core Money Rules Part 2 Strings
+    override val creditLimitLabel: String = "Batas Kredit (Limit)"
+    override val availableCreditLabel: String = "Sisa Kredit Tersedia"
+    override val dueDayFormat: String = "Jatuh tempo tgl %d"
+    override val paymentModeLabel: String = "Mode Pembayaran Tagihan"
+    override val paymentModeTarget: String = "Target Nominal"
+    override val paymentModeFull: String = "Lunas Penuh"
+    override val targetPaymentAmountLabel: String = "Target Pembayaran"
+    override val cardReservesSubline: String = "%s cadangan kartu kredit"
+    override val investmentHoldingsSectionTitle: String = "Portofolio Investasi"
+    override val investmentTypeLabel: String = "Jenis Aset"
+    override val unitsHeldLabel: String = "Jumlah Unit"
+    override val pricePerUnitLabel: String = "Harga per Unit"
+    override val priceUpdatedDaysAgoFormat: String = "Diperbarui %d hari lalu"
+    override val priceUpdatedToday: String = "Diperbarui hari ini"
+    override val investmentDisclaimer: String = "CashJournal tidak melacak harga pasar secara otomatis. Perbarui harga per unit secara manual saat memeriksa portofolio Anda."
 }
 
 object AppStrings {

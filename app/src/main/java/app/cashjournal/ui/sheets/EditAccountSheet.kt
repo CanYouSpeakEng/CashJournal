@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -50,8 +51,6 @@ import app.cashjournal.domain.model.Currency
 import app.cashjournal.ui.components.CustomHexColorDialog
 import app.cashjournal.ui.components.SubtleGlassCard
 import app.cashjournal.ui.components.ThousandsSeparatorVisualTransformation
-import java.text.DecimalFormatSymbols
-import java.util.Locale
 import app.cashjournal.ui.i18n.AppStrings
 import app.cashjournal.ui.theme.Berry
 import app.cashjournal.ui.theme.Charcoal
@@ -63,18 +62,35 @@ import app.cashjournal.ui.theme.Slate100
 import app.cashjournal.ui.theme.Slate200
 import app.cashjournal.ui.theme.Slate400
 import app.cashjournal.ui.theme.Slate500
+import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Check
 import com.adamglin.phosphoricons.regular.Trash
 import com.adamglin.phosphoricons.regular.X
+import java.text.DecimalFormatSymbols
+import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 @Composable
 fun EditAccountSheet(
     account: Account,
-    onSave: (name: String, accountType: AccountType, accentKey: AccentKey, actualBalance: Long, reconcileNote: String) -> Unit,
+    onSave: (
+        name: String,
+        accountType: AccountType,
+        accentKey: AccentKey,
+        actualBalance: Long,
+        reconcileNote: String,
+        creditLimit: Long,
+        statementDueDay: Int,
+        statementPaymentMode: String,
+        targetPaymentAmount: Long,
+        investmentType: String?,
+        unitsHeld: Double,
+        pricePerUnit: Long
+    ) -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
     canDelete: Boolean = true,
@@ -89,24 +105,52 @@ fun EditAccountSheet(
     var userModifiedType by remember { mutableStateOf(false) }
     var userModifiedAccent by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf(account.name) }
-    var selectedAccent by remember { mutableStateOf(account.accentKey) }
+    var selectedAccent by remember { mutableStateOf(AccountColor.fromKey(account.accentKey.name)) }
     var detectedBrand by remember { mutableStateOf<BrandProfile?>(BrandRegistry.matchBrand(account.name)) }
     var showCustomHexDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
-    var rawBalanceDigits by remember { mutableStateOf(account.balance.toString()) }
+    var rawBalanceDigits by remember { mutableStateOf(abs(account.balance).toString()) }
     var reconcileNote by remember { mutableStateOf("") }
 
-    val actualBalance: Long = remember(rawBalanceDigits) {
-        rawBalanceDigits.toLongOrNull() ?: 0L
+    // Phase 34: Credit Card state
+    var rawCreditLimit by remember { mutableStateOf(if (account.creditLimit > 0L) account.creditLimit.toString() else "") }
+    var rawDueDay by remember { mutableStateOf(if (account.statementDueDay > 0) account.statementDueDay.toString() else "") }
+    var statementPaymentMode by remember { mutableStateOf(account.statementPaymentMode.ifEmpty { "TARGET" }) }
+    var rawTargetPayment by remember { mutableStateOf(if (account.targetPaymentAmount > 0L) account.targetPaymentAmount.toString() else "") }
+
+    // Phase 34: Investment state
+    var selectedInvestmentType by remember { mutableStateOf(account.investmentType ?: "GOLD") }
+    var rawUnitsHeld by remember { mutableStateOf(if (account.unitsHeld > 0.0) account.unitsHeld.toString() else "") }
+    var rawPricePerUnit by remember { mutableStateOf(if (account.pricePerUnit > 0L) account.pricePerUnit.toString() else "") }
+
+    val actualBalance: Long = remember(rawBalanceDigits, selectedType) {
+        val parsed = rawBalanceDigits.toLongOrNull() ?: 0L
+        if (selectedType == AccountType.CREDIT_CARD) {
+            if (parsed > 0L) -parsed else 0L
+        } else {
+            parsed
+        }
     }
     val balanceDelta = actualBalance - account.balance
+
+    val groupingSeparator = remember(currency.code, languageCode) {
+        val loc = if (currency.code.equals("IDR", ignoreCase = true) || languageCode.equals("in", ignoreCase = true)) {
+            Locale("id", "ID")
+        } else {
+            Locale.US
+        }
+        DecimalFormatSymbols(loc).groupingSeparator
+    }
+
+    val scrollState = rememberScrollState()
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
             .background(Color.White)
-            .padding(20.dp),
+            .padding(20.dp)
+            .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Header Row with Title and X
@@ -133,7 +177,7 @@ fun EditAccountSheet(
             )
         }
 
-        // Account Category / Type Selector
+        // Account Type Selector
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
                 text = strings.accountTypeLabel,
@@ -152,13 +196,13 @@ fun EditAccountSheet(
             ) {
                 AccountType.entries.forEach { type ->
                     val isSelected = type == selectedType
-                    val chipBg = if (isSelected) Cobalt else Slate100
-                    val contentColor = if (isSelected) Color.White else Charcoal
+                    val bg = if (isSelected) Cobalt else Slate100
+                    val fg = if (isSelected) Color.White else Slate600
 
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(chipBg)
+                            .background(bg)
                             .clickable {
                                 userModifiedType = true
                                 selectedType = type
@@ -170,22 +214,22 @@ fun EditAccountSheet(
                         Icon(
                             imageVector = type.icon,
                             contentDescription = type.localizedTitle(languageCode),
-                            tint = contentColor,
-                            modifier = Modifier.size(15.dp)
+                            tint = fg,
+                            modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = type.localizedTitle(languageCode),
                             fontFamily = PlusJakartaSansFamily,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
-                            color = contentColor
+                            color = fg
                         )
                     }
                 }
             }
         }
 
-        // Account Name Input
+        // Account Name Input + Brand Auto-Match
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
                 text = strings.accountNameLabel,
@@ -203,16 +247,8 @@ fun EditAccountSheet(
                         onValueChange = { input ->
                             if (input.length <= 28) {
                                 name = input
-                                val matched = BrandRegistry.matchBrand(input)
-                                detectedBrand = matched
-                                if (matched != null) {
-                                    if (!userModifiedAccent) {
-                                        selectedAccent = matched.accountColor
-                                    }
-                                    if (!userModifiedType) {
-                                        selectedType = matched.defaultAccountType
-                                    }
-                                }
+                                val brand = BrandRegistry.matchBrand(input)
+                                detectedBrand = brand
                             }
                         },
                         textStyle = androidx.compose.ui.text.TextStyle(
@@ -358,130 +394,570 @@ fun EditAccountSheet(
             )
         }
 
-        val groupingSeparator = remember(currency.code, languageCode) {
-            val loc = if (currency.code.equals("IDR", ignoreCase = true) || languageCode.equals("in", ignoreCase = true)) {
-                Locale("id", "ID")
-            } else {
-                Locale.US
-            }
-            DecimalFormatSymbols(loc).groupingSeparator
-        }
+        // Specialized Fields based on Type
+        when (selectedType) {
+            AccountType.CREDIT_CARD -> {
+                // Credit Limit Input
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "${strings.creditLimitLabel} (${currency.symbol})",
+                        fontFamily = SpaceGroteskFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.8.sp,
+                        color = Slate500
+                    )
+                    SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                        Box(modifier = Modifier.padding(14.dp)) {
+                            BasicTextField(
+                                value = rawCreditLimit,
+                                onValueChange = { digits ->
+                                    val cleaned = digits.filter { it.isDigit() }
+                                    if (cleaned.length <= 15) rawCreditLimit = cleaned
+                                },
+                                visualTransformation = ThousandsSeparatorVisualTransformation(groupingSeparator),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    fontFamily = SpaceGroteskFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = Charcoal
+                                ),
+                                cursorBrush = SolidColor(Cobalt),
+                                decorationBox = { innerTextField ->
+                                    if (rawCreditLimit.isEmpty()) {
+                                        Text("0", fontFamily = SpaceGroteskFamily, fontSize = 16.sp, color = Slate400)
+                                    }
+                                    innerTextField()
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
 
-        // Balance Reconciliation Section
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = strings.accountDetailBalance,
-                    fontFamily = SpaceGroteskFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 11.sp,
-                    letterSpacing = 0.8.sp,
-                    color = Slate500
-                )
+                // Balance / Debt input
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "${strings.accountDetailBalance} (${currency.symbol}) - Debt owed",
+                        fontFamily = SpaceGroteskFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.8.sp,
+                        color = Slate500
+                    )
+                    SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                        Box(modifier = Modifier.padding(14.dp)) {
+                            BasicTextField(
+                                value = rawBalanceDigits,
+                                onValueChange = { digits ->
+                                    val cleaned = digits.filter { it.isDigit() }
+                                    if (cleaned.length <= 15) rawBalanceDigits = cleaned
+                                },
+                                visualTransformation = ThousandsSeparatorVisualTransformation(groupingSeparator),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    fontFamily = SpaceGroteskFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = Charcoal
+                                ),
+                                cursorBrush = SolidColor(Cobalt),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
 
-                if (balanceDelta != 0L) {
-                    val isPositive = balanceDelta > 0
-                    val deltaColor = if (isPositive) Emerald else Persimmon
-                    val sign = if (isPositive) "+" else "-"
-                    val formattedDelta = Currency.formatMinor(abs(balanceDelta), currencyCode)
-                    Box(
+                // Available Credit Preview
+                val limitVal = rawCreditLimit.toLongOrNull() ?: 0L
+                val debtVal = rawBalanceDigits.toLongOrNull() ?: 0L
+                val availCredit = (limitVal - debtVal).coerceAtLeast(0L)
+                if (limitVal > 0L) {
+                    Row(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(deltaColor.copy(alpha = 0.12f))
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Emerald.copy(alpha = 0.08f))
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "$sign$formattedDelta",
+                            text = strings.availableCreditLabel,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp,
+                            color = Slate600
+                        )
+                        Text(
+                            text = Currency.formatMinor(availCredit, currency.code),
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = Emerald
+                        )
+                    }
+                }
+
+                // Due Day & Payment Mode Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.weight(0.4f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = strings.dueDayLabel,
                             fontFamily = SpaceGroteskFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp,
+                            letterSpacing = 0.8.sp,
+                            color = Slate500
+                        )
+                        SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Box(modifier = Modifier.padding(14.dp)) {
+                                BasicTextField(
+                                    value = rawDueDay,
+                                    onValueChange = { input ->
+                                        val filtered = input.filter { it.isDigit() }.take(2)
+                                        rawDueDay = filtered
+                                    },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    textStyle = androidx.compose.ui.text.TextStyle(
+                                        fontFamily = SpaceGroteskFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        color = Charcoal
+                                    ),
+                                    cursorBrush = SolidColor(Cobalt),
+                                    decorationBox = { inner ->
+                                        if (rawDueDay.isEmpty()) {
+                                            Text("20", fontFamily = SpaceGroteskFamily, color = Slate400, fontSize = 15.sp)
+                                        }
+                                        inner()
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier.weight(0.6f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = strings.paymentModeLabel,
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            letterSpacing = 0.8.sp,
+                            color = Slate500
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            val isTarget = statementPaymentMode == "TARGET"
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isTarget) Cobalt else Slate100)
+                                    .clickable { statementPaymentMode = "TARGET" }
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = strings.paymentModeTarget,
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = if (isTarget) Color.White else Slate600
+                                )
+                            }
+
+                            val isFull = statementPaymentMode == "FULL"
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isFull) Cobalt else Slate100)
+                                    .clickable { statementPaymentMode = "FULL" }
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = strings.paymentModeFull,
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = if (isFull) Color.White else Slate600
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (statementPaymentMode == "TARGET") {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = "${strings.targetPaymentAmountLabel} (${currency.symbol})",
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            letterSpacing = 0.8.sp,
+                            color = Slate500
+                        )
+                        SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Box(modifier = Modifier.padding(14.dp)) {
+                                BasicTextField(
+                                    value = rawTargetPayment,
+                                    onValueChange = { digits ->
+                                        val cleaned = digits.filter { it.isDigit() }
+                                        if (cleaned.length <= 15) rawTargetPayment = cleaned
+                                    },
+                                    visualTransformation = ThousandsSeparatorVisualTransformation(groupingSeparator),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    textStyle = androidx.compose.ui.text.TextStyle(
+                                        fontFamily = SpaceGroteskFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        color = Charcoal
+                                    ),
+                                    cursorBrush = SolidColor(Cobalt),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            AccountType.INVESTMENT -> {
+                // Investment Asset Type Chips
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = strings.investmentTypeLabel,
+                        fontFamily = SpaceGroteskFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.8.sp,
+                        color = Slate500
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        val types = listOf(
+                            "GOLD" to "Gold",
+                            "MUTUAL_FUNDS" to "Reksadana",
+                            "STOCKS" to "Stocks",
+                            "OTHER" to "Other"
+                        )
+                        types.forEach { (key, label) ->
+                            val isSel = selectedInvestmentType == key
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isSel) Cobalt else Slate100)
+                                    .clickable { selectedInvestmentType = key }
+                                    .padding(vertical = 10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = if (isSel) Color.White else Slate600
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Units Held & Price Per Unit Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.weight(0.45f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = strings.unitsHeldLabel,
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            letterSpacing = 0.8.sp,
+                            color = Slate500
+                        )
+                        SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Box(modifier = Modifier.padding(14.dp)) {
+                                BasicTextField(
+                                    value = rawUnitsHeld,
+                                    onValueChange = { input ->
+                                        if (input.count { it == '.' } <= 1 && input.all { it.isDigit() || it == '.' }) {
+                                            rawUnitsHeld = input.take(10)
+                                        }
+                                    },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    textStyle = androidx.compose.ui.text.TextStyle(
+                                        fontFamily = SpaceGroteskFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        color = Charcoal
+                                    ),
+                                    cursorBrush = SolidColor(Cobalt),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier.weight(0.55f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "${strings.pricePerUnitLabel} (${currency.symbol})",
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            letterSpacing = 0.8.sp,
+                            color = Slate500
+                        )
+                        SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Box(modifier = Modifier.padding(14.dp)) {
+                                BasicTextField(
+                                    value = rawPricePerUnit,
+                                    onValueChange = { digits ->
+                                        val cleaned = digits.filter { it.isDigit() }
+                                        if (cleaned.length <= 15) rawPricePerUnit = cleaned
+                                    },
+                                    visualTransformation = ThousandsSeparatorVisualTransformation(groupingSeparator),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    textStyle = androidx.compose.ui.text.TextStyle(
+                                        fontFamily = SpaceGroteskFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        color = Charcoal
+                                    ),
+                                    cursorBrush = SolidColor(Cobalt),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Price History & Valuation Info
+                val u = rawUnitsHeld.toDoubleOrNull() ?: 0.0
+                val p = rawPricePerUnit.toLongOrNull() ?: 0L
+                val calculatedVal = if (u > 0.0 && p > 0L) (u * p).toLong() else actualBalance
+
+                if (account.pricePerUnit > 0L && account.previousPricePerUnit > 0L) {
+                    val priceDelta = account.pricePerUnit - account.previousPricePerUnit
+                    val isPositive = priceDelta >= 0
+                    val deltaPct = ((priceDelta.toDouble() / account.previousPricePerUnit.toDouble()) * 100.0).roundToInt()
+                    val sign = if (isPositive) "+" else ""
+                    val deltaColor = if (isPositive) Emerald else Persimmon
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(deltaColor.copy(alpha = 0.08f))
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Previous Price: ${Currency.formatMinor(account.previousPricePerUnit, currency.code)}",
+                            fontFamily = PlusJakartaSansFamily,
+                            fontSize = 11.sp,
+                            color = Slate500
+                        )
+                        Text(
+                            text = "$sign$deltaPct%",
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
                             color = deltaColor
                         )
                     }
                 }
-            }
 
-            SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                if (account.priceUpdatedAt > 0L) {
+                    val diffDays = ((System.currentTimeMillis() - account.priceUpdatedAt) / (24 * 60 * 60 * 1000L)).toInt()
+                    val updatedText = if (diffDays <= 0) strings.priceUpdatedToday else String.format(strings.priceUpdatedDaysAgoFormat, diffDays)
+                    Text(
+                        text = updatedText,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontSize = 11.sp,
+                        color = Slate400,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
+
+                // Portfolio Valuation display
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Emerald.copy(alpha = 0.08f))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = currency.symbol,
+                        text = "Total Valuation",
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
+                        color = Slate600
+                    )
+                    Text(
+                        text = Currency.formatMinor(calculatedVal, currency.code),
                         fontFamily = SpaceGroteskFamily,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = Cobalt
+                        fontSize = 14.sp,
+                        color = Emerald
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    BasicTextField(
-                        value = rawBalanceDigits,
-                        onValueChange = { input ->
-                            val filtered = input.filter { it.isDigit() }.take(14)
-                            rawBalanceDigits = filtered
-                        },
-                        visualTransformation = ThousandsSeparatorVisualTransformation(groupingSeparator),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        textStyle = androidx.compose.ui.text.TextStyle(
-                            fontFamily = SpaceGroteskFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = Charcoal
-                        ),
-                        cursorBrush = SolidColor(Cobalt),
-                        singleLine = true,
-                        decorationBox = { innerTextField ->
-                            if (rawBalanceDigits.isEmpty()) {
-                                Text(
-                                    text = "0",
-                                    fontFamily = SpaceGroteskFamily,
-                                    fontSize = 18.sp,
-                                    color = Slate400
-                                )
-                            }
-                            innerTextField()
-                        },
-                        modifier = Modifier.fillMaxWidth()
+                }
+
+                // Spec 10.3 Disclaimer note
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Slate100)
+                        .padding(10.dp)
+                ) {
+                    Text(
+                        text = strings.investmentDisclaimer,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontSize = 11.sp,
+                        color = Slate500,
+                        lineHeight = 15.sp
                     )
                 }
             }
 
-            if (balanceDelta != 0L) {
-                SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
-                    Box(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                        BasicTextField(
-                            value = reconcileNote,
-                            onValueChange = { reconcileNote = it.take(60) },
-                            textStyle = androidx.compose.ui.text.TextStyle(
-                                fontFamily = PlusJakartaSansFamily,
-                                fontSize = 13.sp,
-                                color = Charcoal
-                            ),
-                            cursorBrush = SolidColor(Cobalt),
-                            singleLine = true,
-                            decorationBox = { innerTextField ->
-                                if (reconcileNote.isEmpty()) {
-                                    Text(
-                                        text = strings.reconcileNotePlaceholder,
-                                        fontFamily = PlusJakartaSansFamily,
-                                        fontSize = 13.sp,
-                                        color = Slate400
-                                    )
-                                }
-                                innerTextField()
-                            },
-                            modifier = Modifier.fillMaxWidth()
+            else -> {
+                // Balance Reconciliation Section
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = strings.accountDetailBalance,
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            letterSpacing = 0.8.sp,
+                            color = Slate500
                         )
+
+                        if (balanceDelta != 0L) {
+                            val isPositive = balanceDelta > 0
+                            val deltaColor = if (isPositive) Emerald else Persimmon
+                            val sign = if (isPositive) "+" else "-"
+                            val formattedDelta = Currency.formatMinor(abs(balanceDelta), currencyCode)
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(deltaColor.copy(alpha = 0.12f))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = "$sign$formattedDelta",
+                                    fontFamily = SpaceGroteskFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = deltaColor
+                                )
+                            }
+                        }
+                    }
+
+                    SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = currency.symbol,
+                                fontFamily = SpaceGroteskFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                color = Cobalt
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            BasicTextField(
+                                value = rawBalanceDigits,
+                                onValueChange = { input ->
+                                    val filtered = input.filter { it.isDigit() }.take(14)
+                                    rawBalanceDigits = filtered
+                                },
+                                visualTransformation = ThousandsSeparatorVisualTransformation(groupingSeparator),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    fontFamily = SpaceGroteskFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                    color = Charcoal
+                                ),
+                                cursorBrush = SolidColor(Cobalt),
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+
+                // Reconciliation Note input if balance changed
+                if (balanceDelta != 0L) {
+                    SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Box(modifier = Modifier.padding(14.dp)) {
+                                BasicTextField(
+                                    value = reconcileNote,
+                                    onValueChange = { if (it.length <= 40) reconcileNote = it },
+                                    textStyle = androidx.compose.ui.text.TextStyle(
+                                        fontFamily = PlusJakartaSansFamily,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 14.sp,
+                                        color = Charcoal
+                                    ),
+                                    cursorBrush = SolidColor(Cobalt),
+                                    decorationBox = { inner ->
+                                        if (reconcileNote.isEmpty()) {
+                                            Text(
+                                                text = strings.reconcileNotePlaceholder,
+                                                fontFamily = PlusJakartaSansFamily,
+                                                fontSize = 14.sp,
+                                                color = Slate400
+                                            )
+                                        }
+                                        inner()
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
                     }
                 }
             }
-        }
 
         Spacer(modifier = Modifier.height(4.dp))
 
@@ -489,7 +965,27 @@ fun EditAccountSheet(
         Button(
             onClick = {
                 if (name.isNotBlank()) {
-                    onSave(name.trim(), selectedType, selectedAccent, actualBalance, reconcileNote.trim())
+                    val creditLimit = rawCreditLimit.toLongOrNull() ?: 0L
+                    val dueDay = rawDueDay.toIntOrNull() ?: 0
+                    val targetPayment = rawTargetPayment.toLongOrNull() ?: 0L
+                    val units = rawUnitsHeld.toDoubleOrNull() ?: 0.0
+                    val price = rawPricePerUnit.toLongOrNull() ?: 0L
+                    val invType = if (selectedType == AccountType.INVESTMENT) selectedInvestmentType else null
+
+                    onSave(
+                        name.trim(),
+                        selectedType,
+                        AccentKey.fromKey(selectedAccent.key),
+                        actualBalance,
+                        reconcileNote.trim(),
+                        creditLimit,
+                        dueDay,
+                        statementPaymentMode,
+                        targetPayment,
+                        invType,
+                        units,
+                        price
+                    )
                 }
             },
             colors = ButtonDefaults.buttonColors(containerColor = Cobalt),

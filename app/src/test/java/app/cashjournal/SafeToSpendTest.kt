@@ -1,5 +1,7 @@
 package app.cashjournal
 
+import app.cashjournal.domain.model.Account
+import app.cashjournal.domain.model.AccountType
 import app.cashjournal.domain.model.BudgetMode
 import app.cashjournal.domain.model.MonthlyPlan
 import app.cashjournal.domain.model.SafeToSpendCalculator
@@ -700,5 +702,124 @@ class SafeToSpendTest {
         assertEquals(1_506_500L, result.spentThisMonth)
         // Remaining = 10,000,000 - 1,506,500 = 8,493,500
         assertEquals(8_493_500L, result.remaining)
+    }
+
+    @Test
+    fun testCreditCardAvailableCredit() {
+        val card = Account(
+            id = "card-1",
+            name = "BCA Visa",
+            accountType = AccountType.CREDIT_CARD,
+            balance = -2_000_000L,
+            creditLimit = 10_000_000L
+        )
+        assertEquals(8_000_000L, card.availableCredit)
+
+        val overlimitCard = Account(
+            id = "card-2",
+            name = "Mandiri",
+            accountType = AccountType.CREDIT_CARD,
+            balance = -12_000_000L,
+            creditLimit = 10_000_000L
+        )
+        assertEquals(0L, overlimitCard.availableCredit)
+
+        val nonCreditCard = Account(
+            id = "bank-1",
+            name = "BCA Savings",
+            accountType = AccountType.BANK_DEBIT,
+            balance = 5_000_000L,
+            creditLimit = 10_000_000L
+        )
+        assertEquals(0L, nonCreditCard.availableCredit)
+    }
+
+    @Test
+    fun testCreditCardStatementReservationAndRecurringDoubleCountingSafeguard() {
+        val cal = createUtcCalendar(2026, Calendar.OCTOBER, 5)
+        val plan = MonthlyPlan(budget = 10_000_000L)
+
+        val card = Account(
+            id = "card-1",
+            name = "BCA Visa",
+            accountType = AccountType.CREDIT_CARD,
+            balance = -2_000_000L,
+            creditLimit = 10_000_000L,
+            statementPaymentMode = "TARGET",
+            targetPaymentAmount = 1_000_000L
+        )
+
+        // Case 1: No recurring bill paying this card -> cardReserves = 1,000,000
+        val result1 = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = emptyList(),
+            calendar = cal,
+            totalNetWorth = 10_000_000L,
+            cycleStartDay = 1,
+            recurringTransactions = emptyList(),
+            accounts = listOf(card)
+        )
+        assertEquals(1_000_000L, result1.cardReserves)
+        assertEquals(9_000_000L, result1.remaining)
+
+        // Case 2: Recurring bill paying this card exists -> double-counting safeguard sets cardReserves = 0L
+        val recurringBill = RecurringTransaction(
+            id = "bill-1",
+            title = "BCA CC Bill",
+            amount = 1_000_000L,
+            type = TransactionType.EXPENSE,
+            dueDay = 25,
+            destinationAccountId = "card-1",
+            isActive = true
+        )
+        val result2 = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = emptyList(),
+            calendar = cal,
+            totalNetWorth = 10_000_000L,
+            cycleStartDay = 1,
+            recurringTransactions = listOf(recurringBill),
+            accounts = listOf(card)
+        )
+        // Automated card reserve drops to 0L to avoid double counting with committed bill
+        assertEquals(0L, result2.cardReserves)
+        assertEquals(1_000_000L, result2.committedBills)
+        assertEquals(9_000_000L, result2.remaining)
+
+        // Case 3: Mode FULL reserves 100% of debt
+        val fullCard = card.copy(statementPaymentMode = "FULL")
+        val result3 = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = emptyList(),
+            calendar = cal,
+            totalNetWorth = 10_000_000L,
+            cycleStartDay = 1,
+            recurringTransactions = emptyList(),
+            accounts = listOf(fullCard)
+        )
+        assertEquals(2_000_000L, result3.cardReserves)
+        assertEquals(8_000_000L, result3.remaining)
+    }
+
+    @Test
+    fun testLiquidFundsCalculationExcludesInvestmentsAndCreditCards() {
+        val accounts = listOf(
+            Account(id = "1", name = "BCA Checking", accountType = AccountType.BANK_DEBIT, balance = 15_000_000L),
+            Account(id = "2", name = "Gopay", accountType = AccountType.E_WALLET, balance = 2_000_000L),
+            Account(id = "3", name = "Cash Pocket", accountType = AccountType.CASH, balance = 1_000_000L),
+            Account(id = "4", name = "Credit Card", accountType = AccountType.CREDIT_CARD, balance = -4_000_000L),
+            Account(id = "5", name = "Gold Portfolio", accountType = AccountType.INVESTMENT, balance = 20_000_000L)
+        )
+
+        val totalNetWorth = accounts.sumOf { it.balance }
+        val liquidFunds = accounts
+            .filter { it.accountType != AccountType.CREDIT_CARD && it.accountType != AccountType.INVESTMENT }
+            .sumOf { it.balance }
+            .coerceAtLeast(0L)
+
+        // Net worth: 15 + 2 + 1 - 4 + 20 = 34,000,000
+        assertEquals(34_000_000L, totalNetWorth)
+        // Liquid funds: 15 + 2 + 1 = 18,000,000
+        assertEquals(18_000_000L, liquidFunds)
     }
 }
