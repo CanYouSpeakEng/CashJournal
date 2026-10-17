@@ -4,6 +4,7 @@ import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
@@ -497,21 +498,23 @@ fun SideRail(
             }
         }
 
-        // Floating Status Ring Island (Liquid upward morphing satellite island)
-        val targetOffsetY = 12.dp + ((-64).dp * islandProgress)
-        val stretch = sin(islandProgress * PI.toFloat()) * 0.22f
+        // Floating Status Ring Island (Liquid upward morphing satellite island matching sidebar width)
+        val islandSize = 42.dp + (12.dp * islandProgress)
+        val targetOffsetX = (if (railOnRight) (-6).dp else 6.dp) * (1f - islandProgress)
+        val targetOffsetY = 12.dp + ((-76).dp * islandProgress) // Rests at -64dp when progress = 1f (10dp above rail)
+        val stretch = sin(islandProgress * PI.toFloat()) * 0.18f
         val scaleY = 1f + stretch
-        val scaleX = 1f - (stretch * 0.45f)
-        val islandElevation = (3.dp + 7.dp * islandProgress)
+        val scaleX = 1f - (stretch * 0.35f)
+        val islandElevation = (2.dp + 8.dp * islandProgress)
 
         Box(
             modifier = Modifier
                 .align(if (railOnRight) Alignment.TopEnd else Alignment.TopStart)
                 .offset(
-                    x = if (railOnRight) (-6).dp else 6.dp,
+                    x = targetOffsetX,
                     y = targetOffsetY
                 )
-                .size(42.dp)
+                .size(islandSize)
                 .graphicsLayer {
                     this.scaleX = scaleX
                     this.scaleY = scaleY
@@ -523,7 +526,7 @@ fun SideRail(
                     spotColor = Charcoal.copy(alpha = 0.14f)
                 )
                 .clip(CircleShape)
-                .background(Color.White)
+                .background(if (islandProgress > 0.05f) Color(0xF5FFFFFF) else Color.White)
                 .border(
                     BorderStroke(1.dp, GlassBorder.copy(alpha = islandProgress.coerceIn(0f, 1f))),
                     CircleShape
@@ -539,7 +542,7 @@ fun SideRail(
                                 view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                             }
                             activeTooltip = strings.tooltipPrivacyEye
-                            activeTooltipY = if (isNestedScreen) -52f else 16f
+                            activeTooltipY = if (isNestedScreen) -56f else 16f
                         },
                         onTap = {
                             if (hapticsEnabled) {
@@ -585,29 +588,56 @@ private fun RailNavButton(
     val currentOnRelease by rememberUpdatedState(onRelease)
     val currentHapticsEnabled by rememberUpdatedState(hapticsEnabled)
 
-    val pulseTransition = rememberInfiniteTransition(label = "hazePulse")
-    val pulseScale by if (glowBlue && !isSelected) {
-        pulseTransition.animateFloat(
-            initialValue = 0.90f,
-            targetValue = 1.35f,
+    val breatheTransition = rememberInfiniteTransition(label = "breatheTransition")
+    val breatheScale by if (glowBlue && !isSelected) {
+        breatheTransition.animateFloat(
+            initialValue = 0.98f,
+            targetValue = 1.18f,
             animationSpec = infiniteRepeatable(
-                animation = tween(2200, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Restart
+                animation = tween(1600, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
             ),
-            label = "pulseScale"
+            label = "breatheScale"
         )
     } else {
         remember { mutableFloatStateOf(1f) }
     }
-    val pulseAlpha by if (glowBlue && !isSelected) {
-        pulseTransition.animateFloat(
+    val breatheAlpha by if (glowBlue && !isSelected) {
+        breatheTransition.animateFloat(
             initialValue = 0.40f,
-            targetValue = 0.0f,
+            targetValue = 0.85f,
             animationSpec = infiniteRepeatable(
-                animation = tween(2200, easing = FastOutSlowInEasing),
+                animation = tween(1600, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "breatheAlpha"
+        )
+    } else {
+        remember { mutableFloatStateOf(0f) }
+    }
+
+    val rippleScale by if (glowBlue && !isSelected) {
+        breatheTransition.animateFloat(
+            initialValue = 1.05f,
+            targetValue = 1.45f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(2400, easing = LinearOutSlowInEasing),
                 repeatMode = RepeatMode.Restart
             ),
-            label = "pulseAlpha"
+            label = "rippleScale"
+        )
+    } else {
+        remember { mutableFloatStateOf(1f) }
+    }
+    val rippleAlpha by if (glowBlue && !isSelected) {
+        breatheTransition.animateFloat(
+            initialValue = 0.45f,
+            targetValue = 0.0f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(2400, easing = LinearOutSlowInEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "rippleAlpha"
         )
     } else {
         remember { mutableFloatStateOf(0f) }
@@ -637,23 +667,35 @@ private fun RailNavButton(
         contentAlignment = Alignment.Center
     ) {
         if (glowBlue && !isSelected) {
-            // Subtle misty frosted glass ambient pulse
+            // Ambient outer ripple pulse
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .scale(pulseScale)
+                    .scale(rippleScale)
+                    .clip(CircleShape)
+                    .border(
+                        BorderStroke(1.dp, Cobalt.copy(alpha = rippleAlpha * 0.35f)),
+                        CircleShape
+                    )
+            )
+
+            // Rich cobalt breathing halo
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .scale(breatheScale)
                     .clip(CircleShape)
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = pulseAlpha * 0.75f),
-                                Cobalt.copy(alpha = pulseAlpha * 0.14f),
+                                Cobalt.copy(alpha = breatheAlpha * 0.38f),
+                                Cobalt.copy(alpha = breatheAlpha * 0.12f),
                                 Color.Transparent
                             )
                         )
                     )
                     .border(
-                        BorderStroke(1.dp, GlassBorder.copy(alpha = pulseAlpha * 0.5f)),
+                        BorderStroke(1.2.dp, Cobalt.copy(alpha = breatheAlpha * 0.45f)),
                         CircleShape
                     )
             )
@@ -665,16 +707,5 @@ private fun RailNavButton(
             tint = iconColor,
             modifier = Modifier.size(20.dp)
         )
-
-        if (glowBlue) {
-            Box(
-                modifier = Modifier
-                    .size(7.dp)
-                    .align(Alignment.TopEnd)
-                    .offset(x = (-4).dp, y = 4.dp)
-                    .clip(CircleShape)
-                    .background(Cobalt)
-            )
-        }
     }
 }

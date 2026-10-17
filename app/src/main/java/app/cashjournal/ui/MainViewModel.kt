@@ -492,20 +492,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
             }
 
+            val installerPackages = mutableSetOf(
+                "com.google.android.packageinstaller",
+                "com.android.packageinstaller",
+                "com.samsung.android.packageinstaller"
+            )
             val resInfoList = activity.packageManager.queryIntentActivities(
                 intent,
                 PackageManager.MATCH_DEFAULT_ONLY
             )
             for (resolveInfo in resInfoList) {
-                val pkgName = resolveInfo.activityInfo.packageName
-                activity.grantUriPermission(
-                    pkgName,
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                )
+                installerPackages.add(resolveInfo.activityInfo.packageName)
+            }
+            for (pkgName in installerPackages) {
+                try {
+                    activity.grantUriPermission(
+                        pkgName,
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    )
+                } catch (_: Exception) {}
             }
 
             activity.startActivity(intent)
+            activity.finish()
         } catch (e: Exception) {
             isInstallingUpdate = false
             showToast("Failed to launch package installer: ${e.message}")

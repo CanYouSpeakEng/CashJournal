@@ -48,10 +48,10 @@ import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
-import com.adamglin.phosphoricons.regular.ArrowsClockwise
 import com.adamglin.phosphoricons.regular.CheckCircle
 import com.adamglin.phosphoricons.regular.DeviceMobile
-import com.adamglin.phosphoricons.regular.SquaresFour
+import com.adamglin.phosphoricons.regular.Eye
+import com.adamglin.phosphoricons.regular.Sparkle
 import com.adamglin.phosphoricons.regular.X
 
 data class ReleaseHighlight(
@@ -78,35 +78,35 @@ fun ReleaseNotesSheet(
 
     val highlights = listOf(
         ReleaseHighlight(
-            titleEn = "GitHub OTA In-App Updater",
-            titleIn = "Pembaruan Aplikasi Otomatis via GitHub",
-            descEn = "Check for updates from Settings, stream downloads in background with progress tracking, glowing blue rail indicator when ready, and install seamlessly.",
-            descIn = "Periksa pembaruan dari Pengaturan, unduh di latar belakang dengan indikator kemajuan, ikon pengaturan bercahaya biru saat siap, dan pasang langsung.",
-            icon = PhosphorIcons.Regular.ArrowsClockwise,
+            titleEn = "Floating Privacy Bubble",
+            titleIn = "Gelembung Privasi Melayang",
+            descEn = "When viewing an account, your privacy status ring lifts into a floating bubble so you can hide or show balances anytime.",
+            descIn = "Saat melihat rekening, cincin privasi melayang ke atas menjadi gelembung tersendiri agar Anda tetap bisa sembunyikan atau tampilkan saldo kapan saja.",
+            icon = PhosphorIcons.Regular.Eye,
             iconTint = Cobalt
         ),
         ReleaseHighlight(
-            titleEn = "Account Categories & Badges",
-            titleIn = "Kategori Akun & Lencana Khusus",
-            descEn = "Categorize accounts as Cash, Bank/Debit, E-Wallet, Credit Card, or Savings with dedicated icons and badges across all screens.",
-            descIn = "Kategorikan akun sebagai Tunai, Bank/Debit, E-Wallet, Kartu Kredit, atau Tabungan dengan ikon dan lencana khusus di seluruh layar.",
+            titleEn = "One-Handed Account Actions",
+            titleIn = "Aksi Rekening Ramah Satu Tangan",
+            descEn = "Add Account and Reorder buttons are now docked right at the bottom of the screen where your thumb can easily reach them.",
+            descIn = "Tombol Tambah Rekening dan Urutkan kini berada di bagian bawah layar agar nyaman dijangkau oleh ibu jari.",
             icon = PhosphorIcons.Regular.DeviceMobile,
             iconTint = Emerald
         ),
         ReleaseHighlight(
-            titleEn = "Edit Account Details Sheet",
-            titleIn = "Lembar Ubah Rincian Akun",
-            descEn = "Easily update account names, categories, and accent colors from Account Details, or safely delete unused accounts.",
-            descIn = "Ubah nama akun, tipe kategori, dan warna tema langsung dari Detail Akun, atau hapus akun yang sudah tidak digunakan.",
+            titleEn = "Unified Account Manager",
+            titleIn = "Kelola Rekening & Saldo Praktis",
+            descEn = "Edit account details and adjust your real-world balance in one simple screen, complete with a live difference counter.",
+            descIn = "Ubah detail rekening dan sesuaikan saldo riil Anda dalam satu layar praktis, lengkap dengan penghitung selisih otomatis.",
             icon = PhosphorIcons.Regular.CheckCircle,
             iconTint = Persimmon
         ),
         ReleaseHighlight(
-            titleEn = "Instant PIN Veil & Left-Aligned Balance",
-            titleIn = "Veil Kunci PIN Instan & Perataan Saldo Kiri",
-            descEn = "Eliminated stale screen buffer flash on phone wake with immediate veil overlay, and restored strict left-alignment on balance cards.",
-            descIn = "Menghilangkan kedipan layar sebelum kunci PIN saat layar menyala dengan veil instan, serta mengembalikan perataan kiri pada saldo utama.",
-            icon = PhosphorIcons.Regular.SquaresFour,
+            titleEn = "Fluid Card Motion & Touch Audio",
+            titleIn = "Animasi Kartu Mulus & Efek Suara",
+            descEn = "Account cards now slide smoothly when reordering, and tactile touch sounds now chime clearly with your media volume.",
+            descIn = "Kartu rekening bergeser mulus saat diatur ulang urutannya, dan efek suara ketukan kini terdengar jernih mengikuti volume media Anda.",
+            icon = PhosphorIcons.Regular.Sparkle,
             iconTint = Cobalt
         )
     )
