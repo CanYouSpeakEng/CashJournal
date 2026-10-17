@@ -352,6 +352,11 @@ fun MainAppScaffold(
                         onLockAppNow = onLockApp,
                         onResetOnboarding = { viewModel.resetOnboarding() },
                         onExportBackup = { uri -> viewModel.exportBackup(uri) },
+                        onExportEncryptedBackup = { uri, pwd -> viewModel.exportEncryptedBackup(uri, pwd) },
+                        onInspectBackupFile = { uri -> viewModel.inspectBackupFile(uri) },
+                        onRestoreBackupWithPassword = { uri, pwd, onErr, onSucc ->
+                            viewModel.restoreBackup(uri, pwd, onErr, onSucc)
+                        },
                         onRestoreBackup = { uri -> viewModel.restoreBackup(uri) },
                         onExportCsv = { uri -> viewModel.exportCsvSpreadsheet(uri) },
                         onImportCsv = { uri -> viewModel.openCsvImport(uri) },

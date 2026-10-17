@@ -3,6 +3,7 @@ package app.cashjournal
 import org.junit.Test
 import java.sql.DriverManager
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 
 class MigrationTest {
 
@@ -163,6 +164,155 @@ class MigrationTest {
         connRoom.close()
         connMigrated.close()
     }
+
+    @Test
+    fun testMigration_1_2_dataPreservationAndInitialBalanceReconstruction() {
+        val conn = DriverManager.getConnection("jdbc:sqlite::memory:")
+        val stmt = conn.createStatement()
+
+        // Create v1 schema
+        stmt.execute("CREATE TABLE accounts (id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL, accentKey TEXT NOT NULL, balance INTEGER NOT NULL, sortIndex INTEGER NOT NULL, updatedAt INTEGER NOT NULL)")
+        stmt.execute("CREATE TABLE transactions (id TEXT PRIMARY KEY NOT NULL, title TEXT NOT NULL, category TEXT NOT NULL, type TEXT NOT NULL, amount INTEGER NOT NULL, date INTEGER NOT NULL, iconKey TEXT NOT NULL, accentKey TEXT NOT NULL, sourceAccountId TEXT, destinationAccountId TEXT, updatedAt INTEGER NOT NULL)")
+
+        // Insert initial test data in v1:
+        // Account has final balance of 10,000,000
+        stmt.execute("INSERT INTO accounts VALUES ('acc-1', 'BCA Main', 'EMERALD', 10000000, 0, 1000)")
+        // Income +5,000,000
+        stmt.execute("INSERT INTO transactions VALUES ('tx-1', 'Salary', 'INCOME', 'INCOME', 5000000, 1001, '', 'EMERALD', 'acc-1', NULL, 1001)")
+        // Expense -2,000,000
+        stmt.execute("INSERT INTO transactions VALUES ('tx-2', 'Groceries', 'FOOD', 'EXPENSE', 2000000, 1002, '', 'BERRY', 'acc-1', NULL, 1002)")
+        // Transfer Out -1,000,000
+        stmt.execute("INSERT INTO transactions VALUES ('tx-3', 'Transfer', 'TRANSFER', 'TRANSFER', 1000000, 1003, '', 'COBALT', 'acc-1', 'acc-2', 1003)")
+
+        // Apply MIGRATION_1_2
+        stmt.execute("ALTER TABLE accounts ADD COLUMN initialBalance INTEGER NOT NULL DEFAULT 0")
+        stmt.execute("""
+            UPDATE accounts 
+            SET initialBalance = balance - (
+                SELECT COALESCE(SUM(
+                    CASE 
+                        WHEN type = 'INCOME' AND sourceAccountId = accounts.id THEN amount
+                        WHEN type = 'TRANSFER' AND destinationAccountId = accounts.id THEN amount
+                        WHEN type = 'EXPENSE' AND sourceAccountId = accounts.id THEN -amount
+                        WHEN type = 'TRANSFER' AND sourceAccountId = accounts.id THEN -amount
+                        ELSE 0 
+                    END
+                ), 0)
+                FROM transactions 
+                WHERE sourceAccountId = accounts.id OR destinationAccountId = accounts.id
+            )
+        """.trimIndent())
+
+        // Initial balance should be: 10,000,000 - (+5,000,000 - 2,000,000 - 1,000,000) = 8,000,000
+        val rs = stmt.executeQuery("SELECT initialBalance, balance FROM accounts WHERE id = 'acc-1'")
+        assertTrue(rs.next())
+        assertEquals(8_000_000L, rs.getLong("initialBalance"))
+        assertEquals(10_000_000L, rs.getLong("balance"))
+
+        conn.close()
+    }
+
+    @Test
+    fun testMigration_2_3_accountTypeInferenceKeywords() {
+        val conn = DriverManager.getConnection("jdbc:sqlite::memory:")
+        val stmt = conn.createStatement()
+
+        // Create v2 accounts table
+        stmt.execute("CREATE TABLE accounts (id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL, accentKey TEXT NOT NULL, balance INTEGER NOT NULL, initialBalance INTEGER NOT NULL, sortIndex INTEGER NOT NULL, updatedAt INTEGER NOT NULL)")
+
+        // Insert accounts with various keywords
+        stmt.execute("INSERT INTO accounts VALUES ('1', 'Cash Wallet Dompet', 'AMBER', 1000, 0, 0, 100)")
+        stmt.execute("INSERT INTO accounts VALUES ('2', 'BCA Main Account', 'EMERALD', 2000, 0, 1, 100)")
+        stmt.execute("INSERT INTO accounts VALUES ('3', 'GoPay Saldo', 'CYAN', 3000, 0, 2, 100)")
+        stmt.execute("INSERT INTO accounts VALUES ('4', 'BCA Credit Card', 'ROSE', 4000, 0, 3, 100)")
+        stmt.execute("INSERT INTO accounts VALUES ('5', 'Tabungan Emergency Bibit', 'IRIS', 5000, 0, 4, 100)")
+
+        // Apply MIGRATION_2_3
+        stmt.execute("ALTER TABLE accounts ADD COLUMN accountType TEXT NOT NULL DEFAULT 'BANK_DEBIT'")
+        stmt.execute("UPDATE accounts SET accountType = 'CASH' WHERE LOWER(name) LIKE '%cash%' OR LOWER(name) LIKE '%tunai%' OR LOWER(name) LIKE '%dompet%' OR LOWER(name) LIKE '%pocket%' OR LOWER(name) LIKE '%saku%' OR LOWER(name) LIKE '%wallet%'")
+        stmt.execute("UPDATE accounts SET accountType = 'E_WALLET' WHERE LOWER(name) LIKE '%gopay%' OR LOWER(name) LIKE '%ovo%' OR LOWER(name) LIKE '%dana%' OR LOWER(name) LIKE '%shopeepay%' OR LOWER(name) LIKE '%linkaja%' OR LOWER(name) LIKE '%ewallet%' OR LOWER(name) LIKE '%e-wallet%' OR LOWER(name) LIKE '%paypal%'")
+        stmt.execute("UPDATE accounts SET accountType = 'CREDIT_CARD' WHERE LOWER(name) LIKE '%credit%' OR LOWER(name) LIKE '%kredit%' OR LOWER(name) LIKE '% cc %' OR LOWER(name) LIKE 'cc %' OR LOWER(name) LIKE '% cc' OR LOWER(name) = 'cc'")
+        stmt.execute("UPDATE accounts SET accountType = 'SAVINGS' WHERE LOWER(name) LIKE '%saving%' OR LOWER(name) LIKE '%tabungan%' OR LOWER(name) LIKE '%invest%' OR LOWER(name) LIKE '%bibit%' OR LOWER(name) LIKE '%deposito%' OR LOWER(name) LIKE '%darurat%' OR LOWER(name) LIKE '%vault%' OR LOWER(name) LIKE '%emergency%' OR LOWER(name) LIKE '%fund%'")
+
+        fun getType(id: String): String {
+            val rs = stmt.executeQuery("SELECT accountType FROM accounts WHERE id = '$id'")
+            rs.next()
+            return rs.getString("accountType")
+        }
+
+        assertEquals("CASH", getType("1"))
+        assertEquals("BANK_DEBIT", getType("2"))
+        assertEquals("E_WALLET", getType("3"))
+        assertEquals("CREDIT_CARD", getType("4"))
+        assertEquals("SAVINGS", getType("5"))
+
+        conn.close()
+    }
+
+    @Test
+    fun testMigration_3_4_monthlyPlanBudgetModeDefaults() {
+        val conn = DriverManager.getConnection("jdbc:sqlite::memory:")
+        val stmt = conn.createStatement()
+
+        // Create v3 monthly_plans table
+        stmt.execute("CREATE TABLE monthly_plans (id TEXT PRIMARY KEY NOT NULL, budget INTEGER NOT NULL, startingSpent INTEGER NOT NULL, monthKey TEXT NOT NULL)")
+        stmt.execute("INSERT INTO monthly_plans VALUES ('primary_plan', 5000000, 0, '2026-10')")
+
+        // Apply MIGRATION_3_4
+        stmt.execute("ALTER TABLE monthly_plans ADD COLUMN budgetMode TEXT NOT NULL DEFAULT 'FIXED_NOMINAL'")
+        stmt.execute("ALTER TABLE monthly_plans ADD COLUMN budgetPercent INTEGER NOT NULL DEFAULT 10")
+
+        val rs = stmt.executeQuery("SELECT budgetMode, budgetPercent FROM monthly_plans WHERE id = 'primary_plan'")
+        assertTrue(rs.next())
+        assertEquals("FIXED_NOMINAL", rs.getString("budgetMode"))
+        assertEquals(10, rs.getInt("budgetPercent"))
+
+        conn.close()
+    }
+
+    @Test
+    fun testMigration_4_5_recurringTransactionsCrud() {
+        val conn = DriverManager.getConnection("jdbc:sqlite::memory:")
+        val stmt = conn.createStatement()
+
+        // Apply MIGRATION_4_5
+        val migrationSql = """
+            CREATE TABLE IF NOT EXISTS recurring_transactions (
+                id TEXT PRIMARY KEY NOT NULL,
+                title TEXT NOT NULL,
+                category TEXT NOT NULL,
+                type TEXT NOT NULL,
+                amount INTEGER NOT NULL,
+                frequency TEXT NOT NULL,
+                dueDay INTEGER NOT NULL,
+                sourceAccountId TEXT,
+                destinationAccountId TEXT,
+                isActive INTEGER NOT NULL,
+                autoLog INTEGER NOT NULL,
+                lastLoggedDate INTEGER,
+                note TEXT,
+                createdAt INTEGER NOT NULL,
+                updatedAt INTEGER NOT NULL
+            )
+        """.trimIndent()
+        stmt.execute(migrationSql)
+        stmt.execute("CREATE INDEX IF NOT EXISTS index_recurring_transactions_sourceAccountId ON recurring_transactions(sourceAccountId)")
+        stmt.execute("CREATE INDEX IF NOT EXISTS index_recurring_transactions_isActive ON recurring_transactions(isActive)")
+        stmt.execute("CREATE INDEX IF NOT EXISTS index_recurring_transactions_dueDay ON recurring_transactions(dueDay)")
+
+        // Verify CRUD
+        stmt.execute("INSERT INTO recurring_transactions (id, title, category, type, amount, frequency, dueDay, sourceAccountId, destinationAccountId, isActive, autoLog, lastLoggedDate, note, createdAt, updatedAt) VALUES ('rec-1', 'Netflix', 'SUBSCRIPTION', 'EXPENSE', 186000, 'MONTHLY', 15, 'acc-1', NULL, 1, 0, NULL, 'Standard plan', 1000, 1000)")
+
+        val rs = stmt.executeQuery("SELECT * FROM recurring_transactions WHERE id = 'rec-1'")
+        assertTrue(rs.next())
+        assertEquals("Netflix", rs.getString("title"))
+        assertEquals(186000L, rs.getLong("amount"))
+        assertEquals(15, rs.getInt("dueDay"))
+        assertEquals(1, rs.getInt("isActive"))
+
+        conn.close()
+    }
+
 
     private fun getTableInfoFor(conn: java.sql.Connection, table: String): Map<String, String> {
         val map = mutableMapOf<String, String>()

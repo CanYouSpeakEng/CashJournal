@@ -22,6 +22,27 @@ android {
             enableV1Signing = true
             enableV2Signing = true
         }
+        create("release") {
+            val keystorePath = project.findProperty("CASHJOURNAL_RELEASE_KEYSTORE")?.toString()
+                ?: System.getenv("CASHJOURNAL_RELEASE_KEYSTORE")
+            if (keystorePath != null && file(keystorePath).exists()) {
+                storeFile = file(keystorePath)
+                storePassword = project.findProperty("CASHJOURNAL_RELEASE_STORE_PASSWORD")?.toString()
+                    ?: System.getenv("CASHJOURNAL_RELEASE_STORE_PASSWORD") ?: ""
+                keyAlias = project.findProperty("CASHJOURNAL_RELEASE_KEY_ALIAS")?.toString()
+                    ?: System.getenv("CASHJOURNAL_RELEASE_KEY_ALIAS") ?: ""
+                keyPassword = project.findProperty("CASHJOURNAL_RELEASE_KEY_PASSWORD")?.toString()
+                    ?: System.getenv("CASHJOURNAL_RELEASE_KEY_PASSWORD") ?: ""
+            } else {
+                // Fallback to shared keystore for development & GitHub releases
+                storeFile = file("debug.keystore")
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+            enableV1Signing = true
+            enableV2Signing = true
+        }
     }
 
     defaultConfig {
@@ -29,7 +50,7 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = autoVersionCode
-        versionName = "1.0.34-dev"
+        versionName = "1.0.35-dev"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -39,8 +60,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("sharedDebug")
+            isMinifyEnabled = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

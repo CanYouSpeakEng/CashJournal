@@ -123,6 +123,21 @@ interface ScreenStrings {
     val replayOnboardingTitle: String
     val exportJsonTitle: String
     val importJsonTitle: String
+    val exportEncryptedTitle: String
+    val exportEncryptedSubtitle: String
+    val exportPlaintextTitle: String
+    val exportPlaintextSubtitle: String
+    val setPasswordDialogTitle: String
+    val setPasswordDialogDesc: String
+    val backupPasswordLabel: String
+    val backupConfirmPasswordLabel: String
+    val passwordMismatchError: String
+    val passwordTooShortError: String
+    val encryptAndExportAction: String
+    val enterPasswordDialogTitle: String
+    val enterPasswordDialogDesc: String
+    val decryptAndRestoreAction: String
+    val wrongPasswordError: String
     val restoreBackupDialogTitle: String
     val restoreBackupDialogDesc: String
     val confirmRestoreAction: String
@@ -434,7 +449,22 @@ private class EnglishScreenStrings : ScreenStrings {
     override val sectionData: String = "BACKUP & DATA"
     override val replayOnboardingTitle: String = "Replay Onboarding Flow"
     override val exportJsonTitle: String = "Export Ledger (Plaintext JSON)"
-    override val importJsonTitle: String = "Restore Ledger (Plaintext JSON)"
+    override val importJsonTitle: String = "Restore Ledger"
+    override val exportEncryptedTitle: String = "Export Encrypted Backup (.enc)"
+    override val exportEncryptedSubtitle: String = "Password-protected AES-256 backup file"
+    override val exportPlaintextTitle: String = "Export Plaintext JSON"
+    override val exportPlaintextSubtitle: String = "Unencrypted readable JSON ledger file"
+    override val setPasswordDialogTitle: String = "Set Backup Password"
+    override val setPasswordDialogDesc: String = "Enter a password to encrypt your financial ledger with AES-256. You will need this password when restoring your data."
+    override val backupPasswordLabel: String = "Password"
+    override val backupConfirmPasswordLabel: String = "Confirm Password"
+    override val passwordMismatchError: String = "Passwords do not match"
+    override val passwordTooShortError: String = "Password must be at least 4 characters"
+    override val encryptAndExportAction: String = "Encrypt & Export"
+    override val enterPasswordDialogTitle: String = "Enter Backup Password"
+    override val enterPasswordDialogDesc: String = "This backup file is encrypted with AES-256-GCM. Enter the password used when creating this backup."
+    override val decryptAndRestoreAction: String = "Decrypt & Restore"
+    override val wrongPasswordError: String = "Incorrect password or corrupted backup file"
     override val restoreBackupDialogTitle: String = "Restore Ledger?"
     override val restoreBackupDialogDesc: String = "Restoring a ledger will replace all current accounts, transactions, and monthly plans with data from the unencrypted JSON file. This cannot be undone."
     override val confirmRestoreAction: String = "Choose File & Restore"
@@ -746,7 +776,22 @@ private class IndonesianScreenStrings : ScreenStrings {
     override val sectionData: String = "BUKU KAS & DATA"
     override val replayOnboardingTitle: String = "Ulangi Pengenalan Aplikasi"
     override val exportJsonTitle: String = "Ekspor Buku Kas (JSON Teks Biasa)"
-    override val importJsonTitle: String = "Pulihkan Buku Kas (JSON Teks Biasa)"
+    override val importJsonTitle: String = "Pulihkan Buku Kas"
+    override val exportEncryptedTitle: String = "Ekspor Cadangan Terenkripsi (.enc)"
+    override val exportEncryptedSubtitle: String = "File cadangan dilindungi kata sandi AES-256"
+    override val exportPlaintextTitle: String = "Ekspor JSON Tanpa Enkripsi"
+    override val exportPlaintextSubtitle: String = "File cadangan buku kas format JSON polos"
+    override val setPasswordDialogTitle: String = "Atur Kata Sandi Cadangan"
+    override val setPasswordDialogDesc: String = "Masukkan kata sandi untuk mengenkripsi buku kas Anda dengan AES-256. Anda akan memerlukan kata sandi ini saat memulihkan data Anda."
+    override val backupPasswordLabel: String = "Kata Sandi"
+    override val backupConfirmPasswordLabel: String = "Konfirmasi Kata Sandi"
+    override val passwordMismatchError: String = "Kata sandi tidak cocok"
+    override val passwordTooShortError: String = "Kata sandi minimal 4 karakter"
+    override val encryptAndExportAction: String = "Enkripsi & Ekspor"
+    override val enterPasswordDialogTitle: String = "Masukkan Kata Sandi Cadangan"
+    override val enterPasswordDialogDesc: String = "File cadangan ini dienkripsi dengan AES-256-GCM. Masukkan kata sandi yang digunakan saat membuat cadangan ini."
+    override val decryptAndRestoreAction: String = "Dekripsi & Pulihkan"
+    override val wrongPasswordError: String = "Kata sandi salah atau file cadangan rusak"
     override val restoreBackupDialogTitle: String = "Pulihkan Buku Kas?"
     override val restoreBackupDialogDesc: String = "Memulihkan buku kas akan menggantikan semua akun, transaksi, dan rencana bulanan saat ini dengan data dari file JSON tanpa enkripsi. Tindakan ini tidak dapat dibatalkan."
     override val confirmRestoreAction: String = "Pilih File & Pulihkan"

@@ -11,6 +11,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
 import app.cashjournal.BuildConfig
 import app.cashjournal.data.backup.BackupManager
+import app.cashjournal.data.backup.BackupCrypto
+import app.cashjournal.data.backup.BackupFileType
 import app.cashjournal.data.update.AppReleaseInfo
 import app.cashjournal.data.update.AppUpdateService
 import app.cashjournal.data.update.UpdateState
@@ -1351,7 +1353,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun restoreBackup(uri: Uri) {
+    fun exportEncryptedBackup(uri: Uri, password: String) {
+        viewModelScope.launch {
+            try {
+                val outputStream = getApplication<Application>().contentResolver.openOutputStream(uri)
+                val lang = preferencesRepository.userPreferencesFlow.first().language
+                val strings = AppStrings.get(lang)
+                if (outputStream == null) {
+                    showToast(strings.backupExportFailed)
+                    return@launch
+                }
+                val result = backupManager.exportToEncryptedStream(outputStream, password)
+                if (result.isSuccess) {
+                    showToast(strings.backupExportSuccess)
+                } else {
+                    showToast(strings.backupExportFailed)
+                }
+            } catch (e: Exception) {
+                val lang = preferencesRepository.userPreferencesFlow.first().language
+                showToast(AppStrings.get(lang).backupExportFailed)
+            }
+        }
+    }
+
+    suspend fun inspectBackupFile(uri: Uri): BackupFileType = withContext(Dispatchers.IO) {
+        try {
+            val inputStream = getApplication<Application>().contentResolver.openInputStream(uri) ?: return@withContext BackupFileType.INVALID
+            val buffer = ByteArray(64)
+            val bytesRead = inputStream.use { it.read(buffer) }
+            if (bytesRead <= 0) return@withContext BackupFileType.INVALID
+            val validSlice = buffer.copyOf(bytesRead)
+            backupManager.inspectBackup(validSlice)
+        } catch (e: Exception) {
+            BackupFileType.INVALID
+        }
+    }
+
+    fun restoreBackup(
+        uri: Uri,
+        password: String? = null,
+        onPasswordError: ((String) -> Unit)? = null,
+        onSuccess: (() -> Unit)? = null
+    ) {
         viewModelScope.launch {
             try {
                 val inputStream = getApplication<Application>().contentResolver.openInputStream(uri)
@@ -1361,13 +1404,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     showToast(strings.backupImportFailed)
                     return@launch
                 }
-                val result = backupManager.restoreFromStream(inputStream)
+                val result = backupManager.restoreFromStream(inputStream, password)
                 if (result.isSuccess) {
                     val res = result.getOrThrow()
                     setScreen(AppScreen.DASHBOARD)
                     showToast(strings.backupImportSuccess.format(res.accountsRestored, res.transactionsRestored))
+                    onSuccess?.invoke()
                 } else {
-                    showToast(strings.backupImportFailed)
+                    val ex = result.exceptionOrNull()
+                    if (ex is BackupCrypto.InvalidPasswordException) {
+                        onPasswordError?.invoke(strings.wrongPasswordError)
+                    } else {
+                        showToast(strings.backupImportFailed)
+                    }
                 }
             } catch (e: Exception) {
                 val lang = preferencesRepository.userPreferencesFlow.first().language

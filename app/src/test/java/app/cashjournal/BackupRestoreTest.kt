@@ -9,6 +9,7 @@ import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class BackupRestoreTest {
@@ -250,4 +251,44 @@ class BackupRestoreTest {
         // 5,000,000 + 2,000,000 - 750,000 - 250,000 = 6,000,000
         assertEquals(6_000_000L, calculatedBalance)
     }
+
+    @Test
+    fun testEncryptedBackupRoundTrip() {
+        val payload = BackupPayload(
+            version = 1,
+            appVersion = "1.0.34-dev",
+            accounts = listOf(
+                AccountBackupDto(id = "acc-1", name = "BCA Main", accentKey = "EMERALD", balance = 1_000_000L)
+            ),
+            transactions = listOf(
+                TransactionBackupDto(id = "tx-1", title = "Lunch", category = "FOOD", type = "EXPENSE", amount = 50_000L, date = 1000L, sourceAccountId = "acc-1")
+            )
+        )
+        val jsonString = json.encodeToString(BackupPayload.serializer(), payload)
+        val password = "StrongEncryptedBackupPass123!".toCharArray()
+
+        val encryptedBytes = app.cashjournal.data.backup.BackupCrypto.encrypt(jsonString.toByteArray(Charsets.UTF_8), password)
+        assertTrue(app.cashjournal.data.backup.BackupCrypto.isEncrypted(encryptedBytes))
+
+        val decryptedBytes = app.cashjournal.data.backup.BackupCrypto.decrypt(encryptedBytes, password)
+        val restoredPayload = json.decodeFromString(BackupPayload.serializer(), String(decryptedBytes, Charsets.UTF_8))
+
+        assertEquals(payload.version, restoredPayload.version)
+        assertEquals(payload.accounts.size, restoredPayload.accounts.size)
+        assertEquals(payload.transactions.size, restoredPayload.transactions.size)
+        assertEquals("BCA Main", restoredPayload.accounts[0].name)
+    }
+
+    @Test
+    fun testBackupInspection() {
+        val plainJson = "{\"version\":1,\"accounts\":[]}".toByteArray(Charsets.UTF_8)
+        val encrypted = app.cashjournal.data.backup.BackupCrypto.encrypt(plainJson, "pass".toCharArray())
+        val invalidBytes = "random binary junk that does not match".toByteArray(Charsets.UTF_8)
+
+        // Test inspection via BackupCrypto / BackupManager
+        assertTrue(app.cashjournal.data.backup.BackupCrypto.isEncrypted(encrypted))
+        assertFalse(app.cashjournal.data.backup.BackupCrypto.isEncrypted(plainJson))
+        assertFalse(app.cashjournal.data.backup.BackupCrypto.isEncrypted(invalidBytes))
+    }
 }
+

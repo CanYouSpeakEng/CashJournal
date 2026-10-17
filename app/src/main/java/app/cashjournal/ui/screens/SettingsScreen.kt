@@ -86,6 +86,17 @@ import com.adamglin.phosphoricons.regular.ArrowClockwise
 import com.adamglin.phosphoricons.regular.ArrowCounterClockwise
 import com.adamglin.phosphoricons.regular.CaretRight
 import com.adamglin.phosphoricons.regular.Lock
+import com.adamglin.phosphoricons.regular.Eye
+import com.adamglin.phosphoricons.regular.EyeSlash
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
+import app.cashjournal.data.backup.BackupFileType
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
@@ -109,6 +120,9 @@ fun SettingsScreen(
     onLockAppNow: () -> Unit = {},
     onResetOnboarding: () -> Unit = {},
     onExportBackup: (Uri) -> Unit = {},
+    onExportEncryptedBackup: (Uri, String) -> Unit = { _, _ -> },
+    onInspectBackupFile: (suspend (Uri) -> BackupFileType)? = null,
+    onRestoreBackupWithPassword: (Uri, String?, ((String) -> Unit)?, (() -> Unit)?) -> Unit = { _, _, _, _ -> },
     onRestoreBackup: (Uri) -> Unit = {},
     onExportCsv: (Uri) -> Unit = {},
     onImportCsv: (Uri) -> Unit = {},
@@ -120,12 +134,26 @@ fun SettingsScreen(
     onOpenRecurringBills: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val coroutineScope = rememberCoroutineScope()
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showRestoreDialog by remember { mutableStateOf(false) }
+    var showSetExportPasswordDialog by remember { mutableStateOf(false) }
+    var showDecryptPasswordDialog by remember { mutableStateOf(false) }
+    var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingExportPassword by remember { mutableStateOf("") }
+    var exportPasswordInput by remember { mutableStateOf("") }
+    var exportConfirmPasswordInput by remember { mutableStateOf("") }
+    var exportPasswordVisible by remember { mutableStateOf(false) }
+    var decryptPasswordInput by remember { mutableStateOf("") }
+    var decryptPasswordVisible by remember { mutableStateOf(false) }
+    var decryptErrorMessage by remember { mutableStateOf<String?>(null) }
     var showCycleDialog by remember { mutableStateOf(false) }
     var showPinSetupSheet by remember { mutableStateOf(false) }
     var showPinRemoveSheet by remember { mutableStateOf(false) }
     var showReplayOnboardingDialog by remember { mutableStateOf(false) }
+
+    val currency = Currency.findByCode(state.userPreferences.currencyCode)
+    val strings = AppStrings.get(state.userPreferences.language)
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
@@ -133,10 +161,40 @@ fun SettingsScreen(
         uri?.let { onExportBackup(it) }
     }
 
+    val exportEncryptedLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri: Uri? ->
+        uri?.let { onExportEncryptedBackup(it, pendingExportPassword) }
+        pendingExportPassword = ""
+    }
+
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
-        uri?.let { onRestoreBackup(it) }
+        if (uri != null) {
+            pendingRestoreUri = uri
+            if (onInspectBackupFile != null) {
+                coroutineScope.launch {
+                    val fileType = onInspectBackupFile(uri)
+                    when (fileType) {
+                        BackupFileType.ENCRYPTED -> {
+                            decryptPasswordInput = ""
+                            decryptErrorMessage = null
+                            showDecryptPasswordDialog = true
+                        }
+                        BackupFileType.PLAINTEXT -> {
+                            showRestoreDialog = true
+                        }
+                        BackupFileType.INVALID -> {
+                            onToast(strings.backupImportFailed)
+                            pendingRestoreUri = null
+                        }
+                    }
+                }
+            } else {
+                showRestoreDialog = true
+            }
+        }
     }
 
     val exportCsvLauncher = rememberLauncherForActivityResult(
@@ -151,8 +209,6 @@ fun SettingsScreen(
         uri?.let { onImportCsv(it) }
     }
 
-    val currency = Currency.findByCode(state.userPreferences.currencyCode)
-    val strings = AppStrings.get(state.userPreferences.language)
     val context = LocalContext.current
     val activity = context as? FragmentActivity
 
@@ -210,7 +266,10 @@ fun SettingsScreen(
 
     if (showRestoreDialog) {
         AlertDialog(
-            onDismissRequest = { showRestoreDialog = false },
+            onDismissRequest = {
+                showRestoreDialog = false
+                pendingRestoreUri = null
+            },
             title = {
                 Text(
                     text = strings.restoreBackupDialogTitle,
@@ -231,8 +290,12 @@ fun SettingsScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        val uri = pendingRestoreUri
                         showRestoreDialog = false
-                        importLauncher.launch(arrayOf("application/json", "application/octet-stream", "*/*"))
+                        pendingRestoreUri = null
+                        if (uri != null) {
+                            onRestoreBackup(uri)
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Cobalt),
                     shape = RoundedCornerShape(10.dp)
@@ -246,7 +309,216 @@ fun SettingsScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showRestoreDialog = false }) {
+                TextButton(onClick = {
+                    showRestoreDialog = false
+                    pendingRestoreUri = null
+                }) {
+                    Text(
+                        text = strings.cancelAction,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Slate600
+                    )
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    if (showSetExportPasswordDialog) {
+        val passwordsMatch = exportPasswordInput == exportConfirmPasswordInput
+        val isPasswordLongEnough = exportPasswordInput.length >= 4
+        val canExport = isPasswordLongEnough && passwordsMatch
+
+        AlertDialog(
+            onDismissRequest = { showSetExportPasswordDialog = false },
+            title = {
+                Text(
+                    text = strings.setPasswordDialogTitle,
+                    fontFamily = PlusJakartaSansFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Charcoal
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = strings.setPasswordDialogDesc,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontSize = 13.sp,
+                        color = Slate600
+                    )
+                    OutlinedTextField(
+                        value = exportPasswordInput,
+                        onValueChange = { exportPasswordInput = it },
+                        label = { Text(strings.backupPasswordLabel) },
+                        singleLine = true,
+                        visualTransformation = if (exportPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        trailingIcon = {
+                            IconButton(onClick = { exportPasswordVisible = !exportPasswordVisible }) {
+                                Icon(
+                                    imageVector = if (exportPasswordVisible) PhosphorIcons.Regular.Eye else PhosphorIcons.Regular.EyeSlash,
+                                    contentDescription = "Toggle password visibility",
+                                    tint = Slate500,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = exportConfirmPasswordInput,
+                        onValueChange = { exportConfirmPasswordInput = it },
+                        label = { Text(strings.backupConfirmPasswordLabel) },
+                        singleLine = true,
+                        visualTransformation = if (exportPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (exportPasswordInput.isNotEmpty() && !isPasswordLongEnough) {
+                        Text(
+                            text = strings.passwordTooShortError,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontSize = 12.sp,
+                            color = Color(0xFFDC2626)
+                        )
+                    } else if (exportConfirmPasswordInput.isNotEmpty() && !passwordsMatch) {
+                        Text(
+                            text = strings.passwordMismatchError,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontSize = 12.sp,
+                            color = Color(0xFFDC2626)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val pwd = exportPasswordInput
+                        showSetExportPasswordDialog = false
+                        pendingExportPassword = pwd
+                        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+                        exportEncryptedLauncher.launch("cashjournal_backup_$timestamp.cashjournal.enc")
+                    },
+                    enabled = canExport,
+                    colors = ButtonDefaults.buttonColors(containerColor = Cobalt),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        text = strings.encryptAndExportAction,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSetExportPasswordDialog = false }) {
+                    Text(
+                        text = strings.cancelAction,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Slate600
+                    )
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    if (showDecryptPasswordDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showDecryptPasswordDialog = false
+                pendingRestoreUri = null
+            },
+            title = {
+                Text(
+                    text = strings.enterPasswordDialogTitle,
+                    fontFamily = PlusJakartaSansFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Charcoal
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = strings.enterPasswordDialogDesc,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontSize = 13.sp,
+                        color = Slate600
+                    )
+                    OutlinedTextField(
+                        value = decryptPasswordInput,
+                        onValueChange = {
+                            decryptPasswordInput = it
+                            decryptErrorMessage = null
+                        },
+                        label = { Text(strings.backupPasswordLabel) },
+                        singleLine = true,
+                        visualTransformation = if (decryptPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        trailingIcon = {
+                            IconButton(onClick = { decryptPasswordVisible = !decryptPasswordVisible }) {
+                                Icon(
+                                    imageVector = if (decryptPasswordVisible) PhosphorIcons.Regular.Eye else PhosphorIcons.Regular.EyeSlash,
+                                    contentDescription = "Toggle password visibility",
+                                    tint = Slate500,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    decryptErrorMessage?.let { err ->
+                        Text(
+                            text = err,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontSize = 12.sp,
+                            color = Color(0xFFDC2626)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val uri = pendingRestoreUri
+                        if (uri != null && decryptPasswordInput.isNotBlank()) {
+                            onRestoreBackupWithPassword(
+                                uri,
+                                decryptPasswordInput,
+                                { err -> decryptErrorMessage = err },
+                                {
+                                    showDecryptPasswordDialog = false
+                                    pendingRestoreUri = null
+                                }
+                            )
+                        }
+                    },
+                    enabled = decryptPasswordInput.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Cobalt),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        text = strings.decryptAndRestoreAction,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showDecryptPasswordDialog = false
+                    pendingRestoreUri = null
+                }) {
                     Text(
                         text = strings.cancelAction,
                         fontFamily = PlusJakartaSansFamily,
@@ -882,6 +1154,45 @@ fun SettingsScreen(
                     color = Slate500
                 )
 
+                // 1. Export Encrypted Backup (.enc)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            exportPasswordInput = ""
+                            exportConfirmPasswordInput = ""
+                            showSetExportPasswordDialog = true
+                        },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = strings.exportEncryptedTitle,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp,
+                            color = Charcoal
+                        )
+                        Text(
+                            text = strings.exportEncryptedSubtitle,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontSize = 11.sp,
+                            color = Slate500
+                        )
+                    }
+                    Icon(
+                        imageVector = PhosphorIcons.Regular.CaretRight,
+                        contentDescription = "Export Encrypted Backup",
+                        tint = Slate400,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                // 2. Export Plaintext JSON
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -892,25 +1203,39 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = strings.exportJsonTitle,
-                        fontFamily = PlusJakartaSansFamily,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp,
-                        color = Charcoal
-                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = strings.exportPlaintextTitle,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp,
+                            color = Charcoal
+                        )
+                        Text(
+                            text = strings.exportPlaintextSubtitle,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontSize = 11.sp,
+                            color = Slate500
+                        )
+                    }
                     Icon(
                         imageVector = PhosphorIcons.Regular.CaretRight,
-                        contentDescription = "Export Backup",
+                        contentDescription = "Export Plaintext Backup",
                         tint = Slate400,
                         modifier = Modifier.size(16.dp)
                     )
                 }
 
+                // 3. Restore Backup (.json or .enc)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { showRestoreDialog = true },
+                        .clickable {
+                            importLauncher.launch(arrayOf("application/json", "application/octet-stream", "*/*"))
+                        },
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {

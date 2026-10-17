@@ -224,6 +224,12 @@ data class RestoreResult(
     val transactionsRestored: Int
 )
 
+enum class BackupFileType {
+    ENCRYPTED,
+    PLAINTEXT,
+    INVALID
+}
+
 class BackupManager(
     private val database: AppDatabase,
     private val preferencesRepository: UserPreferencesRepository
@@ -232,6 +238,13 @@ class BackupManager(
         prettyPrint = true
         ignoreUnknownKeys = true
         encodeDefaults = true
+    }
+
+    fun inspectBackup(bytes: ByteArray): BackupFileType {
+        if (BackupCrypto.isEncrypted(bytes)) return BackupFileType.ENCRYPTED
+        val text = String(bytes.take(64).toByteArray(), Charsets.UTF_8).trimStart()
+        if (text.startsWith("{")) return BackupFileType.PLAINTEXT
+        return BackupFileType.INVALID
     }
 
     suspend fun createBackupPayload(): BackupPayload = withContext(Dispatchers.IO) {
@@ -285,9 +298,39 @@ class BackupManager(
         }
     }
 
-    suspend fun restoreFromStream(inputStream: InputStream): Result<RestoreResult> = withContext(Dispatchers.IO) {
+    suspend fun exportToEncryptedStream(outputStream: OutputStream, password: String): Result<Int> = withContext(Dispatchers.IO) {
         runCatching {
-            val jsonString = inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+            require(password.isNotBlank()) { "Encryption password cannot be blank" }
+            val payload = createBackupPayload()
+            val jsonString = json.encodeToString(BackupPayload.serializer(), payload)
+            val encryptedBytes = BackupCrypto.encrypt(jsonString.toByteArray(Charsets.UTF_8), password.toCharArray())
+            outputStream.use { stream ->
+                stream.write(encryptedBytes)
+                stream.flush()
+            }
+            payload.transactions.size
+        }
+    }
+
+    suspend fun restoreFromStream(inputStream: InputStream, password: String? = null): Result<RestoreResult> = withContext(Dispatchers.IO) {
+        runCatching {
+            val bytes = inputStream.use { it.readBytes() }
+            val jsonString = when {
+                BackupCrypto.isEncrypted(bytes) -> {
+                    if (password.isNullOrBlank()) {
+                        throw BackupCrypto.InvalidPasswordException("Password required for encrypted backup")
+                    }
+                    val decrypted = BackupCrypto.decrypt(bytes, password.toCharArray())
+                    String(decrypted, Charsets.UTF_8)
+                }
+                else -> {
+                    val raw = String(bytes, Charsets.UTF_8)
+                    if (!raw.trimStart().startsWith("{")) {
+                        throw IllegalArgumentException("Invalid backup format: file is neither encrypted nor valid JSON")
+                    }
+                    raw
+                }
+            }
             val payload = json.decodeFromString(BackupPayload.serializer(), jsonString)
 
             if (payload.version <= 0) {
