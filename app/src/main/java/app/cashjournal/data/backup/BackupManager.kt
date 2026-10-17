@@ -14,6 +14,7 @@ import kotlinx.serialization.json.Json
 import java.io.InputStream
 import java.io.OutputStream
 
+import app.cashjournal.data.local.entity.RecurringTransactionEntity
 import app.cashjournal.BuildConfig
 
 @Serializable
@@ -23,6 +24,7 @@ data class BackupPayload(
     val exportedAt: Long = System.currentTimeMillis(),
     val accounts: List<AccountBackupDto> = emptyList(),
     val transactions: List<TransactionBackupDto> = emptyList(),
+    val recurringTransactions: List<RecurringTransactionBackupDto> = emptyList(),
     val monthlyPlan: MonthlyPlanBackupDto? = null,
     val preferences: PreferencesBackupDto? = null
 )
@@ -109,6 +111,63 @@ data class TransactionBackupDto(
 }
 
 @Serializable
+data class RecurringTransactionBackupDto(
+    val id: String,
+    val title: String,
+    val category: String,
+    val type: String = "EXPENSE",
+    val amount: Long,
+    val frequency: String = "MONTHLY",
+    val dueDay: Int = 1,
+    val sourceAccountId: String? = null,
+    val destinationAccountId: String? = null,
+    val isActive: Boolean = true,
+    val autoLog: Boolean = false,
+    val lastLoggedDate: Long? = null,
+    val note: String? = null,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis()
+) {
+    fun toEntity(): RecurringTransactionEntity = RecurringTransactionEntity(
+        id = id,
+        title = title,
+        category = category,
+        type = type,
+        amount = amount,
+        frequency = frequency,
+        dueDay = dueDay,
+        sourceAccountId = sourceAccountId,
+        destinationAccountId = destinationAccountId,
+        isActive = isActive,
+        autoLog = autoLog,
+        lastLoggedDate = lastLoggedDate,
+        note = note,
+        createdAt = createdAt,
+        updatedAt = updatedAt
+    )
+
+    companion object {
+        fun fromEntity(entity: RecurringTransactionEntity): RecurringTransactionBackupDto = RecurringTransactionBackupDto(
+            id = entity.id,
+            title = entity.title,
+            category = entity.category,
+            type = entity.type,
+            amount = entity.amount,
+            frequency = entity.frequency,
+            dueDay = entity.dueDay,
+            sourceAccountId = entity.sourceAccountId,
+            destinationAccountId = entity.destinationAccountId,
+            isActive = entity.isActive,
+            autoLog = entity.autoLog,
+            lastLoggedDate = entity.lastLoggedDate,
+            note = entity.note,
+            createdAt = entity.createdAt,
+            updatedAt = entity.updatedAt
+        )
+    }
+}
+
+@Serializable
 data class MonthlyPlanBackupDto(
     val id: String = "primary_plan",
     val budget: Long,
@@ -178,6 +237,7 @@ class BackupManager(
     suspend fun createBackupPayload(): BackupPayload = withContext(Dispatchers.IO) {
         val accounts = database.accountDao().getAllAccounts().map { AccountBackupDto.fromEntity(it) }
         val transactions = database.transactionDao().getAllTransactions().map { TransactionBackupDto.fromEntity(it) }
+        val recurring = database.recurringTransactionDao().getAllRecurring().map { RecurringTransactionBackupDto.fromEntity(it) }
         val plan = database.monthlyPlanDao().getPlan()?.let { MonthlyPlanBackupDto.fromEntity(it) }
         val prefs = preferencesRepository.userPreferencesFlow.first()
         val prefsDto = PreferencesBackupDto(
@@ -207,6 +267,7 @@ class BackupManager(
             exportedAt = System.currentTimeMillis(),
             accounts = accounts,
             transactions = transactions,
+            recurringTransactions = recurring,
             monthlyPlan = plan,
             preferences = prefsDto
         )
@@ -237,12 +298,16 @@ class BackupManager(
                 database.accountDao().deleteAll()
                 database.transactionDao().deleteAll()
                 database.monthlyPlanDao().deleteAll()
+                database.recurringTransactionDao().deleteAll()
 
                 if (payload.accounts.isNotEmpty()) {
                     database.accountDao().insertAll(payload.accounts.map { it.toEntity() })
                 }
                 if (payload.transactions.isNotEmpty()) {
                     database.transactionDao().insertAll(payload.transactions.map { it.toEntity() })
+                }
+                if (payload.recurringTransactions.isNotEmpty()) {
+                    database.recurringTransactionDao().insertAll(payload.recurringTransactions.map { it.toEntity() })
                 }
                 payload.monthlyPlan?.let {
                     database.monthlyPlanDao().upsert(it.toEntity())

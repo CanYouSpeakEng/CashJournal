@@ -4,6 +4,7 @@ import app.cashjournal.domain.model.BudgetMode
 import app.cashjournal.domain.model.MonthlyPlan
 import app.cashjournal.domain.model.SafeToSpendCalculator
 import app.cashjournal.domain.model.SafeToSpendStatus
+import app.cashjournal.domain.model.RecurringTransaction
 import app.cashjournal.domain.model.Transaction
 import app.cashjournal.domain.model.TransactionType
 import org.junit.Assert.assertEquals
@@ -499,5 +500,107 @@ class SafeToSpendTest {
         assertEquals(BudgetMode.PERCENTAGE_OF_FUNDS, BudgetMode.fromKey("percent"))
         assertEquals(BudgetMode.FIXED_NOMINAL, BudgetMode.fromKey(null))
         assertEquals(BudgetMode.FIXED_NOMINAL, BudgetMode.fromKey("unknown"))
+    }
+
+    @Test
+    fun testRecurringBillsDeductedFromSafeToSpend() {
+        // Oct 21 -> 10 days left in October
+        val cal = createUtcCalendar(2026, Calendar.OCTOBER, 21)
+        val plan = MonthlyPlan(budget = 10000000L) // 10,000,000 budget
+        val tx = Transaction(
+            title = "Groceries",
+            amount = 2000000L, // 2,000,000 already spent
+            type = TransactionType.EXPENSE,
+            date = createUtcCalendar(2026, Calendar.OCTOBER, 10).timeInMillis
+        )
+
+        // Rent bill = 3,000,000 due on 25th (unpaid)
+        val recurringBill = RecurringTransaction(
+            id = "bill-rent",
+            title = "Apartment Rent",
+            amount = 3000000L,
+            type = TransactionType.EXPENSE,
+            dueDay = 25,
+            isActive = true,
+            lastLoggedDate = null
+        )
+
+        val result = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = listOf(tx),
+            calendar = cal,
+            totalNetWorth = 50000000L,
+            cycleStartDay = 1,
+            recurringTransactions = listOf(recurringBill)
+        )
+
+        // Committed bills = 3,000,000
+        assertEquals(3000000L, result.committedBills)
+        assertEquals(1, result.upcomingBillsCount)
+
+        // Remaining = 10,000,000 - 2,000,000 - 3,000,000 = 5,000,000
+        assertEquals(5000000L, result.remaining)
+
+        // 10 days left (from Oct 21 to Oct 31) -> 5,000,000 / 10 = 500,000 / day
+        assertEquals(10, result.daysLeft)
+        assertEquals(500000L, result.safeToSpendToday)
+    }
+
+    @Test
+    fun testRecurringBillAlreadyPaidInCycleNotDeductedAgain() {
+        val cal = createUtcCalendar(2026, Calendar.OCTOBER, 21)
+        val plan = MonthlyPlan(budget = 10000000L)
+
+        // Bill was paid on Oct 5 (inside current cycle window)
+        val paidBill = RecurringTransaction(
+            id = "bill-wifi",
+            title = "Home Wifi",
+            amount = 500000L,
+            type = TransactionType.EXPENSE,
+            dueDay = 5,
+            isActive = true,
+            lastLoggedDate = createUtcCalendar(2026, Calendar.OCTOBER, 5).timeInMillis
+        )
+
+        val result = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = emptyList(),
+            calendar = cal,
+            totalNetWorth = 50000000L,
+            cycleStartDay = 1,
+            recurringTransactions = listOf(paidBill)
+        )
+
+        // Since it was already logged in this cycle, committed bills = 0
+        assertEquals(0L, result.committedBills)
+        assertEquals(0, result.upcomingBillsCount)
+        assertEquals(10000000L, result.remaining)
+    }
+
+    @Test
+    fun testInactiveRecurringBillIgnored() {
+        val cal = createUtcCalendar(2026, Calendar.OCTOBER, 21)
+        val plan = MonthlyPlan(budget = 10000000L)
+
+        val pausedBill = RecurringTransaction(
+            id = "bill-gym",
+            title = "Gym Membership",
+            amount = 400000L,
+            type = TransactionType.EXPENSE,
+            dueDay = 28,
+            isActive = false // Paused
+        )
+
+        val result = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = emptyList(),
+            calendar = cal,
+            totalNetWorth = 50000000L,
+            cycleStartDay = 1,
+            recurringTransactions = listOf(pausedBill)
+        )
+
+        assertEquals(0L, result.committedBills)
+        assertEquals(0, result.upcomingBillsCount)
     }
 }

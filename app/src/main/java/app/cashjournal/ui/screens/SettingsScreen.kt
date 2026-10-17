@@ -115,6 +115,7 @@ fun SettingsScreen(
     onOpenReleaseNotes: () -> Unit = {},
     onCheckForUpdates: () -> Unit = {},
     onOpenUpdateSheet: () -> Unit = onCheckForUpdates,
+    onOpenRecurringBills: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -488,6 +489,53 @@ fun SettingsScreen(
                 Icon(
                     imageVector = PhosphorIcons.Regular.CaretRight,
                     contentDescription = "Change Cycle",
+                    tint = Slate400,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        // 3b. Recurring Bills Card
+        GlassCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onOpenRecurringBills() }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = strings.recurringBillsTitle.uppercase(),
+                        fontFamily = SpaceGroteskFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.8.sp,
+                        color = Slate500
+                    )
+                    val activeBillsCount = state.recurringTransactions.count { it.isActive }
+                    val billsSubtitle = if (activeBillsCount == 0) {
+                        strings.emptyRecurringBillsTitle
+                    } else {
+                        val totalAmount = state.recurringTransactions.filter { it.isActive }.sumOf { it.amount }
+                        "$activeBillsCount active · ${Currency.formatMinor(totalAmount, state.userPreferences.currencyCode)}"
+                    }
+                    Text(
+                        text = billsSubtitle,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 15.sp,
+                        color = Charcoal
+                    )
+                }
+
+                Icon(
+                    imageVector = PhosphorIcons.Regular.CaretRight,
+                    contentDescription = "Manage Recurring Bills",
                     tint = Slate400,
                     modifier = Modifier.size(18.dp)
                 )

@@ -64,6 +64,7 @@ import app.cashjournal.ui.sheets.EditAccountSheet
 import app.cashjournal.ui.sheets.LogTransactionSheet
 import app.cashjournal.ui.sheets.MainCurrencySheet
 import app.cashjournal.ui.sheets.NewAccountSheet
+import app.cashjournal.ui.sheets.RecurringBillsSheet
 import app.cashjournal.ui.sheets.ReleaseNotesSheet
 import app.cashjournal.ui.sheets.TransactionEditSheet
 import app.cashjournal.ui.sheets.UpdateSheet
@@ -278,7 +279,8 @@ fun MainAppScaffold(
                         onViewTransactions = { viewModel.setScreen(AppScreen.LEDGER) },
                         onSetBudgetClick = { viewModel.setScreen(AppScreen.ANALYTICS) },
                         onAddAccountClick = { viewModel.openSheet(ActiveSheet.NEW_ACCOUNT) },
-                        onTransactionClick = { viewModel.showEditTransaction(it) }
+                        onTransactionClick = { viewModel.showEditTransaction(it) },
+                        onOpenRecurringBills = { viewModel.openRecurringBillsSheet() }
                     )
 
                     AppScreen.LEDGER -> LedgerScreen(
@@ -353,7 +355,8 @@ fun MainAppScaffold(
                         onImmersiveModeChange = { viewModel.updatePreferences { prefs -> prefs.updateImmersiveMode(it) } },
                         onOpenReleaseNotes = { viewModel.openSheet(ActiveSheet.RELEASE_NOTES) },
                         onCheckForUpdates = { viewModel.checkForUpdates(manual = true) },
-                        onOpenUpdateSheet = { viewModel.openUpdateSheet() }
+                        onOpenUpdateSheet = { viewModel.openUpdateSheet() },
+                        onOpenRecurringBills = { viewModel.openRecurringBillsSheet() }
                     )
                 }
             }
@@ -536,6 +539,25 @@ fun MainAppScaffold(
                         onCheckAgain = { viewModel.checkForUpdates(manual = true) },
                         onDismiss = { viewModel.dismissSheet() },
                         languageCode = state.userPreferences.language
+                    )
+
+                    ActiveSheet.RECURRING_BILLS -> RecurringBillsSheet(
+                        recurringBills = state.recurringTransactions,
+                        accounts = state.accounts,
+                        currencyCode = state.userPreferences.currencyCode,
+                        cycleStartDay = state.userPreferences.cycleStartDay,
+                        onAddBill = { title, amount, category, dueDay, sourceAccountId, frequency ->
+                            viewModel.createRecurringBill(title, amount, category, dueDay, sourceAccountId, frequency)
+                        },
+                        onUpdateBill = { id, title, amount, category, dueDay, sourceAccountId, frequency, isActive ->
+                            viewModel.updateRecurringBill(id, title, amount, category, dueDay, sourceAccountId, frequency, isActive)
+                        },
+                        onDeleteBill = { id -> viewModel.deleteRecurringBill(id) },
+                        onToggleActive = { id, active -> viewModel.toggleRecurringBillActive(id, active) },
+                        onMarkAsPaid = { id -> viewModel.markRecurringBillAsPaid(id) },
+                        onDismiss = { viewModel.dismissSheet() },
+                        languageCode = state.userPreferences.language,
+                        hapticsEnabled = state.userPreferences.tactileHapticsEnabled
                     )
                 }
             }

@@ -406,10 +406,15 @@ Based on the comprehensive audit (Rev 3.0) and external review notes ([`docs/cas
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.29-dev
   - Artifacts: `app-debug.apk` (17.5 MB), `app-release.apk` (12.3 MB).
 
-### [ ] **Phase 27: Recurring Transactions & Scheduled Bills Engine**
-- [ ] **Item 115**: Room v5 schema migration (`MIGRATION_4_5`) adding `recurring_transactions` table (`id`, `title`, `amount`, `category`, `sourceAccountId`, `frequency`, `dueDay`, `isActive`, `autoLog`).
-- [ ] **Item 116**: Enhance `SafeToSpendCalculator` to deduct committed upcoming recurring bills in the current cycle from `effectiveBudget` before computing `safeToSpendToday`.
-- [ ] **Item 117**: "Upcoming Bills" card on Dashboard and dedicated Recurring Bills management sheet.
+### [x] **Phase 27: Recurring Transactions & Scheduled Bills Engine (COMPLETED)**
+- [x] **Item 115**: Room v5 schema migration (`MIGRATION_4_5`) adding `recurring_transactions` table (`id`, `title`, `amount`, `category`, `sourceAccountId`, `destinationAccountId`, `frequency`, `dueDay`, `isActive`, `autoLog`, `lastLoggedDate`, `note`, `createdAt`, `updatedAt`). Implemented `RecurringTransactionDao` and updated `BackupManager` to backup/restore recurring commitments.
+- [x] **Item 116**: Enhanced `SafeToSpendCalculator` to deduct committed upcoming recurring bills in the current cycle from discretionary budget before calculating `safeToSpendToday`. Added 3 unit tests in `SafeToSpendTest.kt`.
+- [x] **Item 117**: "Upcoming Bills" card on Dashboard, dedicated Recurring Bills row in Settings, and full-featured `RecurringBillsSheet.kt` with add/edit form, active/pause toggles, and direct one-click "Mark as Paid" ledger logging.
+
+- [x] **Release v1.0.30-dev (Phase 27: Recurring Transactions & Scheduled Bills Engine)**
+  - Tag: `v1.0.30-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.30-dev
+  - Artifacts: `app-debug.apk` (17.6 MB), `app-release.apk` (12.3 MB).
 
 ### [ ] **Phase 28: CSV / Bank Statement Import & Duplicate Detection**
 - [ ] **Item 118**: Statement parser supporting standard Indonesian bank CSV formats (BCA, Mandiri, BNI, BRI) and generic CSVs.

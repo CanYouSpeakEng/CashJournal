@@ -32,7 +32,9 @@ data class SafeToSpendState(
     val survivalDays: Int = 0,
     val survivalMonths: Float = 0f,
     val isCalibrating: Boolean = false,
-    val calibrationDaysNeeded: Int = 0
+    val calibrationDaysNeeded: Int = 0,
+    val committedBills: Long = 0L,
+    val upcomingBillsCount: Int = 0
 )
 
 data class CycleRange(
@@ -132,7 +134,8 @@ object SafeToSpendCalculator {
         calendar: Calendar = Calendar.getInstance(),
         totalNetWorth: Long = 100_000_000L,
         hasAccounts: Boolean = true,
-        cycleStartDay: Int = 1
+        cycleStartDay: Int = 1,
+        recurringTransactions: List<RecurringTransaction> = emptyList()
     ): SafeToSpendState {
         val cycle = getCycleRange(cycleStartDay, calendar)
 
@@ -169,14 +172,21 @@ object SafeToSpendCalculator {
             BudgetMode.FIXED_NOMINAL -> plan.budget
         }
 
+        // Committed upcoming recurring bills in the active cycle that have not yet been logged as paid
+        val upcomingBills = recurringTransactions.filter {
+            it.isActive && it.type == TransactionType.EXPENSE && it.isCommittedInCycle(cycle.startMillis, cycle.endMillis)
+        }
+        val committedBills = upcomingBills.sumOf { it.amount }
+
         val totalSpent = startingSpent + currentCycleExpenses
-        val remaining = if (effectiveBudget > totalSpent) effectiveBudget - totalSpent else 0L
+        val remaining = (effectiveBudget - totalSpent - committedBills).coerceAtLeast(0L)
 
         val divisor = if (cycle.daysLeft > 0) cycle.daysLeft else 1
         val hasNoFunds = !hasAccounts || totalNetWorth <= 0L
         val perDay = if (hasNoFunds) 0L else floor(remaining.toDouble() / divisor).toLong()
 
-        val percent = if (effectiveBudget > 0) (totalSpent.toFloat() / effectiveBudget.toFloat()) else 0f
+        val totalCommittedOrSpent = totalSpent + committedBills
+        val percent = if (effectiveBudget > 0) (totalCommittedOrSpent.toFloat() / effectiveBudget.toFloat()) else 0f
         val displayPct = min(100, (percent * 100).roundToInt())
 
         val status = when {
@@ -254,7 +264,9 @@ object SafeToSpendCalculator {
             survivalDays = survivalDays,
             survivalMonths = survivalMonths,
             isCalibrating = isCalibrating,
-            calibrationDaysNeeded = calibrationDaysNeeded
+            calibrationDaysNeeded = calibrationDaysNeeded,
+            committedBills = committedBills,
+            upcomingBillsCount = upcomingBills.size
         )
     }
 }

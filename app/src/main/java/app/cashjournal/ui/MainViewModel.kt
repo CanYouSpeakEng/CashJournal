@@ -38,6 +38,9 @@ import app.cashjournal.domain.model.BudgetMode
 import app.cashjournal.domain.model.Category
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.domain.model.MonthlyPlan
+import app.cashjournal.domain.model.RecurringTransaction
+import app.cashjournal.domain.model.RecurrenceFrequency
+import app.cashjournal.data.local.entity.RecurringTransactionEntity
 import app.cashjournal.domain.model.SafeToSpendCalculator
 import app.cashjournal.domain.model.SafeToSpendState
 import app.cashjournal.domain.model.SafeToSpendStatus
@@ -84,7 +87,8 @@ enum class ActiveSheet {
     EDIT_TRANSACTION,
     RELEASE_NOTES,
     EDIT_ACCOUNT,
-    UPDATE_INFO
+    UPDATE_INFO,
+    RECURRING_BILLS
 }
 
 typealias SafeToSpendStatus = app.cashjournal.domain.model.SafeToSpendStatus
@@ -114,7 +118,8 @@ data class MainUiState(
     val citySearchResults: List<GeocodingCity> = emptyList(),
     val isSearchingCity: Boolean = false,
     val updateState: UpdateState = UpdateState.Idle,
-    val isUpdateReadyToInstall: Boolean = false
+    val isUpdateReadyToInstall: Boolean = false,
+    val recurringTransactions: List<RecurringTransaction> = emptyList()
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -162,13 +167,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val preferencesFlow = preferencesRepository.userPreferencesFlow
     private val weatherFlow = preferencesRepository.cachedWeatherFlow
     private val ratesFlow = preferencesRepository.cachedRatesFlow
+    private val recurringFlow = database.recurringTransactionDao().getAllRecurringFlow()
 
     val uiState: StateFlow<MainUiState> = combine(
-        combine(accountsFlow, transactionsFlow, monthlyPlanFlow, preferencesFlow) { accs, txs, planEntity, prefs ->
+        combine(accountsFlow, transactionsFlow, monthlyPlanFlow, preferencesFlow, recurringFlow) { accs, txs, planEntity, prefs, recurringEntities ->
             val domainAccs = accs.map { it.toDomain() }
             val domainTxs = txs.map { it.toDomain() }
             val domainPlan = planEntity?.toDomain() ?: MonthlyPlan()
-            Quad(domainAccs, domainTxs, domainPlan, prefs)
+            val domainRecurring = recurringEntities.map { it.toDomain() }
+            Pent(domainAccs, domainTxs, domainPlan, prefs, domainRecurring)
         },
         combine(weatherFlow, ratesFlow, _isRatesOffline, _citySearchResults, _isSearchingCity) { weather, rates, offline, cities, searching ->
             Pent(weather, rates, offline, cities, searching)
@@ -187,7 +194,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             args
         }
     ) { group1, group2, group3 ->
-        val (rawAccounts, rawTransactions, plan, prefs) = group1
+        val (rawAccounts, rawTransactions, plan, prefs, rawRecurring) = group1
         val (weather, rates, isOffline, cityResults, isSearching) = group2
 
         val screen = group3[0] as AppScreen
@@ -206,8 +213,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val totalWorth = rawAccounts.sumOf { it.balance }
         val recentTx = rawTransactions.take(5)
 
-        // Calculate Safe to Spend
-        val safeState = calculateSafeToSpend(plan, rawTransactions, totalWorth, rawAccounts.isNotEmpty(), prefs.cycleStartDay)
+        // Calculate Safe to Spend (factoring in committed upcoming recurring bills in the active cycle)
+        val safeState = calculateSafeToSpend(
+            plan = plan,
+            transactions = rawTransactions,
+            totalNetWorth = totalWorth,
+            hasAccounts = rawAccounts.isNotEmpty(),
+            cycleStartDay = prefs.cycleStartDay,
+            recurringTransactions = rawRecurring
+        )
 
         MainUiState(
             isPreferencesLoaded = true,
@@ -232,7 +246,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             citySearchResults = cityResults,
             isSearchingCity = isSearching,
             updateState = currentUpdateState,
-            isUpdateReadyToInstall = isUpdateReady
+            isUpdateReadyToInstall = isUpdateReady,
+            recurringTransactions = rawRecurring
         )
     }.stateIn(
         scope = viewModelScope,
@@ -267,14 +282,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         transactions: List<Transaction>,
         totalNetWorth: Long = 0L,
         hasAccounts: Boolean = true,
-        cycleStartDay: Int = 1
+        cycleStartDay: Int = 1,
+        recurringTransactions: List<RecurringTransaction> = emptyList()
     ): SafeToSpendState {
         return SafeToSpendCalculator.calculate(
             plan = plan,
             transactions = transactions,
             totalNetWorth = totalNetWorth,
             hasAccounts = hasAccounts,
-            cycleStartDay = cycleStartDay
+            cycleStartDay = cycleStartDay,
+            recurringTransactions = recurringTransactions
         )
     }
 
@@ -722,6 +739,143 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun openRecurringBillsSheet() {
+        openSheet(ActiveSheet.RECURRING_BILLS)
+    }
+
+    fun createRecurringBill(
+        title: String,
+        amount: Long,
+        category: Category,
+        dueDay: Int,
+        sourceAccountId: String?,
+        frequency: RecurrenceFrequency = RecurrenceFrequency.MONTHLY,
+        note: String? = null
+    ) {
+        val strings = currentStrings()
+        if (title.isBlank()) {
+            showToast(strings.toastBillNameRequired)
+            return
+        }
+        if (amount <= 0) {
+            showToast(strings.toastEnterAmount)
+            return
+        }
+        viewModelScope.launch {
+            val now = System.currentTimeMillis()
+            val entity = RecurringTransactionEntity(
+                id = UUID.randomUUID().toString(),
+                title = title.trim(),
+                category = category.key,
+                type = TransactionType.EXPENSE.name,
+                amount = amount,
+                frequency = frequency.name,
+                dueDay = dueDay.coerceIn(1, 31),
+                sourceAccountId = sourceAccountId,
+                destinationAccountId = null,
+                isActive = true,
+                autoLog = false,
+                lastLoggedDate = null,
+                note = note?.trim(),
+                createdAt = now,
+                updatedAt = now
+            )
+            database.recurringTransactionDao().insert(entity)
+            showToast(strings.billCreatedToast)
+        }
+    }
+
+    fun updateRecurringBill(
+        id: String,
+        title: String,
+        amount: Long,
+        category: Category,
+        dueDay: Int,
+        sourceAccountId: String?,
+        frequency: RecurrenceFrequency = RecurrenceFrequency.MONTHLY,
+        isActive: Boolean = true,
+        note: String? = null
+    ) {
+        val strings = currentStrings()
+        if (title.isBlank()) {
+            showToast(strings.toastBillNameRequired)
+            return
+        }
+        if (amount <= 0) {
+            showToast(strings.toastEnterAmount)
+            return
+        }
+        viewModelScope.launch {
+            val existing = database.recurringTransactionDao().getRecurringById(id) ?: return@launch
+            val updated = existing.copy(
+                title = title.trim(),
+                amount = amount,
+                category = category.key,
+                dueDay = dueDay.coerceIn(1, 31),
+                sourceAccountId = sourceAccountId,
+                frequency = frequency.name,
+                isActive = isActive,
+                note = note?.trim(),
+                updatedAt = System.currentTimeMillis()
+            )
+            database.recurringTransactionDao().update(updated)
+            showToast(strings.billUpdatedToast)
+        }
+    }
+
+    fun deleteRecurringBill(id: String) {
+        val strings = currentStrings()
+        viewModelScope.launch {
+            database.recurringTransactionDao().deleteById(id)
+            showToast(strings.billDeletedToast)
+        }
+    }
+
+    fun toggleRecurringBillActive(id: String, isActive: Boolean) {
+        viewModelScope.launch {
+            database.recurringTransactionDao().updateActiveState(id, isActive)
+        }
+    }
+
+    fun markRecurringBillAsPaid(id: String) {
+        val strings = currentStrings()
+        viewModelScope.launch {
+            val billEntity = database.recurringTransactionDao().getRecurringById(id) ?: return@launch
+            val rawAccounts = database.accountDao().getAllAccounts()
+            val targetAccountId = billEntity.sourceAccountId?.takeIf { accId -> rawAccounts.any { it.id == accId } }
+                ?: rawAccounts.firstOrNull()?.id
+
+            if (targetAccountId == null) {
+                showToast(strings.toastSelectAccount)
+                return@launch
+            }
+
+            val category = Category.fromKey(billEntity.category)
+            val now = System.currentTimeMillis()
+            val tx = TransactionEntity(
+                id = UUID.randomUUID().toString(),
+                sourceAccountId = targetAccountId,
+                destinationAccountId = null,
+                type = TransactionType.EXPENSE.name,
+                amount = billEntity.amount,
+                title = billEntity.title,
+                category = category.key,
+                date = now,
+                iconKey = category.key,
+                accentKey = category.defaultAccent.name,
+                updatedAt = now
+            )
+
+            database.withTransaction {
+                database.transactionDao().insert(tx)
+                database.accountDao().recalculateAccountBalance(targetAccountId)
+                database.recurringTransactionDao().updateLastLoggedDate(id, now)
+            }
+
+            ChimeGenerator.playChime(uiState.value.userPreferences.soundEffectsEnabled, viewModelScope)
+            showToast(strings.billMarkedAsPaidToast)
+        }
+    }
 
     fun createAccount(
         name: String,

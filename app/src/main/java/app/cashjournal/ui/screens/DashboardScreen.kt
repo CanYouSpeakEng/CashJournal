@@ -22,6 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,12 +63,15 @@ import app.cashjournal.ui.theme.PlusJakartaSansFamily
 import app.cashjournal.ui.theme.Saffron
 import app.cashjournal.ui.theme.Slate100
 import app.cashjournal.ui.theme.Slate200
+import app.cashjournal.domain.model.SafeToSpendCalculator
 import app.cashjournal.ui.theme.Slate400
 import app.cashjournal.ui.theme.Slate500
 import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
+import com.adamglin.phosphoricons.regular.CaretRight
+import com.adamglin.phosphoricons.regular.Receipt
 import com.adamglin.phosphoricons.regular.Wallet
 import androidx.compose.material3.Icon
 import app.cashjournal.ui.i18n.AppStrings
@@ -81,6 +85,7 @@ fun DashboardScreen(
     onSetBudgetClick: () -> Unit,
     onAddAccountClick: () -> Unit,
     onTransactionClick: ((Transaction) -> Unit)? = null,
+    onOpenRecurringBills: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val currency = Currency.findByCode(state.userPreferences.currencyCode)
@@ -302,6 +307,16 @@ fun DashboardScreen(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                        if (safe.committedBills > 0) {
+                            Text(
+                                text = "· " + String.format(strings.committedBillsSubline, Currency.formatMinor(safe.committedBills, state.userPreferences.currencyCode)),
+                                fontFamily = PlusJakartaSansFamily,
+                                fontSize = 10.sp,
+                                color = Cobalt,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
 
@@ -343,6 +358,83 @@ fun DashboardScreen(
                             color = Slate500
                         )
                     }
+                }
+            }
+        }
+
+        // 2b. Upcoming Bills Card (if recurring transactions exist)
+        if (state.recurringTransactions.isNotEmpty()) {
+            val activeBills = remember(state.recurringTransactions) {
+                state.recurringTransactions.filter { it.isActive }
+            }
+            val upcomingCycleRange = remember(state.userPreferences.cycleStartDay) {
+                SafeToSpendCalculator.getCycleRange(state.userPreferences.cycleStartDay)
+            }
+            val committedBills = remember(activeBills, upcomingCycleRange) {
+                activeBills.filter { it.isCommittedInCycle(upcomingCycleRange.startMillis, upcomingCycleRange.endMillis) }
+            }
+
+            GlassCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenRecurringBills() },
+                cornerRadius = 20.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Cobalt.copy(alpha = 0.1f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = PhosphorIcons.Regular.Receipt,
+                                contentDescription = null,
+                                tint = Cobalt,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        Column {
+                            Text(
+                                text = strings.upcomingBillsSectionTitle,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Charcoal
+                            )
+                            val subline = if (committedBills.isNotEmpty()) {
+                                "${committedBills.size} due this cycle · ${Currency.formatMinor(committedBills.sumOf { it.amount }, state.userPreferences.currencyCode)}"
+                            } else {
+                                "All bills paid this cycle"
+                            }
+                            Text(
+                                text = subline,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontSize = 11.sp,
+                                color = if (committedBills.isNotEmpty()) Slate500 else Emerald
+                            )
+                        }
+                    }
+
+                    Icon(
+                        imageVector = PhosphorIcons.Regular.CaretRight,
+                        contentDescription = "Open Bills",
+                        tint = Slate400,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
         }

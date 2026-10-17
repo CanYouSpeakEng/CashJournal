@@ -6,9 +6,11 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import app.cashjournal.data.local.dao.AccountDao
 import app.cashjournal.data.local.dao.MonthlyPlanDao
+import app.cashjournal.data.local.dao.RecurringTransactionDao
 import app.cashjournal.data.local.dao.TransactionDao
 import app.cashjournal.data.local.entity.AccountEntity
 import app.cashjournal.data.local.entity.MonthlyPlanEntity
+import app.cashjournal.data.local.entity.RecurringTransactionEntity
 import app.cashjournal.data.local.entity.TransactionEntity
 
 import androidx.room.migration.Migration
@@ -18,15 +20,17 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     entities = [
         AccountEntity::class,
         TransactionEntity::class,
-        MonthlyPlanEntity::class
+        MonthlyPlanEntity::class,
+        RecurringTransactionEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
     abstract fun transactionDao(): TransactionDao
     abstract fun monthlyPlanDao(): MonthlyPlanDao
+    abstract fun recurringTransactionDao(): RecurringTransactionDao
 
     companion object {
         @Volatile
@@ -101,6 +105,33 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS recurring_transactions (
+                        id TEXT PRIMARY KEY NOT NULL,
+                        title TEXT NOT NULL,
+                        category TEXT NOT NULL,
+                        type TEXT NOT NULL,
+                        amount INTEGER NOT NULL,
+                        frequency TEXT NOT NULL,
+                        dueDay INTEGER NOT NULL,
+                        sourceAccountId TEXT,
+                        destinationAccountId TEXT,
+                        isActive INTEGER NOT NULL,
+                        autoLog INTEGER NOT NULL,
+                        lastLoggedDate INTEGER,
+                        note TEXT,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_recurring_transactions_sourceAccountId ON recurring_transactions(sourceAccountId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_recurring_transactions_isActive ON recurring_transactions(isActive)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_recurring_transactions_dueDay ON recurring_transactions(dueDay)")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -108,7 +139,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "cashjournal_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .fallbackToDestructiveMigrationOnDowngrade()
                     .build()
                 INSTANCE = instance
