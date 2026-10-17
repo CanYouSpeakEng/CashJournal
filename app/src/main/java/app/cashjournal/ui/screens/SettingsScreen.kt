@@ -805,7 +805,7 @@ fun SettingsScreen(
             }
         }
 
-        // 7. Data & Portability Card
+        // 7. Backup & Export Card
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -888,54 +888,98 @@ fun SettingsScreen(
                         modifier = Modifier.size(16.dp)
                     )
                 }
+            }
+        }
+
+        // 8. App Updates Card
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    text = strings.sectionUpdates,
+                    fontFamily = SpaceGroteskFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    letterSpacing = 0.8.sp,
+                    color = Slate500
+                )
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { showReplayOnboardingDialog = true },
+                        .clickable { onOpenUpdateSheet() },
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = strings.replayOnboardingTitle,
-                        fontFamily = PlusJakartaSansFamily,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp,
-                        color = Cobalt
-                    )
-                    Icon(
-                        imageVector = PhosphorIcons.Regular.ArrowCounterClockwise,
-                        contentDescription = "Replay Onboarding",
-                        tint = Cobalt,
-                        modifier = Modifier.size(16.dp)
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                        Text(
+                            text = strings.checkForUpdatesTitle,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp,
+                            color = Charcoal
+                        )
+                        Text(
+                            text = if (state.isUpdateReadyToInstall) strings.updateReadyToInstall else strings.checkForUpdatesSubtitle,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontSize = 12.sp,
+                            color = if (state.isUpdateReadyToInstall) Cobalt else Slate500
+                        )
+                    }
+                    if (state.isUpdateReadyToInstall) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(Cobalt)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = PhosphorIcons.Regular.ArrowClockwise,
+                            contentDescription = "Check for Updates",
+                            tint = Cobalt,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { showDeleteDialog = true },
+                        .clickable { onOpenReleaseNotes() },
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = strings.clearAllDataTitle,
-                        fontFamily = PlusJakartaSansFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = Berry
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                        Text(
+                            text = strings.whatsNewTitle,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp,
+                            color = Charcoal
+                        )
+                        Text(
+                            text = strings.whatsNewSubtitle,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontSize = 12.sp,
+                            color = Slate500
+                        )
+                    }
                     Icon(
                         imageVector = PhosphorIcons.Regular.CaretRight,
-                        contentDescription = "Clear",
-                        tint = Berry,
+                        contentDescription = "Release Notes",
+                        tint = Slate400,
                         modifier = Modifier.size(16.dp)
                     )
                 }
             }
         }
 
-        // 8. About Card
+        // 9. About Card
+        val context = LocalContext.current
+        val currentVersionName = remember(context) { AppVersionProvider.getVersionName(context) }
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
@@ -964,96 +1008,102 @@ fun SettingsScreen(
                         color = Slate500
                     )
                     Text(
-                        text = "Weather data by Open-Meteo.com",
+                        text = "CashJournal v$currentVersionName (Native Android)",
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = Charcoal
+                    )
+                    Text(
+                        text = strings.offlinePrivacyNotice,
                         fontFamily = PlusJakartaSansFamily,
                         fontSize = 12.sp,
                         color = Slate600
                     )
                     Text(
-                        text = "Rates by Exchange Rate API",
-                        fontFamily = PlusJakartaSansFamily,
-                        fontSize = 12.sp,
-                        color = Slate600
-                    )
-                    val context = LocalContext.current
-                    val currentVersionName = remember(context) { AppVersionProvider.getVersionName(context) }
-                    Text(
-                        text = "CashJournal v$currentVersionName (Native Android Build)",
+                        text = "Weather: Open-Meteo.com · Rates: ExchangeRate-API",
                         fontFamily = SpaceGroteskFamily,
                         fontSize = 11.sp,
                         color = Slate500
                     )
+                }
+            }
+        }
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onOpenReleaseNotes() }
-                            .padding(top = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                            Text(
-                                text = strings.whatsNewTitle,
-                                fontFamily = PlusJakartaSansFamily,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 13.sp,
-                                color = Cobalt
-                            )
-                            Text(
-                                text = strings.whatsNewSubtitle,
-                                fontFamily = PlusJakartaSansFamily,
-                                fontSize = 11.sp,
-                                color = Slate500
-                            )
-                        }
-                        Icon(
-                            imageVector = PhosphorIcons.Regular.CaretRight,
-                            contentDescription = "Release Notes",
-                            tint = Cobalt,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
+        // 10. Developer & Diagnostics Card
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    text = strings.sectionDeveloper,
+                    fontFamily = SpaceGroteskFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    letterSpacing = 0.8.sp,
+                    color = Slate500
+                )
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onOpenUpdateSheet() }
-                            .padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                            Text(
-                                text = strings.checkForUpdatesTitle,
-                                fontFamily = PlusJakartaSansFamily,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 13.sp,
-                                color = Cobalt
-                            )
-                            Text(
-                                text = if (state.isUpdateReadyToInstall) strings.updateReadyToInstall else strings.checkForUpdatesSubtitle,
-                                fontFamily = PlusJakartaSansFamily,
-                                fontSize = 11.sp,
-                                color = if (state.isUpdateReadyToInstall) Cobalt else Slate500
-                            )
-                        }
-                        if (state.isUpdateReadyToInstall) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(Cobalt)
-                            )
-                        } else {
-                            Icon(
-                                imageVector = PhosphorIcons.Regular.ArrowClockwise,
-                                contentDescription = "Check for Updates",
-                                tint = Cobalt,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showReplayOnboardingDialog = true },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = strings.replayOnboardingTitle,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        color = Cobalt
+                    )
+                    Icon(
+                        imageVector = PhosphorIcons.Regular.ArrowCounterClockwise,
+                        contentDescription = "Replay Onboarding",
+                        tint = Cobalt,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+
+        // 11. Danger Zone Card
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    text = strings.sectionDangerZone,
+                    fontFamily = SpaceGroteskFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    letterSpacing = 0.8.sp,
+                    color = Berry
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDeleteDialog = true },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = strings.clearAllDataTitle,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Berry
+                    )
+                    Icon(
+                        imageVector = PhosphorIcons.Regular.CaretRight,
+                        contentDescription = "Clear",
+                        tint = Berry,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
         }

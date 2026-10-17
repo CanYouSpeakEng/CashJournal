@@ -145,48 +145,27 @@ fun AccountDetailScreen(
                 )
             }
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(account.accentKey.color.copy(alpha = 0.12f))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(account.accentKey.color.copy(alpha = 0.12f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = strings.accountDetailPctOfTotal.format(pctOfTotal),
-                        fontFamily = SpaceGroteskFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        color = account.accentKey.color
-                    )
-                }
-
-                if (onEditAccountClick != null) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(account.accentKey.color.copy(alpha = 0.12f))
-                            .clickable { onEditAccountClick() }
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = PhosphorIcons.Regular.PencilSimple,
-                            contentDescription = "Edit Account",
-                            tint = account.accentKey.color,
-                            modifier = Modifier.size(15.dp)
-                        )
-                    }
-                }
+                Text(
+                    text = strings.accountDetailPctOfTotal.format(pctOfTotal),
+                    fontFamily = SpaceGroteskFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    color = account.accentKey.color
+                )
             }
         }
 
-        // Balance Card (24dp glass) with 4dp left border
+        // Balance Card (24dp glass) with 4dp left border - Thumb-accessible Manage Account
         GlassCard(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = onEditAccountClick != null) { onEditAccountClick?.invoke() },
             cornerRadius = 24.dp
         ) {
             Row(
@@ -221,16 +200,24 @@ fun AccountDetailScreen(
                             color = Slate500
                         )
 
-                        if (onReconcileClick != null) {
-                            Box(
+                        if (onEditAccountClick != null) {
+                            Row(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(10.dp))
                                     .background(account.accentKey.color.copy(alpha = 0.12f))
-                                    .clickable { onReconcileClick() }
-                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                                    .clickable { onEditAccountClick() }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
                             ) {
+                                Icon(
+                                    imageVector = PhosphorIcons.Regular.PencilSimple,
+                                    contentDescription = strings.manageAccountButton,
+                                    tint = account.accentKey.color,
+                                    modifier = Modifier.size(13.dp)
+                                )
                                 Text(
-                                    text = strings.reconcileBalanceButton,
+                                    text = strings.manageAccountButton,
                                     fontFamily = PlusJakartaSansFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,

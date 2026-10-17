@@ -133,6 +133,10 @@ data class ScreenStrings(
     val exportExcelTitle: String,
     val clearAllDataTitle: String,
     val sectionAbout: String,
+    val sectionUpdates: String,
+    val sectionDeveloper: String,
+    val sectionDangerZone: String,
+    val offlinePrivacyNotice: String,
     val aboutDescription: String,
     val whatsNewTitle: String,
     val whatsNewSubtitle: String,
@@ -254,7 +258,11 @@ data class ScreenStrings(
     val survivalRunwayDaysFormat: String,
     val survivalRunwayBurnSubline: String,
     val survivalRunwayIndeterminate: String,
-    val survivalRunwayPillFormat: String
+    val survivalRunwayPillFormat: String,
+    val tooltipBack: String,
+    val manageAccountButton: String,
+    val reorderAccountsAction: String,
+    val accountUpdatedAndReconciledToast: String
 )
 
 object AppStrings {
@@ -383,6 +391,10 @@ object AppStrings {
         exportExcelTitle = "Export Excel",
         clearAllDataTitle = "Clear All Data",
         sectionAbout = "ABOUT CASHJOURNAL",
+        sectionUpdates = "APP UPDATES",
+        sectionDeveloper = "DEVELOPER & DIAGNOSTICS",
+        sectionDangerZone = "DANGER ZONE",
+        offlinePrivacyNotice = "Private on-device sandbox. No tracking, no ads.",
         aboutDescription = "Offline-first personal finance with physics-driven microinteractions.",
         whatsNewTitle = "What's New",
         whatsNewSubtitle = "See highlights and release notes for this version",
@@ -504,7 +516,11 @@ object AppStrings {
         survivalRunwayDaysFormat = "%d days",
         survivalRunwayBurnSubline = "At %s/day burn, your available funds will last ~%s",
         survivalRunwayIndeterminate = "Indeterminate (no active spending)",
-        survivalRunwayPillFormat = "Runway: %s"
+        survivalRunwayPillFormat = "Runway: %s",
+        tooltipBack = "Back",
+        manageAccountButton = "Manage Account",
+        reorderAccountsAction = "Reorder",
+        accountUpdatedAndReconciledToast = "Account updated and balance reconciled"
     )
 
     val IN = ScreenStrings(
@@ -632,6 +648,10 @@ object AppStrings {
         exportExcelTitle = "Ekspor Excel",
         clearAllDataTitle = "Hapus Semua Data",
         sectionAbout = "TENTANG CASHJOURNAL",
+        sectionUpdates = "PEMBARUAN APLIKASI",
+        sectionDeveloper = "PENGEMBANG & DIAGNOSTIK",
+        sectionDangerZone = "ZONA BAHAYA",
+        offlinePrivacyNotice = "Sandbox pribadi di perangkat. Tanpa pelacakan, tanpa iklan.",
         aboutDescription = "Keuangan pribadi offline-first dengan interaksi mikro berbasis fisika.",
         whatsNewTitle = "Catatan Rilis",
         whatsNewSubtitle = "Lihat pembaruan dan catatan rilis untuk versi ini",
@@ -753,7 +773,11 @@ object AppStrings {
         survivalRunwayDaysFormat = "%d hari",
         survivalRunwayBurnSubline = "Dengan laju %s/hari, dana Anda bertahan ~%s",
         survivalRunwayIndeterminate = "Tidak terbatas (belum ada pengeluaran)",
-        survivalRunwayPillFormat = "Daya Tahan: %s"
+        survivalRunwayPillFormat = "Daya Tahan: %s",
+        tooltipBack = "Kembali",
+        manageAccountButton = "Kelola Akun",
+        reorderAccountsAction = "Urutkan",
+        accountUpdatedAndReconciledToast = "Akun diperbarui dan saldo disesuaikan"
     )
 
     fun get(languageCode: String): ScreenStrings {

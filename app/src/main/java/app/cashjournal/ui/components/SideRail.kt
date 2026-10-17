@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -72,7 +73,10 @@ import app.cashjournal.ui.theme.Slate500
 import app.cashjournal.ui.theme.SpaceGroteskFamily
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
+import com.adamglin.phosphoricons.regular.CaretLeft
 import com.adamglin.phosphoricons.regular.ChartBar
+import com.adamglin.phosphoricons.regular.Eye
+import com.adamglin.phosphoricons.regular.EyeSlash
 import com.adamglin.phosphoricons.regular.GearSix
 import com.adamglin.phosphoricons.regular.Plus
 import com.adamglin.phosphoricons.regular.Receipt
@@ -113,6 +117,17 @@ fun SideRail(
 ) {
     val view = LocalView.current
     val strings = AppStrings.get(languageCode)
+    val deviceStatus = rememberDeviceStatus()
+
+    // Liquid Status Ring Island Progress: Detaches upward when entering nested screen
+    val islandProgress by animateFloatAsState(
+        targetValue = if (isNestedScreen) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = 0.72f,
+            stiffness = 320f
+        ),
+        label = "liquid_island_progress"
+    )
 
     // Entry reveal animation: vertical expansion from center status circle over 450ms
     val revealProgress = remember { Animatable(0f) }
@@ -225,21 +240,78 @@ fun SideRail(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Top Zone: Status Ring & Privacy Eye Toggle
-                RailStatusCluster(
-                    balancesVisible = balancesVisible,
-                    onToggleBalances = onToggleBalances,
-                    isNestedScreen = isNestedScreen,
-                    onBackClick = onBackClick,
-                    hapticsEnabled = hapticsEnabled,
-                    onLongPressPrivacy = {
-                        activeTooltip = strings.tooltipPrivacyEye
-                        activeTooltipY = 16f
-                    },
-                    onReleasePrivacy = {
-                        activeTooltip = null
+                // Top Zone: Back Caret Slot (emerges when nested), Time Indicator, and Divider
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    // 42dp Slot for Back Caret Button
+                    Box(
+                        modifier = Modifier.size(42.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val caretAlpha = (islandProgress - 0.2f).coerceIn(0f, 1f) / 0.8f
+                        val caretScale = 0.5f + 0.5f * caretAlpha
+                        if (caretAlpha > 0.01f) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .graphicsLayer {
+                                        alpha = caretAlpha
+                                        scaleX = caretScale
+                                        scaleY = caretScale
+                                    }
+                                    .shadow(elevation = 2.dp, shape = CircleShape)
+                                    .clip(CircleShape)
+                                    .background(Color.White)
+                                    .pointerInput(isNestedScreen) {
+                                        detectTapGestures(
+                                            onPress = {
+                                                val released = tryAwaitRelease()
+                                                activeTooltip = null
+                                            },
+                                            onLongPress = {
+                                                if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                                                activeTooltip = strings.tooltipBack
+                                                activeTooltipY = 16f
+                                            },
+                                            onTap = {
+                                                if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                                                onBackClick?.invoke()
+                                            }
+                                        )
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = PhosphorIcons.Regular.CaretLeft,
+                                    contentDescription = strings.tooltipBack,
+                                    tint = Charcoal,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
                     }
-                )
+
+                    // Time indicator below top slot
+                    Text(
+                        text = deviceStatus.timeString,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 12.sp,
+                        color = Charcoal
+                    )
+
+                    // Subtle horizontal divider line
+                    Box(
+                        modifier = Modifier
+                            .width(36.dp)
+                            .height(1.5.dp)
+                            .background(Color(0xFFCBD5E1), RoundedCornerShape(1.dp))
+                    )
+
+                    Spacer(modifier = Modifier.height(2.dp))
+                }
 
                 // Expanding container: buttons bloom vertically on entry
                 val progress = revealProgress.value
@@ -423,6 +495,74 @@ fun SideRail(
                     }
                 }
             }
+        }
+
+        // Floating Status Ring Island (Liquid upward morphing satellite island)
+        val targetOffsetY = 12.dp + ((-64).dp * islandProgress)
+        val stretch = sin(islandProgress * PI.toFloat()) * 0.22f
+        val scaleY = 1f + stretch
+        val scaleX = 1f - (stretch * 0.45f)
+        val islandElevation = (3.dp + 7.dp * islandProgress)
+
+        Box(
+            modifier = Modifier
+                .align(if (railOnRight) Alignment.TopEnd else Alignment.TopStart)
+                .offset(
+                    x = if (railOnRight) (-6).dp else 6.dp,
+                    y = targetOffsetY
+                )
+                .size(42.dp)
+                .graphicsLayer {
+                    this.scaleX = scaleX
+                    this.scaleY = scaleY
+                }
+                .shadow(
+                    elevation = islandElevation,
+                    shape = CircleShape,
+                    ambientColor = Charcoal.copy(alpha = 0.08f),
+                    spotColor = Charcoal.copy(alpha = 0.14f)
+                )
+                .clip(CircleShape)
+                .background(Color.White)
+                .border(
+                    BorderStroke(1.dp, GlassBorder.copy(alpha = islandProgress.coerceIn(0f, 1f))),
+                    CircleShape
+                )
+                .pointerInput(isNestedScreen) {
+                    detectTapGestures(
+                        onPress = {
+                            val released = tryAwaitRelease()
+                            activeTooltip = null
+                        },
+                        onLongPress = {
+                            if (hapticsEnabled) {
+                                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                            }
+                            activeTooltip = strings.tooltipPrivacyEye
+                            activeTooltipY = if (isNestedScreen) -52f else 16f
+                        },
+                        onTap = {
+                            if (hapticsEnabled) {
+                                view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                            }
+                            onToggleBalances()
+                        }
+                    )
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            StatusRingCanvas(
+                batteryPercent = deviceStatus.batteryLevel,
+                activeSignalBars = deviceStatus.signalLevel,
+                modifier = Modifier.size(38.dp)
+            )
+
+            Icon(
+                imageVector = if (balancesVisible) PhosphorIcons.Regular.Eye else PhosphorIcons.Regular.EyeSlash,
+                contentDescription = if (balancesVisible) "Mask Balances" else "Reveal Balances",
+                tint = Charcoal,
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }

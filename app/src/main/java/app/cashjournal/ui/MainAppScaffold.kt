@@ -478,8 +478,8 @@ fun MainAppScaffold(
                         state.selectedEditAccount?.let { acc ->
                             EditAccountSheet(
                                 account = acc,
-                                onSave = { name, accountType, accentKey ->
-                                    viewModel.updateAccountDetails(acc.id, name, accountType, accentKey)
+                                onSave = { name, accountType, accentKey, actualBalance, reconcileNote ->
+                                    viewModel.updateAccountDetails(acc.id, name, accountType, accentKey, actualBalance, reconcileNote)
                                 },
                                 onDelete = {
                                     viewModel.deleteAccount(acc.id)
@@ -489,6 +489,7 @@ fun MainAppScaffold(
                                 onCannotDeleteToast = {
                                     viewModel.showToast(AppStrings.get(state.userPreferences.language).deleteAccountCannotDeleteLast)
                                 },
+                                currencyCode = state.userPreferences.currencyCode,
                                 languageCode = state.userPreferences.language
                             )
                         }

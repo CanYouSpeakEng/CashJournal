@@ -800,7 +800,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         accountId: String,
         name: String,
         accountType: AccountType,
-        accentKey: AccentKey
+        accentKey: AccentKey,
+        actualBalance: Long? = null,
+        reconcileNote: String? = null
     ) {
         val strings = currentStrings()
         if (name.isBlank()) {
@@ -816,9 +818,49 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 accentKey = accentKey.name,
                 updatedAt = System.currentTimeMillis()
             )
-            database.accountDao().update(updated)
+
+            val balanceChanged = actualBalance != null && actualBalance != existing.balance
+            database.withTransaction {
+                database.accountDao().update(updated)
+
+                if (balanceChanged) {
+                    val delta = actualBalance!! - existing.balance
+                    val isPositive = delta > 0L
+                    val txType = if (isPositive) TransactionType.INCOME else TransactionType.EXPENSE
+                    val txAmount = abs(delta)
+                    val title = if (!reconcileNote.isNullOrBlank()) reconcileNote else strings.defaultAdjustmentTitle
+
+                    val tx = TransactionEntity(
+                        id = UUID.randomUUID().toString(),
+                        sourceAccountId = accountId,
+                        destinationAccountId = null,
+                        type = txType.name,
+                        amount = txAmount,
+                        title = title,
+                        category = Category.OTHER.key,
+                        date = System.currentTimeMillis(),
+                        iconKey = if (isPositive) "ArrowDownLeft" else "Tag",
+                        accentKey = if (isPositive) "EMERALD" else "COBALT",
+                        updatedAt = System.currentTimeMillis()
+                    )
+                    database.transactionDao().insert(tx)
+                    database.accountDao().recalculateAccountBalance(accountId)
+                }
+            }
+
+            if (_selectedAccount.value?.id == accountId) {
+                val refreshed = database.accountDao().getAccountById(accountId)?.toDomain()
+                if (refreshed != null) {
+                    _selectedAccount.value = refreshed
+                }
+            }
+
+            if (balanceChanged) {
+                ChimeGenerator.playChime(uiState.value.userPreferences.soundEffectsEnabled, viewModelScope)
+            }
+
             dismissSheet()
-            showToast(strings.accountUpdatedToast)
+            showToast(if (balanceChanged) strings.accountUpdatedAndReconciledToast else strings.accountUpdatedToast)
         }
     }
 

@@ -79,21 +79,15 @@ import kotlin.math.sin
  * - Below time: Subtle horizontal divider rule (36dp).
  * - In nested screens (e.g. Account Detail): Transforms into the Back caret.
  */
-@Composable
-fun RailStatusCluster(
-    balancesVisible: Boolean,
-    onToggleBalances: () -> Unit,
-    modifier: Modifier = Modifier,
-    isNestedScreen: Boolean = false,
-    onBackClick: (() -> Unit)? = null,
-    hapticsEnabled: Boolean = true,
-    onLongPressPrivacy: (() -> Unit)? = null,
-    onReleasePrivacy: (() -> Unit)? = null
-) {
-    val context = LocalContext.current
-    val view = LocalView.current
+data class DeviceStatus(
+    val batteryLevel: Int,
+    val signalLevel: Int,
+    val timeString: String
+)
 
-    // Real device battery reading (offline & private)
+@Composable
+fun rememberDeviceStatus(): DeviceStatus {
+    val context = LocalContext.current
     var batteryLevel by remember {
         mutableIntStateOf(
             try {
@@ -106,7 +100,6 @@ fun RailStatusCluster(
         )
     }
 
-    // Real device signal strength reading (offline & private, translated to 0..4 dots)
     var signalLevel by remember {
         mutableIntStateOf(
             try {
@@ -127,7 +120,6 @@ fun RailStatusCluster(
         }
     }
 
-    // Refresh time, battery & signal every 30 seconds
     var timeString by remember {
         mutableStateOf(formatTime())
     }
@@ -152,6 +144,52 @@ fun RailStatusCluster(
             }
         }
     }
+
+    return DeviceStatus(batteryLevel, signalLevel, timeString)
+}
+
+@Composable
+fun StatusRingButton(
+    batteryPercent: Int,
+    activeSignalBars: Int,
+    balancesVisible: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        StatusRingCanvas(
+            batteryPercent = batteryPercent,
+            activeSignalBars = activeSignalBars,
+            modifier = Modifier.size(38.dp)
+        )
+
+        Icon(
+            imageVector = if (balancesVisible) PhosphorIcons.Regular.Eye else PhosphorIcons.Regular.EyeSlash,
+            contentDescription = if (balancesVisible) "Mask Balances" else "Reveal Balances",
+            tint = CashColors.Charcoal,
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
+/**
+ * Unified Status & Privacy Cluster for the top end of the SideRail.
+ */
+@Composable
+fun RailStatusCluster(
+    balancesVisible: Boolean,
+    onToggleBalances: () -> Unit,
+    modifier: Modifier = Modifier,
+    isNestedScreen: Boolean = false,
+    onBackClick: (() -> Unit)? = null,
+    hapticsEnabled: Boolean = true,
+    onLongPressPrivacy: (() -> Unit)? = null,
+    onReleasePrivacy: (() -> Unit)? = null
+) {
+    val deviceStatus = rememberDeviceStatus()
+    val view = LocalView.current
 
     Column(
         modifier = modifier,
@@ -245,8 +283,8 @@ fun RailStatusCluster(
                     ) {
                         // Status Ring: Battery Arc & 4 Signal Dots
                         StatusRingCanvas(
-                            batteryPercent = batteryLevel,
-                            activeSignalBars = signalLevel,
+                            batteryPercent = deviceStatus.batteryLevel,
+                            activeSignalBars = deviceStatus.signalLevel,
                             modifier = Modifier.size(38.dp)
                         )
 
@@ -264,7 +302,7 @@ fun RailStatusCluster(
 
         // Time indicator below the circle
         Text(
-            text = timeString,
+            text = deviceStatus.timeString,
             fontFamily = PlusJakartaSans,
             fontWeight = FontWeight.ExtraBold,
             fontSize = 12.sp,
@@ -288,7 +326,7 @@ fun RailStatusCluster(
  * with exact polar angles matching the design specification.
  */
 @Composable
-private fun StatusRingCanvas(
+fun StatusRingCanvas(
     batteryPercent: Int,
     activeSignalBars: Int,
     modifier: Modifier = Modifier

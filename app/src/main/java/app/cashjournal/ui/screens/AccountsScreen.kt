@@ -1,11 +1,15 @@
 package app.cashjournal.ui.screens
 
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -15,6 +19,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +29,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
@@ -56,6 +64,7 @@ import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Cobalt
 import app.cashjournal.ui.theme.Emerald
 import app.cashjournal.ui.theme.PlusJakartaSansFamily
+import app.cashjournal.ui.theme.GlassBorder
 import app.cashjournal.ui.theme.Saffron
 import app.cashjournal.ui.theme.Slate100
 import kotlin.math.pow
@@ -69,12 +78,15 @@ import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.ArrowDown
 import com.adamglin.phosphoricons.regular.ArrowUp
 import com.adamglin.phosphoricons.regular.ArrowsClockwise
+import com.adamglin.phosphoricons.regular.ArrowsDownUp
 import com.adamglin.phosphoricons.regular.CaretRight
+import com.adamglin.phosphoricons.regular.Check
 import com.adamglin.phosphoricons.regular.Plus
 import com.adamglin.phosphoricons.regular.Wallet
 import kotlin.math.max
 import kotlin.math.roundToInt
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AccountsScreen(
     state: MainUiState,
@@ -148,97 +160,77 @@ fun AccountsScreen(
 
     val maxBalance = state.accounts.maxOfOrNull { it.balance }?.coerceAtLeast(1L) ?: 1L
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(bottom = 68.dp)
-            .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-            .drawWithContent {
-                drawContent()
-                val mistHeightPx = 64.dp.toPx()
-                val mistStartRatio = ((size.height - mistHeightPx) / size.height).coerceIn(0f, 1f)
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0.0f to Color.Black,
-                            mistStartRatio to Color.Black,
-                            mistStartRatio + (1f - mistStartRatio) * 0.4f to Color.Black.copy(alpha = 0.6f),
-                            mistStartRatio + (1f - mistStartRatio) * 0.75f to Color.Black.copy(alpha = 0.15f),
-                            1.0f to Color.Transparent
-                        )
-                    ),
-                    blendMode = BlendMode.DstIn
-                )
-            }
-            .verticalScroll(rememberScrollState())
-            .padding(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Top Header Row with Actions
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = 68.dp)
+                .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                .drawWithContent {
+                    drawContent()
+                    val mistHeightPx = 64.dp.toPx()
+                    val mistStartRatio = ((size.height - mistHeightPx) / size.height).coerceIn(0f, 1f)
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.0f to Color.Black,
+                                mistStartRatio to Color.Black,
+                                mistStartRatio + (1f - mistStartRatio) * 0.4f to Color.Black.copy(alpha = 0.6f),
+                                mistStartRatio + (1f - mistStartRatio) * 0.75f to Color.Black.copy(alpha = 0.15f),
+                                1.0f to Color.Transparent
+                            )
+                        ),
+                        blendMode = BlendMode.DstIn
+                    )
+                },
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(bottom = 80.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = strings.accountsTitle,
-                    fontFamily = PlusJakartaSansFamily,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 24.sp,
-                    color = Charcoal
-                )
-                Text(
-                    text = "${String.format(strings.accountsCountFormat, state.accounts.size)}${if (state.isReorderMode) strings.reorderModeSuffix else ""}",
-                    fontFamily = PlusJakartaSansFamily,
-                    fontSize = 13.sp,
-                    color = Slate500
-                )
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Edit / Done Button
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (state.isReorderMode) Cobalt else Slate100)
-                        .clickable { onToggleReorderMode(!state.isReorderMode) }
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    contentAlignment = Alignment.Center
+            // Top Header Row
+            item(key = "accounts_header") {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = if (state.isReorderMode) strings.doneButton else strings.editButton,
-                        fontFamily = PlusJakartaSansFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        color = if (state.isReorderMode) Color.White else Charcoal
-                    )
-                }
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = strings.accountsTitle,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 24.sp,
+                            color = Charcoal
+                        )
+                        Text(
+                            text = "${String.format(strings.accountsCountFormat, state.accounts.size)}${if (state.isReorderMode) strings.reorderModeSuffix else ""}",
+                            fontFamily = PlusJakartaSansFamily,
+                            fontSize = 13.sp,
+                            color = Slate500
+                        )
+                    }
 
-                // 32dp Square "+" Button
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Cobalt)
-                        .clickable { onAddAccountClick() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = PhosphorIcons.Regular.Plus,
-                        contentDescription = "New Account",
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    if (state.isReorderMode) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Cobalt.copy(alpha = 0.12f))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = strings.reorderAccountsAction.uppercase(),
+                                fontFamily = SpaceGroteskFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                color = Cobalt
+                            )
+                        }
+                    }
                 }
             }
-        }
 
-        // World Currency Card (Subtle Glass)
-        SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+            // World Currency Card (Subtle Glass)
+            item(key = "world_currencies_card") {
+                SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -426,59 +418,76 @@ fun AccountsScreen(
                 }
             }
         }
+    }
 
         // Account Cards List
         if (state.accounts.isEmpty()) {
-            GlassCard(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    Icon(
-                        imageVector = PhosphorIcons.Regular.Wallet,
-                        contentDescription = "Wallet",
-                        tint = Slate400,
-                        modifier = Modifier.size(40.dp)
-                    )
-                    Text(
-                        text = "No accounts yet",
-                        fontFamily = PlusJakartaSansFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = Charcoal
-                    )
-                    Button(
-                        onClick = onAddAccountClick,
-                        colors = ButtonDefaults.buttonColors(containerColor = Cobalt),
-                        shape = RoundedCornerShape(12.dp)
+            item(key = "empty_accounts") {
+                GlassCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
+                        Icon(
+                            imageVector = PhosphorIcons.Regular.Wallet,
+                            contentDescription = "Wallet",
+                            tint = Slate400,
+                            modifier = Modifier.size(40.dp)
+                        )
                         Text(
-                            text = "Add account",
+                            text = "No accounts yet",
                             fontFamily = PlusJakartaSansFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                            color = Color.White
+                            fontSize = 16.sp,
+                            color = Charcoal
                         )
+                        Button(
+                            onClick = onAddAccountClick,
+                            colors = ButtonDefaults.buttonColors(containerColor = Cobalt),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "Add account",
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = Color.White
+                            )
+                        }
                     }
                 }
             }
         } else {
-            state.accounts.forEachIndexed { index, account ->
+            items(
+                items = state.accounts,
+                key = { it.id }
+            ) { account ->
+                val index = state.accounts.indexOf(account)
                 val pctOfTotal = if (state.totalNetWorth > 0) {
                     ((account.balance.toFloat() / state.totalNetWorth.toFloat()) * 100).roundToInt()
                 } else 0
 
                 val barRatio = max(0.02f, account.balance.toFloat() / maxBalance.toFloat()).coerceIn(0.02f, 1f)
 
-                GlassCard(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(enabled = !state.isReorderMode) { onAccountClick(account) },
-                    cornerRadius = 24.dp
+                        .animateItemPlacement(
+                            animationSpec = spring(
+                                stiffness = 380f,
+                                dampingRatio = 0.72f
+                            )
+                        )
                 ) {
+                    GlassCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !state.isReorderMode) { onAccountClick(account) },
+                        cornerRadius = 24.dp
+                    ) {
                     // Frosted Account Color Haze
                     Box(
                         modifier = Modifier
@@ -612,6 +621,88 @@ fun AccountsScreen(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+        // Thumb-Zone Floating Action Dock
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp)
+                .shadow(
+                    elevation = 12.dp,
+                    shape = RoundedCornerShape(24.dp),
+                    ambientColor = Charcoal.copy(alpha = 0.10f),
+                    spotColor = Charcoal.copy(alpha = 0.16f)
+                ),
+            shape = RoundedCornerShape(24.dp),
+            color = Color(0xF2FFFFFF),
+            border = BorderStroke(1.dp, GlassBorder)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Reorder / Done Action Pill
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(if (state.isReorderMode) Cobalt else Slate100)
+                        .clickable { onToggleReorderMode(!state.isReorderMode) }
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = if (state.isReorderMode) PhosphorIcons.Regular.Check else PhosphorIcons.Regular.ArrowsDownUp,
+                        contentDescription = if (state.isReorderMode) strings.doneButton else strings.reorderAccountsAction,
+                        tint = if (state.isReorderMode) Color.White else Charcoal,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = if (state.isReorderMode) strings.doneButton else strings.reorderAccountsAction,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = if (state.isReorderMode) Color.White else Charcoal
+                    )
+                }
+
+                // Subtle 1dp Divider
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(20.dp)
+                        .background(Slate200)
+                )
+
+                // New Account Action Pill
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Cobalt)
+                        .clickable { onAddAccountClick() }
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = PhosphorIcons.Regular.Plus,
+                        contentDescription = strings.newAccountAction,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = strings.newAccountAction,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = Color.White
+                    )
                 }
             }
         }

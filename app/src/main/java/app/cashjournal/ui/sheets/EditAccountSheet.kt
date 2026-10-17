@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,12 +44,15 @@ import app.cashjournal.domain.model.AccountColor
 import app.cashjournal.domain.model.AccountType
 import app.cashjournal.domain.model.BrandProfile
 import app.cashjournal.domain.model.BrandRegistry
+import app.cashjournal.domain.model.Currency
 import app.cashjournal.ui.components.CustomHexColorDialog
 import app.cashjournal.ui.components.SubtleGlassCard
 import app.cashjournal.ui.i18n.AppStrings
 import app.cashjournal.ui.theme.Berry
 import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Cobalt
+import app.cashjournal.ui.theme.Emerald
+import app.cashjournal.ui.theme.Persimmon
 import app.cashjournal.ui.theme.PlusJakartaSansFamily
 import app.cashjournal.ui.theme.Slate100
 import app.cashjournal.ui.theme.Slate200
@@ -60,19 +64,22 @@ import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Check
 import com.adamglin.phosphoricons.regular.Trash
 import com.adamglin.phosphoricons.regular.X
+import kotlin.math.abs
 
 @Composable
 fun EditAccountSheet(
     account: Account,
-    onSave: (name: String, accountType: AccountType, accentKey: AccentKey) -> Unit,
+    onSave: (name: String, accountType: AccountType, accentKey: AccentKey, actualBalance: Long, reconcileNote: String) -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
     canDelete: Boolean = true,
     onCannotDeleteToast: () -> Unit = {},
     modifier: Modifier = Modifier,
+    currencyCode: String = "USD",
     languageCode: String = "en"
 ) {
     val strings = AppStrings.get(languageCode)
+    val currency = Currency.findByCode(currencyCode)
     var selectedType by remember { mutableStateOf(account.accountType) }
     var userModifiedType by remember { mutableStateOf(false) }
     var userModifiedAccent by remember { mutableStateOf(false) }
@@ -81,6 +88,13 @@ fun EditAccountSheet(
     var detectedBrand by remember { mutableStateOf<BrandProfile?>(BrandRegistry.matchBrand(account.name)) }
     var showCustomHexDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var rawBalanceDigits by remember { mutableStateOf(account.balance.toString()) }
+    var reconcileNote by remember { mutableStateOf("") }
+
+    val actualBalance: Long = remember(rawBalanceDigits) {
+        rawBalanceDigits.toLongOrNull() ?: 0L
+    }
+    val balanceDelta = actualBalance - account.balance
 
     Column(
         modifier = modifier
@@ -339,13 +353,116 @@ fun EditAccountSheet(
             )
         }
 
+        // Balance Reconciliation Section
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = strings.accountDetailBalance,
+                    fontFamily = SpaceGroteskFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    letterSpacing = 0.8.sp,
+                    color = Slate500
+                )
+
+                if (balanceDelta != 0L) {
+                    val isPositive = balanceDelta > 0
+                    val deltaColor = if (isPositive) Emerald else Persimmon
+                    val sign = if (isPositive) "+" else "-"
+                    val formattedDelta = Currency.formatMinor(abs(balanceDelta), currencyCode)
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(deltaColor.copy(alpha = 0.12f))
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = "$sign$formattedDelta",
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = deltaColor
+                        )
+                    }
+                }
+            }
+
+            SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = currency.symbol,
+                        fontFamily = SpaceGroteskFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Cobalt
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    BasicTextField(
+                        value = rawBalanceDigits,
+                        onValueChange = { input ->
+                            val filtered = input.filter { it.isDigit() }.take(14)
+                            rawBalanceDigits = filtered
+                        },
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = Charcoal
+                        ),
+                        cursorBrush = SolidColor(Cobalt),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            if (balanceDelta != 0L) {
+                SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
+                    Box(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                        BasicTextField(
+                            value = reconcileNote,
+                            onValueChange = { reconcileNote = it.take(60) },
+                            textStyle = androidx.compose.ui.text.TextStyle(
+                                fontFamily = PlusJakartaSansFamily,
+                                fontSize = 13.sp,
+                                color = Charcoal
+                            ),
+                            cursorBrush = SolidColor(Cobalt),
+                            singleLine = true,
+                            decorationBox = { innerTextField ->
+                                if (reconcileNote.isEmpty()) {
+                                    Text(
+                                        text = strings.reconcileNotePlaceholder,
+                                        fontFamily = PlusJakartaSansFamily,
+                                        fontSize = 13.sp,
+                                        color = Slate400
+                                    )
+                                }
+                                innerTextField()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(4.dp))
 
         // Save Changes Button
         Button(
             onClick = {
                 if (name.isNotBlank()) {
-                    onSave(name.trim(), selectedType, selectedAccent)
+                    onSave(name.trim(), selectedType, selectedAccent, actualBalance, reconcileNote.trim())
                 }
             },
             colors = ButtonDefaults.buttonColors(containerColor = Cobalt),

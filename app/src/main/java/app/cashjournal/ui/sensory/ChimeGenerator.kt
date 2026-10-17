@@ -23,7 +23,7 @@ object ChimeGenerator {
     private const val NOTE_DURATION_MS = 120
     private const val FREQ_1 = 1140.0 // Hz
     private const val FREQ_2 = 820.0  // Hz
-    private const val PEAK_AMPLITUDE = 0.16 * 32767 // Quiet volume
+    private const val PEAK_AMPLITUDE = 0.65 * 32767 // Warm, audible volume responding to Media volume
 
     private val pcmData: ShortArray by lazy {
         generateChimeBuffer()
@@ -38,9 +38,9 @@ object ChimeGenerator {
         for (i in 0 until samplesPerNote) {
             val t = i.toDouble() / SAMPLE_RATE
             val progress = i.toDouble() / samplesPerNote
-            // Attack in first 4ms, exponential decay after
-            val attack = (i.toDouble() / (SAMPLE_RATE * 0.004)).coerceAtMost(1.0)
-            val envelope = attack * exp(-3.0 * progress)
+            // Smooth attack in first 8ms, gentle exponential decay after
+            val attack = (i.toDouble() / (SAMPLE_RATE * 0.008)).coerceAtMost(1.0)
+            val envelope = attack * exp(-2.2 * progress)
             val sample = PEAK_AMPLITUDE * envelope * sin(2.0 * PI * FREQ_1 * t)
             buffer[i] = sample.toInt().toShort()
         }
@@ -49,8 +49,8 @@ object ChimeGenerator {
         for (i in 0 until samplesPerNote) {
             val t = i.toDouble() / SAMPLE_RATE
             val progress = i.toDouble() / samplesPerNote
-            val attack = (i.toDouble() / (SAMPLE_RATE * 0.004)).coerceAtMost(1.0)
-            val envelope = attack * exp(-2.8 * progress)
+            val attack = (i.toDouble() / (SAMPLE_RATE * 0.008)).coerceAtMost(1.0)
+            val envelope = attack * exp(-2.2 * progress)
             val sample = PEAK_AMPLITUDE * envelope * sin(2.0 * PI * FREQ_2 * t)
             buffer[samplesPerNote + i] = sample.toInt().toShort()
         }
@@ -65,12 +65,13 @@ object ChimeGenerator {
         if (!enabled) return
 
         scope.launch(Dispatchers.Default) {
+            var track: AudioTrack? = null
             try {
                 val data = pcmData
-                val audioTrack = AudioTrack.Builder()
+                track = AudioTrack.Builder()
                     .setAudioAttributes(
                         AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
                             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                             .build()
                     )
@@ -85,16 +86,22 @@ object ChimeGenerator {
                     .setTransferMode(AudioTrack.MODE_STATIC)
                     .build()
 
-                audioTrack.write(data, 0, data.size)
-                audioTrack.play()
+                if (track.state == AudioTrack.STATE_INITIALIZED) {
+                    track.write(data, 0, data.size)
+                    track.play()
 
-                // Wait for playback to finish before release
-                val durationMs = (totalDurationMs() + 50).toLong()
-                kotlinx.coroutines.delay(durationMs)
-                audioTrack.stop()
-                audioTrack.release()
-            } catch (_: Exception) {
-                // Audio device fallback / silent fail
+                    // Wait for playback to finish before release
+                    val durationMs = (totalDurationMs() + 50).toLong()
+                    kotlinx.coroutines.delay(durationMs)
+                    track.stop()
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("ChimeGenerator", "AudioTrack playback error: ${e.message}")
+            } finally {
+                try {
+                    track?.release()
+                } catch (_: Exception) {
+                }
             }
         }
     }

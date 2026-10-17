@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cashjournal.domain.model.Account
@@ -221,7 +222,7 @@ fun DashboardScreen(
                         }
                     }
 
-                    // Status pill, survival runway pill, and subline
+                    // Row 1: Status badge and survival runway badge
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -262,25 +263,30 @@ fun DashboardScreen(
                                 )
                             }
                         }
+                    }
 
-                        if (safe.status == SafeToSpendStatus.NO_FUNDS) {
-                            Text(
-                                text = strings.noFundsSubline,
-                                fontFamily = PlusJakartaSansFamily,
-                                fontSize = 11.sp,
-                                color = Slate500
-                            )
-                        } else if (safe.budget > 0) {
-                            val daysLabel = if (safe.isLastDay) strings.lastDayLabel else String.format(strings.daysLeftFormat, safe.daysLeft)
-                            val remText = String.format(strings.remainingFormat, Currency.formatMinor(safe.remaining, state.userPreferences.currencyCode))
-                            val modeSuffix = if (safe.budgetMode == BudgetMode.PERCENTAGE_OF_FUNDS) " (${safe.budgetPercent}%)" else ""
-                            Text(
-                                text = "$daysLabel · $remText$modeSuffix",
-                                fontFamily = PlusJakartaSansFamily,
-                                fontSize = 11.sp,
-                                color = Slate500
-                            )
-                        }
+                    // Row 2: Budget details subline (Full column width, zero bunching)
+                    if (safe.status == SafeToSpendStatus.NO_FUNDS) {
+                        Text(
+                            text = strings.noFundsSubline,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontSize = 11.sp,
+                            color = Slate500,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    } else if (safe.budget > 0) {
+                        val daysLabel = if (safe.isLastDay) strings.lastDayLabel else String.format(strings.daysLeftFormat, safe.daysLeft)
+                        val remText = String.format(strings.remainingFormat, Currency.formatMinor(safe.remaining, state.userPreferences.currencyCode))
+                        val modeSuffix = if (safe.budgetMode == BudgetMode.PERCENTAGE_OF_FUNDS) " (${safe.budgetPercent}%)" else ""
+                        Text(
+                            text = "$daysLabel · $remText$modeSuffix",
+                            fontFamily = PlusJakartaSansFamily,
+                            fontSize = 11.sp,
+                            color = Slate500,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
 
