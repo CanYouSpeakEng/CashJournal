@@ -52,6 +52,11 @@ import app.cashjournal.ui.theme.PlusJakartaSansFamily
 import app.cashjournal.ui.theme.Slate500
 import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import app.cashjournal.ui.theme.Slate100
+import com.adamglin.phosphoricons.regular.FileCsv
 import kotlin.math.roundToInt
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
@@ -63,9 +68,15 @@ fun AccountDetailScreen(
     state: MainUiState,
     onTransactionClick: ((Transaction) -> Unit)? = null,
     onEditAccountClick: (() -> Unit)? = null,
+    onImportStatement: ((Uri) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val strings = AppStrings.get(state.userPreferences.language)
+    val importStatementLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let { onImportStatement?.invoke(it) }
+    }
     val accountTransactions = remember(state.transactions, account.id) {
         state.transactions.filter { tx ->
             tx.sourceAccountId == account.id || tx.destinationAccountId == account.id
@@ -199,29 +210,64 @@ fun AccountDetailScreen(
                             color = Slate500
                         )
 
-                        if (onEditAccountClick != null) {
-                            Row(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(account.accentKey.color.copy(alpha = 0.12f))
-                                    .clickable { onEditAccountClick() }
-                                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(5.dp)
-                            ) {
-                                Icon(
-                                    imageVector = PhosphorIcons.Regular.PencilSimple,
-                                    contentDescription = strings.manageAccountButton,
-                                    tint = account.accentKey.color,
-                                    modifier = Modifier.size(13.dp)
-                                )
-                                Text(
-                                    text = strings.manageAccountButton,
-                                    fontFamily = PlusJakartaSansFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp,
-                                    color = account.accentKey.color
-                                )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (onImportStatement != null) {
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Slate100)
+                                        .clickable {
+                                            importStatementLauncher.launch(
+                                                arrayOf("text/comma-separated-values", "text/csv", "text/plain", "*/*")
+                                            )
+                                        }
+                                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = PhosphorIcons.Regular.FileCsv,
+                                        contentDescription = strings.csvImportTitle,
+                                        tint = Slate600,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Text(
+                                        text = if (state.userPreferences.language == "in") "Impor CSV" else "Import CSV",
+                                        fontFamily = PlusJakartaSansFamily,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 11.sp,
+                                        color = Slate600
+                                    )
+                                }
+                            }
+
+                            if (onEditAccountClick != null) {
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(account.accentKey.color.copy(alpha = 0.12f))
+                                        .clickable { onEditAccountClick() }
+                                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = PhosphorIcons.Regular.PencilSimple,
+                                        contentDescription = strings.manageAccountButton,
+                                        tint = account.accentKey.color,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Text(
+                                        text = strings.manageAccountButton,
+                                        fontFamily = PlusJakartaSansFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        color = account.accentKey.color
+                                    )
+                                }
                             }
                         }
                     }

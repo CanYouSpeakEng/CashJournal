@@ -299,6 +299,24 @@ interface ScreenStrings {
     val selectPaymentAccountPrompt: String
     val toastBillNameRequired: String
     val saveBillAction: String
+
+    // CSV Import / Export
+    val csvImportTitle: String
+    val csvImportSubtitle: String
+    val csvImportSelectFileAction: String
+    val csvImportTargetAccount: String
+    val csvImportPreviewTitle: String
+    val csvImportSummaryFormat: String
+    val csvImportActionFormat: String
+    val csvImportSuccessToast: String
+    val csvImportEmptyToast: String
+    val csvImportDuplicateBadge: String
+    val csvImportSelectAll: String
+    val csvImportDeselectAll: String
+    val csvExportTitle: String
+    val csvExportSubtitle: String
+    val csvExportSuccessToast: String
+    val csvExportFailedToast: String
 }
 
 
@@ -593,6 +611,24 @@ private class EnglishScreenStrings : ScreenStrings {
     override val selectPaymentAccountPrompt: String = "Select Account"
     override val toastBillNameRequired: String = "Bill name is required"
     override val saveBillAction: String = "Save Bill"
+
+    // CSV Import / Export
+    override val csvImportTitle: String = "Import Statement (CSV)"
+    override val csvImportSubtitle: String = "Import transactions from bank CSV statement"
+    override val csvImportSelectFileAction: String = "Select CSV File"
+    override val csvImportTargetAccount: String = "Target Account"
+    override val csvImportPreviewTitle: String = "Statement Preview"
+    override val csvImportSummaryFormat: String = "%d new transactions · %d duplicate%s skipped"
+    override val csvImportActionFormat: String = "Import %d Transactions"
+    override val csvImportSuccessToast: String = "Imported %d transactions successfully"
+    override val csvImportEmptyToast: String = "No valid transactions found in CSV file"
+    override val csvImportDuplicateBadge: String = "Duplicate"
+    override val csvImportSelectAll: String = "Select All"
+    override val csvImportDeselectAll: String = "Deselect All"
+    override val csvExportTitle: String = "Export Ledger (CSV)"
+    override val csvExportSubtitle: String = "Export complete transaction history as spreadsheet"
+    override val csvExportSuccessToast: String = "Ledger exported successfully"
+    override val csvExportFailedToast: String = "Failed to export ledger"
 }
 
 
@@ -887,6 +923,24 @@ private class IndonesianScreenStrings : ScreenStrings {
     override val selectPaymentAccountPrompt: String = "Pilih Akun"
     override val toastBillNameRequired: String = "Nama tagihan harus diisi"
     override val saveBillAction: String = "Simpan Tagihan"
+
+    // CSV Import / Export
+    override val csvImportTitle: String = "Impor Rekening Koran (CSV)"
+    override val csvImportSubtitle: String = "Impor transaksi dari berkas CSV rekening koran bank"
+    override val csvImportSelectFileAction: String = "Pilih Berkas CSV"
+    override val csvImportTargetAccount: String = "Akun Tujuan"
+    override val csvImportPreviewTitle: String = "Pratinjau Transaksi"
+    override val csvImportSummaryFormat: String = "%d transaksi baru · %d duplikat dilewati"
+    override val csvImportActionFormat: String = "Impor %d Transaksi"
+    override val csvImportSuccessToast: String = "Berhasil mengimpor %d transaksi"
+    override val csvImportEmptyToast: String = "Tidak ada transaksi valid di berkas CSV ini"
+    override val csvImportDuplicateBadge: String = "Duplikat"
+    override val csvImportSelectAll: String = "Pilih Semua"
+    override val csvImportDeselectAll: String = "Batal Pilih Semua"
+    override val csvExportTitle: String = "Ekspor Riwayat (CSV)"
+    override val csvExportSubtitle: String = "Ekspor riwayat transaksi lengkap ke spreadsheet"
+    override val csvExportSuccessToast: String = "Riwayat transaksi berhasil diekspor"
+    override val csvExportFailedToast: String = "Gagal mengekspor riwayat transaksi"
 }
 
 object AppStrings {

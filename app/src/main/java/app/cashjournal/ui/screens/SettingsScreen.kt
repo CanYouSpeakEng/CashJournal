@@ -110,6 +110,8 @@ fun SettingsScreen(
     onResetOnboarding: () -> Unit = {},
     onExportBackup: (Uri) -> Unit = {},
     onRestoreBackup: (Uri) -> Unit = {},
+    onExportCsv: (Uri) -> Unit = {},
+    onImportCsv: (Uri) -> Unit = {},
     onCycleStartDayChange: (Int) -> Unit = {},
     onImmersiveModeChange: (Boolean) -> Unit = {},
     onOpenReleaseNotes: () -> Unit = {},
@@ -135,6 +137,18 @@ fun SettingsScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         uri?.let { onRestoreBackup(it) }
+    }
+
+    val exportCsvLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri: Uri? ->
+        uri?.let { onExportCsv(it) }
+    }
+
+    val importCsvLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let { onImportCsv(it) }
     }
 
     val currency = Currency.findByCode(state.userPreferences.currencyCode)
@@ -918,12 +932,14 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onToast(strings.comingSoonToast) },
+                        .clickable {
+                            importCsvLauncher.launch(arrayOf("text/comma-separated-values", "text/csv", "text/plain", "*/*"))
+                        },
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = strings.exportExcelTitle,
+                        text = strings.csvImportTitle,
                         fontFamily = PlusJakartaSansFamily,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp,
@@ -931,7 +947,32 @@ fun SettingsScreen(
                     )
                     Icon(
                         imageVector = PhosphorIcons.Regular.CaretRight,
-                        contentDescription = "Export Excel",
+                        contentDescription = "Import Statement CSV",
+                        tint = Slate400,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+                            exportCsvLauncher.launch("cashjournal_ledger_$timestamp.csv")
+                        },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = strings.csvExportTitle,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        color = Charcoal
+                    )
+                    Icon(
+                        imageVector = PhosphorIcons.Regular.CaretRight,
+                        contentDescription = "Export Ledger CSV",
                         tint = Slate400,
                         modifier = Modifier.size(16.dp)
                     )

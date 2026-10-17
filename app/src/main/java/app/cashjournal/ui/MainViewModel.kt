@@ -46,6 +46,11 @@ import app.cashjournal.domain.model.SafeToSpendState
 import app.cashjournal.domain.model.SafeToSpendStatus
 import app.cashjournal.domain.model.Transaction
 import app.cashjournal.domain.model.TransactionType
+import app.cashjournal.data.csv.CsvDuplicateDetector
+import app.cashjournal.data.csv.CsvExporter
+import app.cashjournal.data.csv.CsvParser
+import app.cashjournal.data.csv.CsvTokenizer
+import app.cashjournal.data.csv.ParsedCsvTransaction
 import app.cashjournal.ui.sensory.ChimeGenerator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -89,12 +94,22 @@ enum class ActiveSheet {
     RELEASE_NOTES,
     EDIT_ACCOUNT,
     UPDATE_INFO,
-    RECURRING_BILLS
+    RECURRING_BILLS,
+    CSV_IMPORT
 }
 
 typealias SafeToSpendStatus = app.cashjournal.domain.model.SafeToSpendStatus
 typealias SafeToSpendState = app.cashjournal.domain.model.SafeToSpendState
 
+data class CsvImportState(
+    val targetAccountId: String,
+    val items: List<ParsedCsvTransaction> = emptyList(),
+    val fileName: String = ""
+) {
+    val totalFound: Int get() = items.size
+    val duplicatesCount: Int get() = items.count { it.isDuplicate }
+    val selectedCount: Int get() = items.count { it.isSelected }
+}
 
 data class MainUiState(
     val isPreferencesLoaded: Boolean = false,
@@ -120,7 +135,8 @@ data class MainUiState(
     val isSearchingCity: Boolean = false,
     val updateState: UpdateState = UpdateState.Idle,
     val isUpdateReadyToInstall: Boolean = false,
-    val recurringTransactions: List<RecurringTransaction> = emptyList()
+    val recurringTransactions: List<RecurringTransaction> = emptyList(),
+    val csvImportState: CsvImportState? = null
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -147,6 +163,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // OTA Update State
     private val appUpdateService = AppUpdateService()
     private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
+    private val _csvImportState = MutableStateFlow<CsvImportState?>(null)
     val updateState = _updateState.asStateFlow()
 
     // App Lock & Privacy Veil Lifecycle State
@@ -202,7 +219,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _hideBalances,
             _isReorderMode,
             _toastMessage,
-            _updateState
+            _updateState,
+            _csvImportState
         ) { args ->
             args
         }
@@ -221,6 +239,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val reorder = group3[6] as Boolean
         val toast = group3[7] as? String
         val currentUpdateState = group3[8] as UpdateState
+        val csvState = group3[9] as? CsvImportState
         val isUpdateReady = currentUpdateState is UpdateState.ReadyToInstall
 
         val totalWorth = rawAccounts.sumOf { it.balance }
@@ -260,7 +279,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             isSearchingCity = isSearching,
             updateState = currentUpdateState,
             isUpdateReadyToInstall = isUpdateReady,
-            recurringTransactions = rawRecurring
+            recurringTransactions = rawRecurring,
+            csvImportState = csvState
         )
     }.stateIn(
         scope = viewModelScope,
@@ -1352,6 +1372,161 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 val lang = preferencesRepository.userPreferencesFlow.first().language
                 showToast(AppStrings.get(lang).backupImportFailed)
+            }
+        }
+    }
+
+    fun openCsvImport(uri: Uri, preselectedAccountId: String? = null) {
+        viewModelScope.launch {
+            try {
+                val context = getApplication<Application>()
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val lang = preferencesRepository.userPreferencesFlow.first().language
+                val strings = AppStrings.get(lang)
+                if (inputStream == null) {
+                    showToast(strings.csvImportEmptyToast)
+                    return@launch
+                }
+
+                var fileName = "Statement.csv"
+                try {
+                    context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                        val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        if (nameIndex != -1 && cursor.moveToFirst()) {
+                            fileName = cursor.getString(nameIndex) ?: "Statement.csv"
+                        }
+                    }
+                } catch (_: Exception) {}
+
+                val rows = withContext(Dispatchers.IO) {
+                    CsvTokenizer.parse(inputStream)
+                }
+
+                if (rows.isEmpty()) {
+                    showToast(strings.csvImportEmptyToast)
+                    return@launch
+                }
+
+                val mapping = CsvParser.detectMapping(rows[0])
+                val currCode = preferencesRepository.userPreferencesFlow.first().currencyCode
+                val parsed = CsvParser.parseRows(rows, mapping, currCode, skipHeader = true)
+
+                if (parsed.isEmpty()) {
+                    showToast(strings.csvImportEmptyToast)
+                    return@launch
+                }
+
+                val accs = accountsFlow.first().map { it.toDomain() }
+                val targetAccId = preselectedAccountId
+                    ?: _selectedAccount.value?.id
+                    ?: accs.firstOrNull()?.id
+                    ?: return@launch
+
+                val allTxs = transactionsFlow.first().map { it.toDomain() }
+                val flagged = CsvDuplicateDetector.flagDuplicates(parsed, allTxs, targetAccId)
+
+                _csvImportState.value = CsvImportState(
+                    targetAccountId = targetAccId,
+                    items = flagged,
+                    fileName = fileName
+                )
+                openSheet(ActiveSheet.CSV_IMPORT)
+            } catch (e: Exception) {
+                val lang = preferencesRepository.userPreferencesFlow.first().language
+                showToast(AppStrings.get(lang).csvImportEmptyToast)
+            }
+        }
+    }
+
+    fun setCsvImportTargetAccount(accountId: String) {
+        val current = _csvImportState.value ?: return
+        viewModelScope.launch {
+            val allTxs = transactionsFlow.first().map { it.toDomain() }
+            val reflagged = CsvDuplicateDetector.flagDuplicates(current.items, allTxs, accountId)
+            _csvImportState.value = current.copy(
+                targetAccountId = accountId,
+                items = reflagged
+            )
+        }
+    }
+
+    fun toggleCsvImportItemSelection(itemId: String) {
+        val current = _csvImportState.value ?: return
+        val updated = current.items.map { item ->
+            if (item.id == itemId) item.copy(isSelected = !item.isSelected) else item
+        }
+        _csvImportState.value = current.copy(items = updated)
+    }
+
+    fun setSelectAllCsvImportItems(select: Boolean) {
+        val current = _csvImportState.value ?: return
+        val updated = current.items.map { item ->
+            item.copy(isSelected = select)
+        }
+        _csvImportState.value = current.copy(items = updated)
+    }
+
+    fun confirmCsvImport() {
+        val current = _csvImportState.value ?: return
+        val selectedItems = current.items.filter { it.isSelected }
+        if (selectedItems.isEmpty()) return
+
+        viewModelScope.launch {
+            val entities = selectedItems.map { item ->
+                val iconKey = when (item.type) {
+                    TransactionType.EXPENSE -> item.category.key
+                    TransactionType.INCOME -> "ArrowDownLeft"
+                    TransactionType.TRANSFER -> "ArrowsLeftRight"
+                }
+                TransactionEntity(
+                    id = UUID.randomUUID().toString(),
+                    title = item.title,
+                    amount = item.amount,
+                    type = item.type.name,
+                    category = item.category.name,
+                    sourceAccountId = current.targetAccountId,
+                    destinationAccountId = null,
+                    date = item.parsedDateMillis,
+                    iconKey = iconKey,
+                    accentKey = item.category.defaultAccent.name,
+                    updatedAt = System.currentTimeMillis()
+                )
+            }
+
+            database.withTransaction {
+                database.transactionDao().insertAll(entities)
+                database.accountDao().recalculateAccountBalance(current.targetAccountId)
+            }
+
+            val lang = preferencesRepository.userPreferencesFlow.first().language
+            val strings = AppStrings.get(lang)
+            ChimeGenerator.playChime(uiState.value.userPreferences.soundEffectsEnabled, viewModelScope)
+            _csvImportState.value = null
+            dismissSheet()
+            showToast(strings.csvImportSuccessToast.format(entities.size))
+        }
+    }
+
+    fun exportCsvSpreadsheet(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val outputStream = getApplication<Application>().contentResolver.openOutputStream(uri)
+                val lang = preferencesRepository.userPreferencesFlow.first().language
+                val strings = AppStrings.get(lang)
+                if (outputStream == null) {
+                    showToast(strings.csvExportFailedToast)
+                    return@launch
+                }
+                val txs = transactionsFlow.first().map { it.toDomain() }
+                val accs = accountsFlow.first().map { it.toDomain() }
+                val currCode = preferencesRepository.userPreferencesFlow.first().currencyCode
+                withContext(Dispatchers.IO) {
+                    CsvExporter.exportToStream(txs, accs, currCode, outputStream)
+                }
+                showToast(strings.csvExportSuccessToast)
+            } catch (e: Exception) {
+                val lang = preferencesRepository.userPreferencesFlow.first().language
+                showToast(AppStrings.get(lang).csvExportFailedToast)
             }
         }
     }

@@ -43,7 +43,7 @@ enum class Category(
         defaultName = "Transport",
         indonesianName = "Transportasi",
         defaultAccent = AccentKey.IRIS,
-        keywords = listOf("transport", "gojek", "grab", "grabcar", "grabbike", "gocar", "goride", "bensin", "fuel", "gas", "train", "bus", "parking", "parkir", "toll", "tol", "mrt", "lrt", "bengkel")
+        keywords = listOf("transport", "transportation", "uber", "taxi", "taksi", "gojek", "grab", "grabcar", "grabbike", "gocar", "goride", "bensin", "fuel", "gas", "train", "bus", "parking", "parkir", "toll", "tol", "mrt", "lrt", "bengkel")
     ),
     SHOPPING(
         key = "SHOPPING",

@@ -60,6 +60,7 @@ import app.cashjournal.ui.screens.LedgerScreen
 import app.cashjournal.ui.screens.SettingsScreen
 import app.cashjournal.ui.sensory.KnockSensitivity
 import app.cashjournal.ui.sensory.ShakeDetector
+import app.cashjournal.ui.sheets.CsvImportSheet
 import app.cashjournal.ui.sheets.EditAccountSheet
 import app.cashjournal.ui.sheets.LogTransactionSheet
 import app.cashjournal.ui.sheets.MainCurrencySheet
@@ -308,7 +309,8 @@ fun MainAppScaffold(
                                 account = acc,
                                 state = state,
                                 onTransactionClick = { viewModel.showEditTransaction(it) },
-                                onEditAccountClick = { viewModel.openEditAccount(acc) }
+                                onEditAccountClick = { viewModel.openEditAccount(acc) },
+                                onImportStatement = { uri -> viewModel.openCsvImport(uri, acc.id) }
                             )
                         }
                     }
@@ -351,6 +353,8 @@ fun MainAppScaffold(
                         onResetOnboarding = { viewModel.resetOnboarding() },
                         onExportBackup = { uri -> viewModel.exportBackup(uri) },
                         onRestoreBackup = { uri -> viewModel.restoreBackup(uri) },
+                        onExportCsv = { uri -> viewModel.exportCsvSpreadsheet(uri) },
+                        onImportCsv = { uri -> viewModel.openCsvImport(uri) },
                         onCycleStartDayChange = { viewModel.updateCycleStartDay(it) },
                         onImmersiveModeChange = { viewModel.updatePreferences { prefs -> prefs.updateImmersiveMode(it) } },
                         onOpenReleaseNotes = { viewModel.openSheet(ActiveSheet.RELEASE_NOTES) },
@@ -559,6 +563,21 @@ fun MainAppScaffold(
                         languageCode = state.userPreferences.language,
                         hapticsEnabled = state.userPreferences.tactileHapticsEnabled
                     )
+
+                    ActiveSheet.CSV_IMPORT -> state.csvImportState?.let { csvState ->
+                        CsvImportSheet(
+                            importState = csvState,
+                            accounts = state.accounts,
+                            currencyCode = state.userPreferences.currencyCode,
+                            languageCode = state.userPreferences.language,
+                            hapticsEnabled = state.userPreferences.tactileHapticsEnabled,
+                            onTargetAccountChange = { accId -> viewModel.setCsvImportTargetAccount(accId) },
+                            onToggleItem = { id -> viewModel.toggleCsvImportItemSelection(id) },
+                            onSelectAll = { selectAll -> viewModel.setSelectAllCsvImportItems(selectAll) },
+                            onConfirmImport = { viewModel.confirmCsvImport() },
+                            onDismiss = { viewModel.dismissSheet() }
+                        )
+                    }
                 }
             }
         }
