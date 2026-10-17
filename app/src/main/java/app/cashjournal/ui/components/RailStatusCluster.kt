@@ -94,7 +94,7 @@ fun rememberDeviceStatus(): DeviceStatus {
                 val bm = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
                 val capacity = bm?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
                 if (capacity in 0..100) capacity else 75
-            } catch (_: Exception) {
+            } catch (_: Throwable) {
                 75
             }
         )
@@ -103,10 +103,14 @@ fun rememberDeviceStatus(): DeviceStatus {
     var signalLevel by remember {
         mutableIntStateOf(
             try {
-                val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
-                val rawLevel = tm?.signalStrength?.level ?: 3
-                SignalStrengthHelper.translateToFourDots(rawLevel, maxScale = 4)
-            } catch (_: Exception) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                    val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+                    val rawLevel = tm?.signalStrength?.level ?: 3
+                    SignalStrengthHelper.translateToFourDots(rawLevel, maxScale = 4)
+                } else {
+                    3
+                }
+            } catch (_: Throwable) {
                 3
             }
         )
@@ -114,9 +118,13 @@ fun rememberDeviceStatus(): DeviceStatus {
 
     val formatTime = remember(context) {
         {
-            val is24h = android.text.format.DateFormat.is24HourFormat(context)
-            val pattern = if (is24h) "HH:mm" else "h:mm"
-            LocalTime.now().format(DateTimeFormatter.ofPattern(pattern))
+            try {
+                val is24h = android.text.format.DateFormat.is24HourFormat(context)
+                val pattern = if (is24h) "HH:mm" else "h:mm"
+                LocalTime.now().format(DateTimeFormatter.ofPattern(pattern))
+            } catch (_: Throwable) {
+                "12:00"
+            }
         }
     }
 
@@ -132,14 +140,16 @@ fun rememberDeviceStatus(): DeviceStatus {
                 val bm = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
                 val capacity = bm?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
                 if (capacity in 0..100) batteryLevel = capacity
-            } catch (_: Exception) {
+            } catch (_: Throwable) {
                 // keep current
             }
             try {
-                val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
-                val rawLevel = tm?.signalStrength?.level ?: 3
-                signalLevel = SignalStrengthHelper.translateToFourDots(rawLevel, maxScale = 4)
-            } catch (_: Exception) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                    val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+                    val rawLevel = tm?.signalStrength?.level ?: 3
+                    signalLevel = SignalStrengthHelper.translateToFourDots(rawLevel, maxScale = 4)
+                }
+            } catch (_: Throwable) {
                 // keep current
             }
         }

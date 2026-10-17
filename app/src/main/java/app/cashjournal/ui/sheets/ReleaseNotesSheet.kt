@@ -48,10 +48,10 @@ import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
-import com.adamglin.phosphoricons.regular.CheckCircle
-import com.adamglin.phosphoricons.regular.DeviceMobile
-import com.adamglin.phosphoricons.regular.Eye
+import com.adamglin.phosphoricons.regular.CalendarCheck
+import com.adamglin.phosphoricons.regular.Receipt
 import com.adamglin.phosphoricons.regular.Sparkle
+import com.adamglin.phosphoricons.regular.Wallet
 import com.adamglin.phosphoricons.regular.X
 
 data class ReleaseHighlight(
@@ -78,34 +78,34 @@ fun ReleaseNotesSheet(
 
     val highlights = listOf(
         ReleaseHighlight(
-            titleEn = "Floating Privacy Bubble",
-            titleIn = "Gelembung Privasi Melayang",
-            descEn = "When viewing an account, your privacy status ring lifts into a floating bubble so you can hide or show balances anytime.",
-            descIn = "Saat melihat rekening, cincin privasi melayang ke atas menjadi gelembung tersendiri agar Anda tetap bisa sembunyikan atau tampilkan saldo kapan saja.",
-            icon = PhosphorIcons.Regular.Eye,
+            titleEn = "Recurring Bills & Subscriptions",
+            titleIn = "Tagihan & Langganan Rutin",
+            descEn = "Easily track monthly subscriptions and recurring bills. CashJournal reminds you of upcoming dues so nothing slips through.",
+            descIn = "Pantau langganan bulanan dan tagihan rutin dengan mudah. CashJournal mencatat jadwalnya agar keuangan Anda tetap aman terkendali.",
+            icon = PhosphorIcons.Regular.CalendarCheck,
             iconTint = Cobalt
         ),
         ReleaseHighlight(
-            titleEn = "One-Handed Account Actions",
-            titleIn = "Aksi Rekening Ramah Satu Tangan",
-            descEn = "Add Account and Reorder buttons are now docked right at the bottom of the screen where your thumb can easily reach them.",
-            descIn = "Tombol Tambah Rekening dan Urutkan kini berada di bagian bawah layar agar nyaman dijangkau oleh ibu jari.",
-            icon = PhosphorIcons.Regular.DeviceMobile,
+            titleEn = "Safe-to-Spend Protection",
+            titleIn = "Perlindungan Saldo Aman",
+            descEn = "Your dashboard automatically reserves funds for upcoming bills, so you always know exactly how much you can spend worry-free.",
+            descIn = "Dashboard otomatis menyisihkan dana untuk tagihan mendatang, sehingga Anda tahu pasti nominal yang bebas dibelanjakan.",
+            icon = PhosphorIcons.Regular.Wallet,
             iconTint = Emerald
         ),
         ReleaseHighlight(
-            titleEn = "Unified Account Manager",
-            titleIn = "Kelola Rekening & Saldo Praktis",
-            descEn = "Edit account details and adjust your real-world balance in one simple screen, complete with a live difference counter.",
-            descIn = "Ubah detail rekening dan sesuaikan saldo riil Anda dalam satu layar praktis, lengkap dengan penghitung selisih otomatis.",
-            icon = PhosphorIcons.Regular.CheckCircle,
+            titleEn = "One-Tap Bill Logging",
+            titleIn = "Catat Tagihan Sekali Ketuk",
+            descEn = "Pay or mark bills as done in a single tap without retyping amounts. Balances update immediately across your accounts.",
+            descIn = "Bayar atau tandai tagihan lunas hanya dengan sekali ketuk tanpa repot mengetik nominal. Saldo langsung terpotong rapi.",
+            icon = PhosphorIcons.Regular.Receipt,
             iconTint = Persimmon
         ),
         ReleaseHighlight(
-            titleEn = "Fluid Card Motion & Touch Audio",
-            titleIn = "Animasi Kartu Mulus & Efek Suara",
-            descEn = "Account cards now slide smoothly when reordering, and tactile touch sounds now chime clearly with your media volume.",
-            descIn = "Kartu rekening bergeser mulus saat diatur ulang urutannya, dan efek suara ketukan kini terdengar jernih mengikuti volume media Anda.",
+            titleEn = "Rock-Solid Stability",
+            titleIn = "Aplikasi Lebih Tangguh & Cepat",
+            descEn = "Under-the-hood engine improvements ensure lightning-fast startup, smoother animations, and bulletproof data security.",
+            descIn = "Penyempurnaan mesin di balik layar memastikan aplikasi terbuka secepat kilat, animasi semakin mulus, dan data Anda selalu aman.",
             icon = PhosphorIcons.Regular.Sparkle,
             iconTint = Cobalt
         )

@@ -52,6 +52,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -170,14 +171,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val recurringFlow = database.recurringTransactionDao().getAllRecurringFlow()
 
     val uiState: StateFlow<MainUiState> = combine(
-        combine(accountsFlow, transactionsFlow, monthlyPlanFlow, preferencesFlow, recurringFlow) { accs, txs, planEntity, prefs, recurringEntities ->
+        combine(
+            accountsFlow.catch { emit(emptyList()) },
+            transactionsFlow.catch { emit(emptyList()) },
+            monthlyPlanFlow.catch { emit(null) },
+            preferencesFlow.catch { emit(UserPreferences()) },
+            recurringFlow.catch { emit(emptyList()) }
+        ) { accs, txs, planEntity, prefs, recurringEntities ->
             val domainAccs = accs.map { it.toDomain() }
             val domainTxs = txs.map { it.toDomain() }
             val domainPlan = planEntity?.toDomain() ?: MonthlyPlan()
             val domainRecurring = recurringEntities.map { it.toDomain() }
             Pent(domainAccs, domainTxs, domainPlan, prefs, domainRecurring)
         },
-        combine(weatherFlow, ratesFlow, _isRatesOffline, _citySearchResults, _isSearchingCity) { weather, rates, offline, cities, searching ->
+        combine(
+            weatherFlow.catch { emit(null) },
+            ratesFlow.catch { emit(null) },
+            _isRatesOffline,
+            _citySearchResults,
+            _isSearchingCity
+        ) { weather, rates, offline, cities, searching ->
             Pent(weather, rates, offline, cities, searching)
         },
         combine(
@@ -258,22 +271,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         // Automatically check if rates or weather need refresh on startup
         viewModelScope.launch {
-            val prefs = preferencesFlow.first()
-            val cachedRates = ratesFlow.first()
-            if (exchangeRateService.shouldAutoRefresh(cachedRates?.fetchedAt ?: 0L) || cachedRates?.baseCode != "USD") {
-                refreshRates(manual = false)
+            try {
+                val prefs = preferencesFlow.first()
+                val cachedRates = ratesFlow.first()
+                if (exchangeRateService.shouldAutoRefresh(cachedRates?.fetchedAt ?: 0L) || cachedRates?.baseCode != "USD") {
+                    refreshRates(manual = false)
+                }
+                if (prefs.weatherOption != "not_now") {
+                    refreshWeather()
+                }
+                val currentRuntimeVersion = AppVersionProvider.getVersionName(application)
+                withContext(Dispatchers.IO) {
+                    appUpdateService.cleanStaleUpdateApks(application.cacheDir, currentRuntimeVersion)
+                }
+                if (prefs.onboardingComplete && prefs.lastSeenVersion != currentRuntimeVersion) {
+                    _activeSheet.value = ActiveSheet.RELEASE_NOTES
+                }
+                checkDailyUpdateQuietly()
+            } catch (_: Exception) {
+                // Prevent background startup tasks from failing process initialization
             }
-            if (prefs.weatherOption != "not_now") {
-                refreshWeather()
-            }
-            val currentRuntimeVersion = AppVersionProvider.getVersionName(application)
-            withContext(Dispatchers.IO) {
-                appUpdateService.cleanStaleUpdateApks(application.cacheDir, currentRuntimeVersion)
-            }
-            if (prefs.onboardingComplete && prefs.lastSeenVersion != currentRuntimeVersion) {
-                _activeSheet.value = ActiveSheet.RELEASE_NOTES
-            }
-            checkDailyUpdateQuietly()
         }
     }
 

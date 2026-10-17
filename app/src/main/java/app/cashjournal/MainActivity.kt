@@ -44,7 +44,9 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
 
         if (intent?.getBooleanExtra("seed", false) == true) {
-            viewModel.seedExampleData()
+            try {
+                viewModel.seedExampleData()
+            } catch (_: Exception) {}
         }
 
         setContent {
@@ -59,23 +61,27 @@ class MainActivity : FragmentActivity() {
 
                 // Screen Privacy (FLAG_SECURE)
                 LaunchedEffect(state.userPreferences.screenPrivacyEnabled) {
-                    if (state.userPreferences.screenPrivacyEnabled) {
-                        window.setFlags(
-                            WindowManager.LayoutParams.FLAG_SECURE,
-                            WindowManager.LayoutParams.FLAG_SECURE
-                        )
-                    } else {
-                        window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-                    }
+                    try {
+                        if (state.userPreferences.screenPrivacyEnabled) {
+                            window.setFlags(
+                                WindowManager.LayoutParams.FLAG_SECURE,
+                                WindowManager.LayoutParams.FLAG_SECURE
+                            )
+                        } else {
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                        }
+                    } catch (_: Exception) {}
                 }
 
                 // Daily Reminder scheduling
                 LaunchedEffect(state.userPreferences.dailyReminderEnabled) {
-                    if (state.userPreferences.dailyReminderEnabled) {
-                        app.cashjournal.receiver.DailyReminderScheduler.scheduleDailyReminder(applicationContext)
-                    } else {
-                        app.cashjournal.receiver.DailyReminderScheduler.cancelDailyReminder(applicationContext)
-                    }
+                    try {
+                        if (state.userPreferences.dailyReminderEnabled) {
+                            app.cashjournal.receiver.DailyReminderScheduler.scheduleDailyReminder(applicationContext)
+                        } else {
+                            app.cashjournal.receiver.DailyReminderScheduler.cancelDailyReminder(applicationContext)
+                        }
+                    } catch (_: Exception) {}
                 }
 
                 // Immersive Sticky Fullscreen
@@ -85,11 +91,13 @@ class MainActivity : FragmentActivity() {
                     }
                 }
                 LaunchedEffect(state.userPreferences.immersiveModeEnabled) {
-                    if (state.userPreferences.immersiveModeEnabled) {
-                        insetsController.hide(WindowInsetsCompat.Type.systemBars())
-                    } else {
-                        insetsController.show(WindowInsetsCompat.Type.systemBars())
-                    }
+                    try {
+                        if (state.userPreferences.immersiveModeEnabled) {
+                            insetsController.hide(WindowInsetsCompat.Type.systemBars())
+                        } else {
+                            insetsController.show(WindowInsetsCompat.Type.systemBars())
+                        }
+                    } catch (_: Exception) {}
                 }
 
                 if (!state.isPreferencesLoaded) {
