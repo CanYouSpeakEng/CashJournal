@@ -14,6 +14,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,6 +52,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -436,43 +438,39 @@ private fun RailNavButton(
     hapticsEnabled: Boolean = true,
     glowBlue: Boolean = false
 ) {
-    val iconColor = when {
-        isSelected -> Color.White
-        glowBlue -> Cobalt
-        else -> Slate500
-    }
+    val iconColor = if (isSelected) Color.White else Slate500
     val view = LocalView.current
     val currentOnClick by rememberUpdatedState(onClick)
     val currentOnLongPress by rememberUpdatedState(onLongPress)
     val currentOnRelease by rememberUpdatedState(onRelease)
     val currentHapticsEnabled by rememberUpdatedState(hapticsEnabled)
 
-    val infiniteTransition = rememberInfiniteTransition(label = "blueGlow")
-    val glowAlpha by if (glowBlue) {
-        infiniteTransition.animateFloat(
-            initialValue = 0.2f,
-            targetValue = 0.65f,
+    val pulseTransition = rememberInfiniteTransition(label = "hazePulse")
+    val pulseScale by if (glowBlue && !isSelected) {
+        pulseTransition.animateFloat(
+            initialValue = 0.90f,
+            targetValue = 1.35f,
             animationSpec = infiniteRepeatable(
-                animation = tween(1200, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
+                animation = tween(2200, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Restart
             ),
-            label = "glowAlpha"
-        )
-    } else {
-        remember { mutableFloatStateOf(0f) }
-    }
-    val glowScale by if (glowBlue) {
-        infiniteTransition.animateFloat(
-            initialValue = 0.95f,
-            targetValue = 1.15f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(1200, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "glowScale"
+            label = "pulseScale"
         )
     } else {
         remember { mutableFloatStateOf(1f) }
+    }
+    val pulseAlpha by if (glowBlue && !isSelected) {
+        pulseTransition.animateFloat(
+            initialValue = 0.40f,
+            targetValue = 0.0f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(2200, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "pulseAlpha"
+        )
+    } else {
+        remember { mutableFloatStateOf(0f) }
     }
 
     Box(
@@ -499,12 +497,25 @@ private fun RailNavButton(
         contentAlignment = Alignment.Center
     ) {
         if (glowBlue && !isSelected) {
+            // Subtle misty frosted glass ambient pulse
             Box(
                 modifier = Modifier
-                    .size(38.dp)
-                    .scale(glowScale)
+                    .size(40.dp)
+                    .scale(pulseScale)
                     .clip(CircleShape)
-                    .background(Cobalt.copy(alpha = glowAlpha))
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = pulseAlpha * 0.75f),
+                                Cobalt.copy(alpha = pulseAlpha * 0.14f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+                    .border(
+                        BorderStroke(1.dp, GlassBorder.copy(alpha = pulseAlpha * 0.5f)),
+                        CircleShape
+                    )
             )
         }
 

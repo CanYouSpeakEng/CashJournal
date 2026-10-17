@@ -114,6 +114,7 @@ fun SettingsScreen(
     onImmersiveModeChange: (Boolean) -> Unit = {},
     onOpenReleaseNotes: () -> Unit = {},
     onCheckForUpdates: () -> Unit = {},
+    onOpenUpdateSheet: () -> Unit = onCheckForUpdates,
     modifier: Modifier = Modifier
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -121,6 +122,7 @@ fun SettingsScreen(
     var showCycleDialog by remember { mutableStateOf(false) }
     var showPinSetupSheet by remember { mutableStateOf(false) }
     var showPinRemoveSheet by remember { mutableStateOf(false) }
+    var showReplayOnboardingDialog by remember { mutableStateOf(false) }
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
@@ -890,7 +892,7 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onResetOnboarding() },
+                        .clickable { showReplayOnboardingDialog = true },
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -1016,7 +1018,7 @@ fun SettingsScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onCheckForUpdates() }
+                            .clickable { onOpenUpdateSheet() }
                             .padding(top = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -1077,6 +1079,62 @@ fun SettingsScreen(
                 showPinRemoveSheet = false
             },
             hapticsEnabled = state.userPreferences.tactileHapticsEnabled
+        )
+    }
+
+    if (showReplayOnboardingDialog) {
+        AlertDialog(
+            onDismissRequest = { showReplayOnboardingDialog = false },
+            title = {
+                Text(
+                    text = strings.replayOnboardingTitle,
+                    fontFamily = PlusJakartaSansFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp,
+                    color = Charcoal
+                )
+            },
+            text = {
+                Text(
+                    text = if (state.userPreferences.language == "in")
+                        "Ini akan memandu Anda melalui alur penyiapan pengenalan kembali. Akun, saldo, dan seluruh riwayat transaksi Anda yang sudah ada akan tetap aman dan tidak akan dihapus."
+                    else
+                        "This will walk you through the introductory onboarding flow again. Your existing accounts, balances, and entire transaction history will remain safe and will not be deleted.",
+                    fontFamily = PlusJakartaSansFamily,
+                    fontSize = 14.sp,
+                    color = Slate600,
+                    lineHeight = 20.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showReplayOnboardingDialog = false
+                        onResetOnboarding()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Cobalt),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        text = if (state.userPreferences.language == "in") "Lanjutkan" else "Continue",
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showReplayOnboardingDialog = false }) {
+                    Text(
+                        text = strings.cancelAction,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Slate500
+                    )
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(20.dp)
         )
     }
 }

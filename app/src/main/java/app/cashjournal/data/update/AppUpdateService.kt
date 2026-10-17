@@ -185,4 +185,25 @@ class AppUpdateService(
             // Non-critical cache cleanup failure ignored
         }
     }
+
+    /**
+     * Purges all APK files from the updates cache directory except the specified target version.
+     */
+    fun purgeOtherUpdateApks(cacheDir: File, keepVersionName: String) {
+        try {
+            val updatesDir = File(cacheDir, "updates")
+            if (!updatesDir.exists() || !updatesDir.isDirectory) return
+            val targetName = "CashJournal-$keepVersionName.apk"
+            val apkFiles = updatesDir.listFiles { file ->
+                file.isFile && file.name.endsWith(".apk", ignoreCase = true)
+            } ?: return
+            for (apk in apkFiles) {
+                if (!apk.name.equals(targetName, ignoreCase = true)) {
+                    apk.delete()
+                }
+            }
+        } catch (_: Exception) {
+            // Non-critical cache cleanup failure ignored
+        }
+    }
 }

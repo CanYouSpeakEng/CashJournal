@@ -334,6 +334,36 @@ This log is kept up to date after every step. Any AI assistant or developer read
   - Tag: `v1.0.25-dev`
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.25-dev
   - Artifacts: `app-debug.apk` (17.6 MB), `app-release.apk` (12.3 MB).
+- [x] **Phase 23: OTA Update Reliability, Subtle Ambient Haze Physics & Onboarding Safeguards**
+  - [x] **Item 94: Disk-Aware OTA Update Engine & State-Preserving Update Sheet Navigation**:
+    - **Context**: When an update finishes downloading in the background, clicking the update row in Settings triggers a fresh network check (`checkForUpdates()`), wiping `ReadyToInstall` back to `Available`. The resulting sheet displays "Update Now" / "Perbarui Sekarang", which deletes the completed APK and re-downloads all 12.3 MB from GitHub. Tapping the glowing Settings button on the SideRail merely navigates to Settings instead of presenting the install sheet.
+    - **Method**:
+      1. Inspect `cacheDir/updates/CashJournal-${info.versionName}.apk` in `checkForUpdates()`. If it already exists and matches `info.apkSize`, immediately promote state to `UpdateState.ReadyToInstall(info, file)`.
+      2. In `startUpdateDownload()`, if the target APK is already complete on disk, transition directly to `ReadyToInstall` without deleting or downloading.
+      3. Create `openUpdateSheet()` in `MainViewModel.kt`: if state is `ReadyToInstall`, `Downloading`, or `Available`, open `ActiveSheet.UPDATE_INFO` directly without wiping state. Wire `SettingsScreen.kt` update row to `openUpdateSheet()`.
+      4. In `SideRail.kt` and `MainAppScaffold.kt`, when `isUpdateReady` is true, tapping the glowing Settings icon opens `ActiveSheet.UPDATE_INFO` directly for 1-tap installation.
+      5. Clean up any superseded APKs in `cacheDir/updates/` to guarantee zero storage waste (`purgeOtherUpdateApks`).
+    - **Verification**: Verified file caching logic, non-destructive sheet opening, automatic state promotion, and immediate installation without redundant downloads.
+  - [x] **Item 95: Misty Frosted Glass Ambient Pulsing & Selection-Decoupled Settings Icon**:
+    - **Context**: The update-ready Settings button previously displayed a heavy 65% Cobalt blue circle behind the icon, turned the `GearSix` icon Cobalt, and executed a continuous deep-breathing expansion. This tricked users into thinking the Settings tab was actively selected.
+    - **Method**:
+      1. Keep the `GearSix` Settings icon in neutral `Slate500` when unselected; it only turns `White` when the user actually navigates to the Settings tab.
+      2. Replace the 65% blue circle with a subtle misty frosted glass radial haze (`Color.White.copy(alpha = pulseAlpha * 0.75f)` with a faint `Cobalt.copy(alpha = pulseAlpha * 0.14f)` ambient tint and `GlassBorder` stroke) matching the app's frosted glass aesthetic.
+      3. Implement outward radial ambient pulse physics (`scale` 0.90f -> 1.35f, `alpha` 0.40f -> 0.0f over 2200ms) that ripples outward without mimicking selection.
+      4. Retain the crisp 7dp indicator dot at the top-right corner of the button as the clean visual badge.
+    - **Verification**: Verified visual appearance across active and inactive tabs; zero confusion with selected navigation state.
+  - [x] **Item 96: Onboarding Replay Safeguards & Google Play Production Hygiene**:
+    - **Context**: In `SettingsScreen.kt`, "Replay Onboarding Flow" reset onboarding immediately without confirmation. Users were trapped inside onboarding with no cancel/return button. Step 8 defaulted to "Load Example Data" (`true`), risking accidental injection of demo accounts into real financial ledgers.
+    - **Method**:
+      1. In `SettingsScreen.kt`, added a confirmation `AlertDialog` explaining that existing accounts and transactions will remain untouched before launching onboarding.
+      2. In `OnboardingScreen.kt`, added an exit/cancel button (`X`) on Step 1 top bar and wired `BackHandler` when existing accounts are present (`hasExistingAccounts`), safely dismissing back to the app without resetting state.
+      3. On Step 8 (`Step8Ready`), dynamically default `loadExampleData = !hasExistingAccounts`. When existing accounts are detected, Card 2 is labeled "Keep Existing Accounts" ("Pertahankan Rekening Saat Ini") with copy "Preserve your accounts and records. No sample data will be added.", and Card 1 warns that demo accounts will be added alongside existing accounts.
+      4. Prepared developer-facing reset options for clean Google Play production hygiene.
+    - **Verification**: Tested with existing accounts; verified default selection of "Keep Existing Accounts", cancellation via Step 1 `X` button and BackHandler, and ledger preservation.
+- [x] **Release v1.0.26-dev (Phase 23: OTA Update Reliability, Subtle Ambient Haze Physics & Onboarding Safeguards)**
+  - Tag: `v1.0.26-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.26-dev
+  - Artifacts: `app-debug.apk` (17.6 MB), `app-release.apk` (12.3 MB).
 
 
 

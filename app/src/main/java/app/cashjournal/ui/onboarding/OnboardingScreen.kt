@@ -113,6 +113,7 @@ import com.adamglin.phosphoricons.regular.MagnifyingGlass
 import com.adamglin.phosphoricons.regular.MapPin
 import com.adamglin.phosphoricons.regular.ShieldCheck
 import com.adamglin.phosphoricons.regular.Thermometer
+import com.adamglin.phosphoricons.regular.X
 
 enum class WeatherOption {
     APPROX_LOCATION,
@@ -122,6 +123,8 @@ enum class WeatherOption {
 
 @Composable
 fun OnboardingScreen(
+    hasExistingAccounts: Boolean = false,
+    onCancel: (() -> Unit)? = null,
     onFinish: (
         language: AppLanguage,
         currencyCode: String,
@@ -147,16 +150,20 @@ fun OnboardingScreen(
     var railOnRight by remember { mutableStateOf(true) }
     var shakeToSwap by remember { mutableStateOf(false) }
     var knockSensitivity by remember { mutableStateOf("balanced") }
-    var loadExampleData by remember { mutableStateOf(true) }
+    var loadExampleData by remember { mutableStateOf(!hasExistingAccounts) }
     var isCompleted by remember { mutableStateOf(false) }
 
     val texts = getOnboardingTexts(language)
     val view = LocalView.current
     val hapticTick = { view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP) }
 
-    BackHandler(enabled = step > 1 && !isCompleted) {
+    BackHandler(enabled = !isCompleted && (step > 1 || (step == 1 && hasExistingAccounts && onCancel != null))) {
         hapticTick()
-        step--
+        if (step > 1) {
+            step--
+        } else if (onCancel != null) {
+            onCancel()
+        }
     }
 
     if (isCompleted) {
@@ -260,12 +267,11 @@ fun OnboardingScreen(
                 }
             }
 
-            // 2. Navigation Top Bar (Back button on steps 2 to 8)
+            // 2. Navigation Top Bar (Back button on steps 2 to 8, or Close button on step 1 if replaying)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(40.dp),
-                contentAlignment = Alignment.CenterStart
+                    .height(40.dp)
             ) {
                 if (step > 1) {
                     Box(
@@ -275,12 +281,32 @@ fun OnboardingScreen(
                             .clickable {
                                 hapticTick()
                                 step--
-                            },
+                            }
+                            .align(Alignment.CenterStart),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = PhosphorIcons.Regular.CaretLeft,
                             contentDescription = "Back",
+                            tint = Charcoal,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                } else if (hasExistingAccounts && onCancel != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .clickable {
+                                hapticTick()
+                                onCancel()
+                            }
+                            .align(Alignment.CenterEnd),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = PhosphorIcons.Regular.X,
+                            contentDescription = "Cancel",
                             tint = Charcoal,
                             modifier = Modifier.size(24.dp)
                         )
@@ -376,6 +402,7 @@ fun OnboardingScreen(
                                 texts = texts
                             )
                             8 -> Step8Ready(
+                                hasExistingAccounts = hasExistingAccounts,
                                 loadExample = loadExampleData,
                                 onToggleExample = {
                                     hapticTick()
@@ -1809,6 +1836,7 @@ private fun PhoneSilhouettePreview(
 // ----------------------------------------------------------------------------
 @Composable
 private fun Step8Ready(
+    hasExistingAccounts: Boolean,
     loadExample: Boolean,
     onToggleExample: (Boolean) -> Unit,
     texts: OnboardingTexts
@@ -1833,18 +1861,18 @@ private fun Step8Ready(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Card 1: Load Example Data (Default selected)
+        // Card 1: Load Example Data
         ExampleDataCard(
             title = texts.exampleTitle,
-            subtitle = texts.exampleDesc,
+            subtitle = if (hasExistingAccounts) texts.exampleExistingDesc else texts.exampleDesc,
             isSelected = loadExample,
             onClick = { onToggleExample(true) }
         )
 
-        // Card 2: Start from Scratch
+        // Card 2: Keep Existing Accounts / Start from Scratch
         ExampleDataCard(
-            title = texts.scratchTitle,
-            subtitle = texts.scratchDesc,
+            title = if (hasExistingAccounts) texts.keepExistingTitle else texts.scratchTitle,
+            subtitle = if (hasExistingAccounts) texts.keepExistingDesc else texts.scratchDesc,
             isSelected = !loadExample,
             onClick = { onToggleExample(false) }
         )

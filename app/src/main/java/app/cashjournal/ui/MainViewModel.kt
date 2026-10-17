@@ -383,6 +383,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         dismissSheet()
     }
 
+    fun openUpdateSheet() {
+        val current = _updateState.value
+        if (current is UpdateState.ReadyToInstall || current is UpdateState.Downloading || current is UpdateState.Available) {
+            _activeSheet.value = ActiveSheet.UPDATE_INFO
+        } else {
+            checkForUpdates(manual = true)
+        }
+    }
+
     fun checkForUpdates(manual: Boolean = true) {
         viewModelScope.launch {
             if (manual) {
@@ -396,7 +405,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
             result.onSuccess { info ->
                 if (info.isNewer) {
-                    _updateState.value = UpdateState.Available(info)
+                    val cacheDir = getApplication<Application>().cacheDir
+                    val updateFile = File(cacheDir, "updates/CashJournal-${info.versionName}.apk")
+                    if (updateFile.exists() && updateFile.isFile && updateFile.length() > 0L && (info.apkSize <= 0L || updateFile.length() == info.apkSize)) {
+                        _updateState.value = UpdateState.ReadyToInstall(info, updateFile)
+                    } else {
+                        _updateState.value = UpdateState.Available(info)
+                    }
                     if (!manual) {
                         showToast(currentStrings().updateAvailableFormat.format(info.versionName))
                     }
@@ -422,10 +437,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             val cacheDir = getApplication<Application>().cacheDir
+            val updateFile = File(cacheDir, "updates/CashJournal-${info.versionName}.apk")
+
+            // Short-circuit: If the complete APK is already on disk, avoid downloading it again
+            if (updateFile.exists() && updateFile.isFile && updateFile.length() > 0L && (info.apkSize <= 0L || updateFile.length() == info.apkSize)) {
+                _updateState.value = UpdateState.ReadyToInstall(info, updateFile)
+                showToast(currentStrings().updateReadyToInstall)
+                return@launch
+            }
+
             withContext(Dispatchers.IO) {
                 appUpdateService.cleanStaleUpdateApks(cacheDir, AppVersionProvider.getVersionName(getApplication()))
+                appUpdateService.purgeOtherUpdateApks(cacheDir, info.versionName)
             }
-            val updateFile = File(cacheDir, "updates/CashJournal-${info.versionName}.apk")
+
             _updateState.value = UpdateState.Downloading(info, 0f, 0L, info.apkSize)
 
             val result = appUpdateService.downloadApk(

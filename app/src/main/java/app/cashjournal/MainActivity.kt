@@ -100,6 +100,12 @@ class MainActivity : FragmentActivity() {
                     )
                 } else if (!state.userPreferences.onboardingComplete) {
                     OnboardingScreen(
+                        hasExistingAccounts = state.accounts.isNotEmpty(),
+                        onCancel = {
+                            viewModel.updatePreferences { prefs ->
+                                prefs.updateOnboardingComplete(true)
+                            }
+                        },
                         onFinish = { language, currencyCode, name, railOnRight, shakeToSwap, knockSensitivity, loadExample, weatherOption, cityName, cityLat, cityLon ->
                             val weatherOptionKey = when (weatherOption) {
                                 WeatherOption.APPROX_LOCATION -> "approx"

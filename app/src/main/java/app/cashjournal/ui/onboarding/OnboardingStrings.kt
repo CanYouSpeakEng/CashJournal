@@ -67,8 +67,11 @@ data class OnboardingTexts(
     val readySubtitle: String,
     val scratchTitle: String,
     val scratchDesc: String,
+    val keepExistingTitle: String,
+    val keepExistingDesc: String,
     val exampleTitle: String,
     val exampleDesc: String,
+    val exampleExistingDesc: String,
     val exampleNeedsNet: String,
     val finishBtn: String
 )
@@ -135,8 +138,11 @@ val EnglishOnboardingTexts = OnboardingTexts(
     readySubtitle = "Choose how you'd like to start.",
     scratchTitle = "Start from scratch",
     scratchDesc = "Begin empty. Add your accounts when you're ready.",
+    keepExistingTitle = "Keep Existing Accounts",
+    keepExistingDesc = "Preserve your accounts and records. No sample data will be added.",
     exampleTitle = "Load Demo Mode",
     exampleDesc = "Sample accounts and transactions to explore the app. Remove anytime in Settings.",
+    exampleExistingDesc = "Adds sample accounts and transactions alongside your current data.",
     exampleNeedsNet = "Needs an internet connection once",
     finishBtn = "Finish"
 )
@@ -203,8 +209,11 @@ val IndonesianOnboardingTexts = OnboardingTexts(
     readySubtitle = "Pilih bagaimana Anda ingin memulai.",
     scratchTitle = "Mulai dari awal",
     scratchDesc = "Mulai kosong. Tambahkan rekening saat Anda siap.",
+    keepExistingTitle = "Pertahankan Rekening Saat Ini",
+    keepExistingDesc = "Simpan rekening dan catatan Anda yang ada. Tanpa menambahkan data demo.",
     exampleTitle = "Muat Mode Demo",
     exampleDesc = "Contoh rekening dan transaksi agar Anda bisa menjelajah. Hapus kapan saja di Pengaturan.",
+    exampleExistingDesc = "Menambahkan rekening dan transaksi demo berdampingan dengan data Anda saat ini.",
     exampleNeedsNet = "Perlu koneksi internet sekali",
     finishBtn = "Selesai"
 )

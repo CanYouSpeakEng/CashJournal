@@ -354,7 +354,8 @@ fun MainAppScaffold(
                         onCycleStartDayChange = { viewModel.updateCycleStartDay(it) },
                         onImmersiveModeChange = { viewModel.updatePreferences { prefs -> prefs.updateImmersiveMode(it) } },
                         onOpenReleaseNotes = { viewModel.openSheet(ActiveSheet.RELEASE_NOTES) },
-                        onCheckForUpdates = { viewModel.checkForUpdates(manual = true) }
+                        onCheckForUpdates = { viewModel.checkForUpdates(manual = true) },
+                        onOpenUpdateSheet = { viewModel.openUpdateSheet() }
                     )
                 }
             }
@@ -375,7 +376,12 @@ fun MainAppScaffold(
                         NavTab.LEDGER -> viewModel.setScreen(AppScreen.LEDGER)
                         NavTab.ACCOUNTS -> viewModel.setScreen(AppScreen.ACCOUNTS)
                         NavTab.ANALYTICS -> viewModel.setScreen(AppScreen.ANALYTICS)
-                        NavTab.SETTINGS -> viewModel.setScreen(AppScreen.SETTINGS)
+                        NavTab.SETTINGS -> {
+                            viewModel.setScreen(AppScreen.SETTINGS)
+                            if (state.isUpdateReadyToInstall) {
+                                viewModel.openSheet(ActiveSheet.UPDATE_INFO)
+                            }
+                        }
                     }
                 },
                 onQuickAddClick = { viewModel.openSheet(ActiveSheet.LOG_TRANSACTION) },
