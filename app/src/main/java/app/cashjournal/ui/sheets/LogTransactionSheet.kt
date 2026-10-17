@@ -532,7 +532,7 @@ fun LogTransactionSheet(
                         onSaveTransaction(
                             selectedType,
                             selectedSourceAccountId,
-                            selectedDestAccountId,
+                            if (selectedType == TransactionType.TRANSFER) selectedDestAccountId else null,
                             note,
                             parsedAmount,
                             selectedDateMillis,

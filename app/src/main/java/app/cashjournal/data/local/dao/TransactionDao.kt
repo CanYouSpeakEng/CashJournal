@@ -40,4 +40,7 @@ interface TransactionDao {
 
     @Query("DELETE FROM transactions")
     suspend fun deleteAll()
+
+    @Query("UPDATE transactions SET destinationAccountId = NULL WHERE type != 'TRANSFER' AND destinationAccountId IS NOT NULL")
+    suspend fun sanitizeNonTransferDestinations()
 }

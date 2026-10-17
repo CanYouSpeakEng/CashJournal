@@ -283,6 +283,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val currentRuntimeVersion = AppVersionProvider.getVersionName(application)
                 withContext(Dispatchers.IO) {
                     appUpdateService.cleanStaleUpdateApks(application.cacheDir, currentRuntimeVersion)
+                    database.transactionDao().sanitizeNonTransferDestinations()
                 }
                 if (prefs.onboardingComplete && prefs.lastSeenVersion != currentRuntimeVersion) {
                     _activeSheet.value = ActiveSheet.RELEASE_NOTES
@@ -636,10 +637,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 TransactionType.TRANSFER -> "COBALT"
             }
 
+            val finalDestAccountId = if (type == TransactionType.TRANSFER) destAccountId else null
+
             val tx = TransactionEntity(
                 id = UUID.randomUUID().toString(),
                 sourceAccountId = sourceAccountId,
-                destinationAccountId = destAccountId,
+                destinationAccountId = finalDestAccountId,
                 type = type.name,
                 amount = amount,
                 title = title,
@@ -653,7 +656,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             database.withTransaction {
                 database.transactionDao().insert(tx)
                 database.accountDao().recalculateAccountBalance(sourceAccountId)
-                destAccountId?.let { database.accountDao().recalculateAccountBalance(it) }
+                finalDestAccountId?.let { database.accountDao().recalculateAccountBalance(it) }
             }
 
             ChimeGenerator.playChime(uiState.value.userPreferences.soundEffectsEnabled, viewModelScope)
@@ -704,6 +707,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 TransactionType.TRANSFER -> "COBALT"
             }
 
+            val finalDestAccountId = if (type == TransactionType.TRANSFER) destAccountId else null
+
             val updatedTx = existing.copy(
                 title = title,
                 category = txCategory,
@@ -713,7 +718,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 iconKey = iconKey,
                 accentKey = accentKey,
                 sourceAccountId = sourceAccountId,
-                destinationAccountId = destAccountId,
+                destinationAccountId = finalDestAccountId,
                 updatedAt = System.currentTimeMillis()
             )
 
@@ -721,7 +726,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 existing.sourceAccountId,
                 existing.destinationAccountId,
                 sourceAccountId,
-                destAccountId
+                finalDestAccountId
             )
 
             database.withTransaction {

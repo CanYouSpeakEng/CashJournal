@@ -603,7 +603,7 @@ fun TransactionEditSheet(
                     selectedCategory,
                     selectedType,
                     selectedSourceAccountId,
-                    selectedDestAccountId,
+                    if (selectedType == TransactionType.TRANSFER) selectedDestAccountId else null,
                     selectedDateMillis
                 )
             },
