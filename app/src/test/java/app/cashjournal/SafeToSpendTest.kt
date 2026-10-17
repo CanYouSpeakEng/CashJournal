@@ -376,6 +376,122 @@ class SafeToSpendTest {
     }
 
     @Test
+    fun testCapitalSurvivalRunwayCalibrationEarlyCycleDay1() {
+        val cal = createUtcCalendar(2026, Calendar.OCTOBER, 1)
+        val plan = MonthlyPlan(budget = 5000000L)
+        val tx = Transaction(
+            title = "Rent",
+            amount = 3000000L,
+            type = TransactionType.EXPENSE,
+            date = cal.timeInMillis
+        )
+
+        val result = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = listOf(tx),
+            calendar = cal,
+            totalNetWorth = 60000000L,
+            cycleStartDay = 1
+        )
+
+        assertTrue(result.isCalibrating)
+        assertEquals(4, result.calibrationDaysNeeded)
+        assertEquals(0L, result.dailyBurnRate)
+        assertEquals(0, result.survivalDays)
+        assertEquals(0f, result.survivalMonths, 0.001f)
+    }
+
+    @Test
+    fun testCapitalSurvivalRunwayCalibrationEarlyCycleDay3() {
+        val cal = createUtcCalendar(2026, Calendar.OCTOBER, 3)
+        val plan = MonthlyPlan(budget = 5000000L)
+        val tx = Transaction(
+            title = "Groceries",
+            amount = 1500000L,
+            type = TransactionType.EXPENSE,
+            date = cal.timeInMillis
+        )
+
+        val result = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = listOf(tx),
+            calendar = cal,
+            totalNetWorth = 60000000L,
+            cycleStartDay = 1
+        )
+
+        assertTrue(result.isCalibrating)
+        assertEquals(2, result.calibrationDaysNeeded)
+        assertEquals(0L, result.dailyBurnRate)
+        assertEquals(0, result.survivalDays)
+    }
+
+    @Test
+    fun testCapitalSurvivalRunwayCalibrationPassedDay5() {
+        val cal = createUtcCalendar(2026, Calendar.OCTOBER, 5)
+        val plan = MonthlyPlan(budget = 5000000L)
+        val tx = Transaction(
+            title = "Groceries",
+            amount = 1000000L,
+            type = TransactionType.EXPENSE,
+            date = cal.timeInMillis
+        )
+
+        val result = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = listOf(tx),
+            calendar = cal,
+            totalNetWorth = 50000000L,
+            cycleStartDay = 1
+        )
+
+        assertFalse(result.isCalibrating)
+        assertEquals(0, result.calibrationDaysNeeded)
+        // 1,000,000 / 5 days = 200,000 / day
+        assertEquals(200000L, result.dailyBurnRate)
+        // 50,000,000 / 200,000 = 250 days
+        assertEquals(250, result.survivalDays)
+    }
+
+    @Test
+    fun testCapitalSurvivalRunwayRolling30DayWindowExcludesOlder() {
+        val cal = createUtcCalendar(2026, Calendar.OCTOBER, 31)
+        val plan = MonthlyPlan(budget = 10000000L)
+
+        // Tx 1: Sept 20 (41 days before Oct 31, outside 30-day window)
+        val oldTx = Transaction(
+            title = "Old Rent",
+            amount = 5000000L,
+            type = TransactionType.EXPENSE,
+            date = createUtcCalendar(2026, Calendar.SEPTEMBER, 20).timeInMillis
+        )
+
+        // Tx 2: Oct 15 (16 days before Oct 31, inside 30-day window)
+        val recentTx = Transaction(
+            title = "Current Groceries",
+            amount = 3000000L,
+            type = TransactionType.EXPENSE,
+            date = createUtcCalendar(2026, Calendar.OCTOBER, 15).timeInMillis
+        )
+
+        val result = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = listOf(oldTx, recentTx),
+            calendar = cal,
+            totalNetWorth = 60000000L,
+            cycleStartDay = 1
+        )
+
+        assertFalse(result.isCalibrating)
+        // 31 days elapsed in cycle -> capped at 30 days window
+        // Only recentTx (3,000,000) is in trailing 30 days
+        // 3,000,000 / 30 days = 100,000 / day
+        assertEquals(100000L, result.dailyBurnRate)
+        // 60,000,000 / 100,000 = 600 days
+        assertEquals(600, result.survivalDays)
+    }
+
+    @Test
     fun testBudgetModeEnumFromKey() {
         assertEquals(BudgetMode.FIXED_NOMINAL, BudgetMode.fromKey("FIXED_NOMINAL"))
         assertEquals(BudgetMode.PERCENTAGE_OF_FUNDS, BudgetMode.fromKey("PERCENTAGE_OF_FUNDS"))

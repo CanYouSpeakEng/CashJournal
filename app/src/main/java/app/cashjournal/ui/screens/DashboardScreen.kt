@@ -242,7 +242,22 @@ fun DashboardScreen(
                             )
                         }
 
-                        if (safe.survivalMonths > 0f) {
+                        if (safe.isCalibrating) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Slate100)
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = String.format(strings.survivalRunwayCalibratingFormat, safe.calibrationDaysNeeded),
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = Slate500
+                                )
+                            }
+                        } else if (safe.survivalMonths > 0f) {
                             val runwayText = if (safe.survivalMonths >= 1f) {
                                 String.format(Locale.US, strings.survivalRunwayMonthsFormat, safe.survivalMonths)
                             } else {

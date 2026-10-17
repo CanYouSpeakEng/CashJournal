@@ -64,7 +64,6 @@ import app.cashjournal.ui.sheets.EditAccountSheet
 import app.cashjournal.ui.sheets.LogTransactionSheet
 import app.cashjournal.ui.sheets.MainCurrencySheet
 import app.cashjournal.ui.sheets.NewAccountSheet
-import app.cashjournal.ui.sheets.ReconcileBalanceSheet
 import app.cashjournal.ui.sheets.ReleaseNotesSheet
 import app.cashjournal.ui.sheets.TransactionEditSheet
 import app.cashjournal.ui.sheets.UpdateSheet
@@ -307,7 +306,6 @@ fun MainAppScaffold(
                                 account = acc,
                                 state = state,
                                 onTransactionClick = { viewModel.showEditTransaction(it) },
-                                onReconcileClick = { viewModel.showReconcileSheet(acc) },
                                 onEditAccountClick = { viewModel.openEditAccount(acc) }
                             )
                         }
@@ -450,21 +448,6 @@ fun MainAppScaffold(
                         }
                     }
 
-                    ActiveSheet.RECONCILE_BALANCE -> {
-                        (state.selectedReconcileAccount ?: state.selectedAccount)?.let { acc ->
-                            ReconcileBalanceSheet(
-                                account = acc,
-                                currencyCode = state.userPreferences.currencyCode,
-                                onConfirmReconciliation = { actualBal, note ->
-                                    viewModel.reconcileBalance(acc.id, actualBal, note)
-                                },
-                                onDismiss = { viewModel.dismissSheet() },
-                                languageCode = state.userPreferences.language,
-                                hapticsEnabled = state.userPreferences.tactileHapticsEnabled
-                            )
-                        }
-                    }
-
                     ActiveSheet.NEW_ACCOUNT -> NewAccountSheet(
                         currencyCode = state.userPreferences.currencyCode,
                         onCreateAccount = { name, bal, accent, type ->
@@ -500,7 +483,8 @@ fun MainAppScaffold(
                         onSelectCurrency = { code ->
                             viewModel.changeMainCurrency(code)
                         },
-                        onDismiss = { viewModel.dismissSheet() }
+                        onDismiss = { viewModel.dismissSheet() },
+                        languageCode = state.userPreferences.language
                     )
 
                     ActiveSheet.WORLD_CURRENCIES -> WorldCurrenciesSheet(
@@ -512,7 +496,8 @@ fun MainAppScaffold(
                         onSelectCode = { code ->
                             viewModel.updatePreferences { it.updateSelectedWorldCurrency(code) }
                             viewModel.dismissSheet()
-                            viewModel.showToast("Currency changed to $code")
+                            val strings = AppStrings.get(state.userPreferences.language)
+                            viewModel.showToast(String.format(strings.currencyChangedToast, code))
                         },
                         onDismiss = { viewModel.dismissSheet() },
                         languageCode = state.userPreferences.language

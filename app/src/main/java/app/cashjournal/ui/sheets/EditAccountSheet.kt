@@ -18,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -36,6 +37,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cashjournal.domain.model.AccentKey
@@ -47,6 +49,9 @@ import app.cashjournal.domain.model.BrandRegistry
 import app.cashjournal.domain.model.Currency
 import app.cashjournal.ui.components.CustomHexColorDialog
 import app.cashjournal.ui.components.SubtleGlassCard
+import app.cashjournal.ui.components.ThousandsSeparatorVisualTransformation
+import java.text.DecimalFormatSymbols
+import java.util.Locale
 import app.cashjournal.ui.i18n.AppStrings
 import app.cashjournal.ui.theme.Berry
 import app.cashjournal.ui.theme.Charcoal
@@ -353,6 +358,15 @@ fun EditAccountSheet(
             )
         }
 
+        val groupingSeparator = remember(currency.code, languageCode) {
+            val loc = if (currency.code.equals("IDR", ignoreCase = true) || languageCode.equals("in", ignoreCase = true)) {
+                Locale("id", "ID")
+            } else {
+                Locale.US
+            }
+            DecimalFormatSymbols(loc).groupingSeparator
+        }
+
         // Balance Reconciliation Section
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(
@@ -412,6 +426,8 @@ fun EditAccountSheet(
                             val filtered = input.filter { it.isDigit() }.take(14)
                             rawBalanceDigits = filtered
                         },
+                        visualTransformation = ThousandsSeparatorVisualTransformation(groupingSeparator),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         textStyle = androidx.compose.ui.text.TextStyle(
                             fontFamily = SpaceGroteskFamily,
                             fontWeight = FontWeight.Bold,
@@ -420,6 +436,17 @@ fun EditAccountSheet(
                         ),
                         cursorBrush = SolidColor(Cobalt),
                         singleLine = true,
+                        decorationBox = { innerTextField ->
+                            if (rawBalanceDigits.isEmpty()) {
+                                Text(
+                                    text = "0",
+                                    fontFamily = SpaceGroteskFamily,
+                                    fontSize = 18.sp,
+                                    color = Slate400
+                                )
+                            }
+                            innerTextField()
+                        },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }

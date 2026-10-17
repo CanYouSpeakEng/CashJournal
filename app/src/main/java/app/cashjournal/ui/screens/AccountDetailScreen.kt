@@ -62,7 +62,6 @@ fun AccountDetailScreen(
     account: Account,
     state: MainUiState,
     onTransactionClick: ((Transaction) -> Unit)? = null,
-    onReconcileClick: (() -> Unit)? = null,
     onEditAccountClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {

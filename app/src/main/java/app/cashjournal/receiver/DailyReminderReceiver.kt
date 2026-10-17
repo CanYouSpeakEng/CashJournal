@@ -26,13 +26,6 @@ class DailyReminderReceiver : BroadcastReceiver() {
                 val repository = UserPreferencesRepository(context.applicationContext)
                 val prefs = repository.userPreferencesFlow.first()
 
-                if (intent?.action == Intent.ACTION_BOOT_COMPLETED) {
-                    if (prefs.dailyReminderEnabled) {
-                        DailyReminderScheduler.scheduleDailyReminder(context.applicationContext)
-                    }
-                    return@launch
-                }
-
                 if (!prefs.dailyReminderEnabled) {
                     return@launch
                 }

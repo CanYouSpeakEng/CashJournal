@@ -82,7 +82,6 @@ enum class ActiveSheet {
     WORLD_CURRENCIES,
     WEATHER_DETAIL,
     EDIT_TRANSACTION,
-    RECONCILE_BALANCE,
     RELEASE_NOTES,
     EDIT_ACCOUNT,
     UPDATE_INFO
@@ -98,7 +97,6 @@ data class MainUiState(
     val selectedAccount: Account? = null,
     val activeSheet: ActiveSheet? = null,
     val selectedTransaction: Transaction? = null,
-    val selectedReconcileAccount: Account? = null,
     val selectedEditAccount: Account? = null,
     val hideBalances: Boolean = false,
     val accounts: List<Account> = emptyList(),
@@ -132,7 +130,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedAccount = MutableStateFlow<Account?>(null)
     private val _activeSheet = MutableStateFlow<ActiveSheet?>(null)
     private val _selectedTransaction = MutableStateFlow<Transaction?>(null)
-    private val _selectedReconcileAccount = MutableStateFlow<Account?>(null)
     private val _selectedEditAccount = MutableStateFlow<Account?>(null)
     private val _hideBalances = MutableStateFlow(false)
     private val _isReorderMode = MutableStateFlow(false)
@@ -181,7 +178,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _selectedAccount,
             _activeSheet,
             _selectedTransaction,
-            _selectedReconcileAccount,
             _selectedEditAccount,
             _hideBalances,
             _isReorderMode,
@@ -199,14 +195,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val account = rawSelectedAccount?.let { sel -> rawAccounts.find { it.id == sel.id } ?: sel }
         val sheet = group3[2] as? ActiveSheet
         val selectedTx = group3[3] as? Transaction
-        val rawReconcileAcc = group3[4] as? Account
-        val reconcileAcc = rawReconcileAcc?.let { sel -> rawAccounts.find { it.id == sel.id } ?: sel }
-        val rawEditAcc = group3[5] as? Account
+        val rawEditAcc = group3[4] as? Account
         val editAcc = rawEditAcc?.let { sel -> rawAccounts.find { it.id == sel.id } ?: sel }
-        val hideBal = group3[6] as Boolean
-        val reorder = group3[7] as Boolean
-        val toast = group3[8] as? String
-        val currentUpdateState = group3[9] as UpdateState
+        val hideBal = group3[5] as Boolean
+        val reorder = group3[6] as Boolean
+        val toast = group3[7] as? String
+        val currentUpdateState = group3[8] as UpdateState
         val isUpdateReady = currentUpdateState is UpdateState.ReadyToInstall
 
         val totalWorth = rawAccounts.sumOf { it.balance }
@@ -221,7 +215,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             selectedAccount = account,
             activeSheet = sheet,
             selectedTransaction = selectedTx,
-            selectedReconcileAccount = reconcileAcc,
             selectedEditAccount = editAcc,
             hideBalances = hideBal,
             accounts = rawAccounts,
@@ -324,7 +317,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun dismissSheet() {
         _activeSheet.value = null
         _selectedTransaction.value = null
-        _selectedReconcileAccount.value = null
         _selectedEditAccount.value = null
         _citySearchResults.value = emptyList()
     }
@@ -541,11 +533,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _activeSheet.value = ActiveSheet.EDIT_TRANSACTION
     }
 
-    fun showReconcileSheet(account: Account) {
-        _selectedReconcileAccount.value = account
-        _activeSheet.value = ActiveSheet.RECONCILE_BALANCE
-    }
-
     private fun currentStrings(): ScreenStrings = AppStrings.get(uiState.value.userPreferences.language)
 
     fun toggleHideBalances() {
@@ -735,47 +722,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun reconcileBalance(accountId: String, actualBalance: Long, note: String) {
-        viewModelScope.launch {
-            val account = database.accountDao().getAccountById(accountId) ?: return@launch
-            val delta = actualBalance - account.balance
-            val strings = AppStrings.get(uiState.value.userPreferences.language)
-
-            if (delta == 0L) {
-                dismissSheet()
-                showToast(strings.balanceReconciledToast)
-                return@launch
-            }
-
-            val isPositive = delta > 0L
-            val txType = if (isPositive) TransactionType.INCOME else TransactionType.EXPENSE
-            val txAmount = abs(delta)
-            val title = note.ifBlank { strings.defaultAdjustmentTitle }
-
-            val tx = TransactionEntity(
-                id = UUID.randomUUID().toString(),
-                sourceAccountId = accountId,
-                destinationAccountId = null,
-                type = txType.name,
-                amount = txAmount,
-                title = title,
-                category = Category.OTHER.key,
-                date = System.currentTimeMillis(),
-                iconKey = if (isPositive) "ArrowDownLeft" else "Tag",
-                accentKey = if (isPositive) "EMERALD" else "COBALT",
-                updatedAt = System.currentTimeMillis()
-            )
-
-            database.withTransaction {
-                database.transactionDao().insert(tx)
-                database.accountDao().recalculateAccountBalance(accountId)
-            }
-
-            ChimeGenerator.playChime(uiState.value.userPreferences.soundEffectsEnabled, viewModelScope)
-            dismissSheet()
-            showToast(strings.balanceReconciledToast)
-        }
-    }
 
     fun createAccount(
         name: String,

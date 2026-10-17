@@ -50,6 +50,7 @@ import app.cashjournal.ui.theme.Slate400
 import app.cashjournal.ui.theme.Slate500
 import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
+import app.cashjournal.ui.i18n.AppStrings
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Check
@@ -61,8 +62,10 @@ fun MainCurrencySheet(
     currentCurrencyCode: String,
     onSelectCurrency: (String) -> Unit,
     onDismiss: () -> Unit,
+    languageCode: String = "en",
     modifier: Modifier = Modifier
 ) {
+    val strings = AppStrings.get(languageCode)
     var searchQuery by remember { mutableStateOf("") }
     var pendingCountry by remember { mutableStateOf<Country?>(null) }
 
@@ -83,7 +86,7 @@ fun MainCurrencySheet(
             onDismissRequest = { pendingCountry = null },
             title = {
                 Text(
-                    text = "Change main currency?",
+                    text = strings.changeMainCurrencyConfirmTitle,
                     fontFamily = PlusJakartaSansFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
@@ -92,7 +95,11 @@ fun MainCurrencySheet(
             },
             text = {
                 Text(
-                    text = "Change main currency to ${target.currencyNameEn} (${target.currencyCode})? Your accounts, transactions, and budget will be converted at the latest rate. Amounts may change by a few cents.",
+                    text = String.format(
+                        strings.changeMainCurrencyConfirmMessage,
+                        target.currencyNameEn,
+                        target.currencyCode
+                    ),
                     fontFamily = PlusJakartaSansFamily,
                     fontSize = 14.sp,
                     color = Slate600
@@ -109,7 +116,7 @@ fun MainCurrencySheet(
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Text(
-                        text = "Convert",
+                        text = strings.convertAction,
                         fontFamily = PlusJakartaSansFamily,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -119,7 +126,7 @@ fun MainCurrencySheet(
             dismissButton = {
                 TextButton(onClick = { pendingCountry = null }) {
                     Text(
-                        text = "Cancel",
+                        text = strings.cancelAction,
                         fontFamily = PlusJakartaSansFamily,
                         fontWeight = FontWeight.SemiBold,
                         color = Slate600
@@ -146,7 +153,7 @@ fun MainCurrencySheet(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Main Currency",
+                text = strings.mainCurrencySheetTitle,
                 fontFamily = PlusJakartaSansFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,
@@ -190,7 +197,7 @@ fun MainCurrencySheet(
                     decorationBox = { innerTextField ->
                         if (searchQuery.isEmpty()) {
                             Text(
-                                text = "Search country or currency",
+                                text = strings.searchCountryOrCurrencyPlaceholder,
                                 fontFamily = PlusJakartaSansFamily,
                                 fontSize = 14.sp,
                                 color = Slate400

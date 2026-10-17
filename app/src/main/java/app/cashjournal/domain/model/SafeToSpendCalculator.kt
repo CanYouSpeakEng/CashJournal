@@ -30,7 +30,9 @@ data class SafeToSpendState(
     val budgetPercent: Int = 10,
     val dailyBurnRate: Long = 0L,
     val survivalDays: Int = 0,
-    val survivalMonths: Float = 0f
+    val survivalMonths: Float = 0f,
+    val isCalibrating: Boolean = false,
+    val calibrationDaysNeeded: Int = 0
 )
 
 data class CycleRange(
@@ -192,16 +194,47 @@ object SafeToSpendCalculator {
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
         }
-        val elapsedMillis = (nowCal.timeInMillis - cycle.startMillis).coerceAtLeast(0L)
-        val daysElapsed = ((elapsedMillis / (24 * 60 * 60 * 1000L)) + 1).toInt().coerceAtLeast(1)
-        val dailyBurnRate = if (totalSpent > 0L) (totalSpent.toDouble() / daysElapsed.toDouble()).toLong() else 0L
+        val nowMillis = nowCal.timeInMillis
+        val elapsedMillis = (nowMillis - cycle.startMillis).coerceAtLeast(0L)
+        val daysElapsedInCycle = ((elapsedMillis / (24 * 60 * 60 * 1000L)) + 1).toInt().coerceAtLeast(1)
 
-        val (survivalDays, survivalMonths) = if (dailyBurnRate > 0L && totalNetWorth > 0L) {
-            val daysExact = totalNetWorth.toDouble() / dailyBurnRate.toDouble()
-            val months = (daysExact / 30.0).toFloat()
-            Pair(daysExact.toInt(), months)
+        val windowStartMillis = nowMillis - (30L * 24 * 60 * 60 * 1000L)
+        val rollingExpenseTxs = transactions.filter {
+            it.type == TransactionType.EXPENSE && it.date in windowStartMillis..calendar.timeInMillis
+        }
+
+        val hasAnyExpenses = rollingExpenseTxs.isNotEmpty() || startingSpent > 0L || currentCycleExpenses > 0L
+        val trailingDays = if (rollingExpenseTxs.isNotEmpty()) {
+            val earliest = rollingExpenseTxs.minOf { it.date }
+            (((nowMillis - earliest) / (24 * 60 * 60 * 1000L)) + 1).toInt().coerceAtLeast(1)
         } else {
-            Pair(0, 0f)
+            0
+        }
+
+        val effectiveHistoryDays = maxOf(daysElapsedInCycle, trailingDays)
+        val isCalibrating = hasAnyExpenses && effectiveHistoryDays < 5
+        val calibrationDaysNeeded = if (isCalibrating) (5 - effectiveHistoryDays).coerceAtLeast(1) else 0
+
+        val (dailyBurnRate, survivalDays, survivalMonths) = if (!hasAnyExpenses || isCalibrating) {
+            Triple(0L, 0, 0f)
+        } else {
+            val effectiveWindowDays = minOf(30, effectiveHistoryDays)
+            val rollingExpenses = rollingExpenseTxs.sumOf { it.amount }
+            val effectiveSpent = maxOf(rollingExpenses, startingSpent + currentCycleExpenses)
+            val burnRate = if (effectiveSpent > 0L && effectiveWindowDays > 0) {
+                (effectiveSpent.toDouble() / effectiveWindowDays.toDouble()).toLong()
+            } else {
+                0L
+            }
+
+            val (days, months) = if (burnRate > 0L && totalNetWorth > 0L) {
+                val daysExact = totalNetWorth.toDouble() / burnRate.toDouble()
+                val m = (daysExact / 30.0).toFloat()
+                Pair(daysExact.toInt(), m)
+            } else {
+                Pair(0, 0f)
+            }
+            Triple(burnRate, days, months)
         }
 
         return SafeToSpendState(
@@ -219,7 +252,9 @@ object SafeToSpendCalculator {
             budgetPercent = plan.budgetPercent,
             dailyBurnRate = dailyBurnRate,
             survivalDays = survivalDays,
-            survivalMonths = survivalMonths
+            survivalMonths = survivalMonths,
+            isCalibrating = isCalibrating,
+            calibrationDaysNeeded = calibrationDaysNeeded
         )
     }
 }

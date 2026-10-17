@@ -81,7 +81,7 @@ val EnglishOnboardingTexts = OnboardingTexts(
     welcomeSubtitle = "Track accounts, spending, and cash flow. Everything stays on this device.",
     promise1 = "No account to create.",
     promise2 = "Your data stays on this phone.",
-    promise3 = "Nothing is uploaded or synced.",
+    promise3 = "Zero financial data leaves your phone. Only approximate coordinates are sent to fetch weather.",
     getStarted = "Get started",
 
     chooseLanguageTitle = "Choose your language",
@@ -152,7 +152,7 @@ val IndonesianOnboardingTexts = OnboardingTexts(
     welcomeSubtitle = "Catat rekening, pengeluaran, dan arus kas. Semuanya tersimpan di perangkat ini.",
     promise1 = "Tanpa perlu membuat akun.",
     promise2 = "Data Anda tetap ada di ponsel ini.",
-    promise3 = "Tidak ada yang diunggah atau disinkronkan.",
+    promise3 = "Tidak ada data finansial yang meninggalkan ponsel Anda. Hanya koordinat perkiraan yang dikirim untuk mengambil cuaca.",
     getStarted = "Mulai sekarang",
 
     chooseLanguageTitle = "Pilih bahasa Anda",

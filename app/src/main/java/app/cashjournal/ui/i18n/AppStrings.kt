@@ -262,7 +262,13 @@ data class ScreenStrings(
     val tooltipBack: String,
     val manageAccountButton: String,
     val reorderAccountsAction: String,
-    val accountUpdatedAndReconciledToast: String
+    val accountUpdatedAndReconciledToast: String,
+    val mainCurrencySheetTitle: String,
+    val searchCountryOrCurrencyPlaceholder: String,
+    val changeMainCurrencyConfirmTitle: String,
+    val changeMainCurrencyConfirmMessage: String,
+    val convertAction: String,
+    val survivalRunwayCalibratingFormat: String
 )
 
 object AppStrings {
@@ -379,10 +385,10 @@ object AppStrings {
         weatherPending = "Weather data pending",
         sectionData = "BACKUP & DATA",
         replayOnboardingTitle = "Replay Onboarding Flow",
-        exportJsonTitle = "Export Backup (JSON)",
-        importJsonTitle = "Restore Backup (JSON)",
-        restoreBackupDialogTitle = "Restore Backup?",
-        restoreBackupDialogDesc = "Restoring a backup will replace all current accounts, transactions, and monthly plans with data from the backup file. This cannot be undone.",
+        exportJsonTitle = "Export Ledger (Plaintext JSON)",
+        importJsonTitle = "Restore Ledger (Plaintext JSON)",
+        restoreBackupDialogTitle = "Restore Ledger?",
+        restoreBackupDialogDesc = "Restoring a ledger will replace all current accounts, transactions, and monthly plans with data from the unencrypted JSON file. This cannot be undone.",
         confirmRestoreAction = "Choose File & Restore",
         backupExportSuccess = "Backup exported successfully",
         backupExportFailed = "Failed to export backup",
@@ -520,7 +526,13 @@ object AppStrings {
         tooltipBack = "Back",
         manageAccountButton = "Manage Account",
         reorderAccountsAction = "Reorder",
-        accountUpdatedAndReconciledToast = "Account updated and balance reconciled"
+        accountUpdatedAndReconciledToast = "Account updated and balance reconciled",
+        mainCurrencySheetTitle = "Main Currency",
+        searchCountryOrCurrencyPlaceholder = "Search country or currency",
+        changeMainCurrencyConfirmTitle = "Change main currency?",
+        changeMainCurrencyConfirmMessage = "Change main currency to %s (%s)? Your accounts, transactions, and budget will be converted at the latest rate. Amounts may change by a few cents.",
+        convertAction = "Convert",
+        survivalRunwayCalibratingFormat = "Calibrating... (%d days needed)"
     )
 
     val IN = ScreenStrings(
@@ -634,12 +646,12 @@ object AppStrings {
         weatherUpdatedJustNow = "Diperbarui baru saja",
         weatherUpdatedMinsAgo = "Diperbarui %d menit lalu",
         weatherPending = "Menunggu data cuaca",
-        sectionData = "CADANGAN & DATA",
+        sectionData = "BUKU KAS & DATA",
         replayOnboardingTitle = "Ulangi Pengenalan Aplikasi",
-        exportJsonTitle = "Ekspor Cadangan (JSON)",
-        importJsonTitle = "Pulihkan Cadangan (JSON)",
-        restoreBackupDialogTitle = "Pulihkan Cadangan?",
-        restoreBackupDialogDesc = "Memulihkan cadangan akan menggantikan semua akun, transaksi, dan rencana bulanan saat ini dengan data dari file cadangan. Tindakan ini tidak dapat dibatalkan.",
+        exportJsonTitle = "Ekspor Buku Kas (JSON Teks Biasa)",
+        importJsonTitle = "Pulihkan Buku Kas (JSON Teks Biasa)",
+        restoreBackupDialogTitle = "Pulihkan Buku Kas?",
+        restoreBackupDialogDesc = "Memulihkan buku kas akan menggantikan semua akun, transaksi, dan rencana bulanan saat ini dengan data dari file JSON tanpa enkripsi. Tindakan ini tidak dapat dibatalkan.",
         confirmRestoreAction = "Pilih File & Pulihkan",
         backupExportSuccess = "Cadangan berhasil diekspor",
         backupExportFailed = "Gagal mengekspor cadangan",
@@ -777,7 +789,13 @@ object AppStrings {
         tooltipBack = "Kembali",
         manageAccountButton = "Kelola Akun",
         reorderAccountsAction = "Urutkan",
-        accountUpdatedAndReconciledToast = "Akun diperbarui dan saldo disesuaikan"
+        accountUpdatedAndReconciledToast = "Akun diperbarui dan saldo disesuaikan",
+        mainCurrencySheetTitle = "Mata Uang Utama",
+        searchCountryOrCurrencyPlaceholder = "Cari negara atau mata uang",
+        changeMainCurrencyConfirmTitle = "Ubah mata uang utama?",
+        changeMainCurrencyConfirmMessage = "Ubah mata uang utama ke %s (%s)? Akun, transaksi, dan anggaran Anda akan dikonversi menggunakan kurs terbaru. Nilai mungkin berbeda beberapa sen.",
+        convertAction = "Konversi",
+        survivalRunwayCalibratingFormat = "Mengalibrasi... (butuh %d hari)"
     )
 
     fun get(languageCode: String): ScreenStrings {

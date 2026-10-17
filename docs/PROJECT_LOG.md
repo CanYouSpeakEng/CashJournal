@@ -392,14 +392,19 @@ This log is kept up to date after every step. Any AI assistant or developer read
 
 Based on the comprehensive audit (Rev 3.0) and external review notes ([`docs/cashjournal_review_notes_from_Claude.md`](file:///c:/Users/Yahya/Projects/CashJournal/docs/cashjournal_review_notes_from_Claude.md)), upcoming work is partitioned into **4 focused, modular phases**:
 
-### [ ] **Phase 26: Audit Cleanups & Early-Cycle Runway Math Stability**
-- [ ] **Item 108 (OBS-1)**: Apply `ThousandsSeparatorVisualTransformation` to balance input field in `EditAccountSheet.kt`.
-- [ ] **Item 109 (OBS-2)**: Delete obsolete `ReconcileBalanceSheet.kt` and prune `ActiveSheet.RECONCILE_BALANCE`.
-- [ ] **Item 110 (OBS-3)**: Restrict `DailyReminderReceiver` manifest intent filters to prevent unauthorized external triggers while preserving `BOOT_COMPLETED`.
-- [ ] **Item 111 (OBS-4)**: Localize currency switch toast in `MainAppScaffold.kt` (line 515) and currency change confirmation dialog in `MainCurrencySheet.kt`.
-- [ ] **Item 112 (OBS-6)**: Remove `FoundationPreviewScreen.kt` from `app/src/main` to keep release sources clean.
-- [ ] **Item 113 (Runway Math)**: Re-engineer `dailyBurnRate` in `SafeToSpendCalculator.kt` to use a **trailing 30-day rolling window** across cycles instead of raw cycle-elapsed days, and gate the survival metric behind a 5-day calibration threshold when total history is under 5 days.
-- [ ] **Item 114 (Copy Precision)**: Update onboarding and settings copy: replace "Nothing uploaded" with exact copy ("Zero financial data leaves your phone. Only approximate coordinates are sent to fetch weather."), and accurately label JSON backups as plaintext ledger files.
+### [x] **Phase 26: Audit Cleanups & Early-Cycle Runway Math Stability (COMPLETED)**
+- [x] **Item 108 (OBS-1)**: Applied `ThousandsSeparatorVisualTransformation` and numeric keyboard to balance input field in `EditAccountSheet.kt`.
+- [x] **Item 109 (OBS-2)**: Deleted obsolete `ReconcileBalanceSheet.kt` and pruned all `ActiveSheet.RECONCILE_BALANCE` references in `MainAppScaffold.kt`, `AccountDetailScreen.kt`, and `MainViewModel.kt`.
+- [x] **Item 110 (OBS-3)**: Isolated `BOOT_COMPLETED` handling into dedicated `BootReceiver` (exported="true") and secured `DailyReminderReceiver` with `exported="false"` to prevent external intent spoofing.
+- [x] **Item 111 (OBS-4)**: Localized currency switch toast in `MainAppScaffold.kt` using `currencyChangedToast` and fully localized confirmation dialog and search placeholders in `MainCurrencySheet.kt`.
+- [x] **Item 112 (OBS-6)**: Removed `FoundationPreviewScreen.kt` and `Phase3ComponentsScreen.kt` from `app/src/main` to keep release sources clean.
+- [x] **Item 113 (Runway Math)**: Re-engineered `dailyBurnRate` in `SafeToSpendCalculator.kt` to use a **trailing 30-day rolling window** across cycles instead of raw cycle-elapsed days, and gated the survival metric behind a 5-day calibration threshold (`"Calibrating... (X days needed)"`) for early cycles. Added 4 unit test cases in `SafeToSpendTest.kt`.
+- [x] **Item 114 (Copy Precision)**: Updated onboarding and settings copy: replaced "Nothing uploaded" with exact copy ("Zero financial data leaves your phone. Only approximate coordinates are sent to fetch weather."), and accurately labeled JSON backups as plaintext ledger files.
+
+- [x] **Release v1.0.29-dev (Phase 26: Audit Cleanups, Early-Cycle Runway Calibration & Privacy Precision)**
+  - Tag: `v1.0.29-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.29-dev
+  - Artifacts: `app-debug.apk` (17.5 MB), `app-release.apk` (12.3 MB).
 
 ### [ ] **Phase 27: Recurring Transactions & Scheduled Bills Engine**
 - [ ] **Item 115**: Room v5 schema migration (`MIGRATION_4_5`) adding `recurring_transactions` table (`id`, `title`, `amount`, `category`, `sourceAccountId`, `frequency`, `dueDay`, `isActive`, `autoLog`).

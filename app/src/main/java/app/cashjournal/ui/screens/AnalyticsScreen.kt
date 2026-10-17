@@ -688,7 +688,9 @@ fun AnalyticsScreen(
                                     color = Slate500
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
-                                val runwayEstimate = if (safe.survivalMonths >= 1f) {
+                                val runwayEstimate = if (safe.isCalibrating) {
+                                    String.format(strings.survivalRunwayCalibratingFormat, safe.calibrationDaysNeeded)
+                                } else if (safe.survivalMonths >= 1f) {
                                     String.format(Locale.US, strings.survivalRunwayMonthsFormat, safe.survivalMonths)
                                 } else if (safe.survivalDays > 0) {
                                     String.format(Locale.US, strings.survivalRunwayDaysFormat, safe.survivalDays)
@@ -696,7 +698,14 @@ fun AnalyticsScreen(
                                     null
                                 }
 
-                                if (runwayEstimate != null) {
+                                if (safe.isCalibrating) {
+                                    Text(
+                                        text = String.format(strings.survivalRunwayCalibratingFormat, safe.calibrationDaysNeeded),
+                                        fontFamily = PlusJakartaSansFamily,
+                                        fontSize = 12.sp,
+                                        color = Slate500
+                                    )
+                                } else if (runwayEstimate != null) {
                                     Text(
                                         text = String.format(
                                             strings.survivalRunwayBurnSubline,
@@ -717,7 +726,22 @@ fun AnalyticsScreen(
                                 }
                             }
 
-                            if (safe.survivalMonths > 0f) {
+                            if (safe.isCalibrating) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Slate100)
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = String.format(strings.survivalRunwayCalibratingFormat, safe.calibrationDaysNeeded),
+                                        fontFamily = SpaceGroteskFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = Slate500
+                                    )
+                                }
+                            } else if (safe.survivalMonths > 0f) {
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(8.dp))
