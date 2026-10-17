@@ -603,4 +603,60 @@ class SafeToSpendTest {
         assertEquals(0L, result.committedBills)
         assertEquals(0, result.upcomingBillsCount)
     }
+
+    @Test
+    fun testLiquidCapitalExcludesCreditCardDebtFromRunway() {
+        // Setup accounts: Checking (10,000,000 IDR), Credit Card (-3,000,000 IDR debt)
+        val checking = app.cashjournal.domain.model.Account(
+            id = "acc-checking",
+            name = "BCA Checking",
+            accountType = app.cashjournal.domain.model.AccountType.BANK_DEBIT,
+            balance = 10_000_000L
+        )
+        val creditCard = app.cashjournal.domain.model.Account(
+            id = "acc-cc",
+            name = "Mandiri Card",
+            accountType = app.cashjournal.domain.model.AccountType.CREDIT_CARD,
+            balance = -3_000_000L
+        )
+        val allAccounts = listOf(checking, creditCard)
+
+        // Net worth includes debt: 10,000,000 - 3,000,000 = 7,000,000
+        val totalNetWorth = allAccounts.sumOf { it.balance }
+        assertEquals(7_000_000L, totalNetWorth)
+
+        // Liquid spendable capital excludes credit cards: 10,000,000
+        val liquidCapital = allAccounts
+            .filter { it.accountType != app.cashjournal.domain.model.AccountType.CREDIT_CARD }
+            .sumOf { it.balance }
+            .coerceAtLeast(0L)
+        assertEquals(10_000_000L, liquidCapital)
+
+        // Transactions over 10 days totaling 1,000,000 (burn rate = 100,000/day)
+        val cal = createUtcCalendar(2026, Calendar.OCTOBER, 10)
+        val txs = (1..10).map { day ->
+            Transaction(
+                id = "tx-$day",
+                title = "Expense Day $day",
+                amount = 100_000L,
+                type = TransactionType.EXPENSE,
+                date = createUtcCalendar(2026, Calendar.OCTOBER, day).timeInMillis,
+                sourceAccountId = checking.id
+            )
+        }
+
+        val plan = MonthlyPlan(budget = 5_000_000L)
+        val result = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = txs,
+            calendar = cal,
+            totalNetWorth = liquidCapital,
+            cycleStartDay = 1
+        )
+
+        // Burn rate: 100,000/day. With liquidCapital of 10,000,000, survival days = 100 days
+        assertEquals(100_000L, result.dailyBurnRate)
+        assertEquals(100, result.survivalDays)
+        assertEquals(3.33f, result.survivalMonths, 0.05f)
+    }
 }

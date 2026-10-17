@@ -91,13 +91,13 @@ fun PinSetupSheet(
     val currentInput = if (!isConfirmStep) firstPin else confirmPin
 
     fun handleDigit(d: String) {
-        if (currentInput.length < 4) {
+        if (currentInput.length < 6) {
             if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             errorMessage = null
             val updated = currentInput + d
             if (!isConfirmStep) {
                 firstPin = updated
-                if (updated.length == 4) {
+                if (updated.length == 6) {
                     coroutineScope.launch {
                         delay(140)
                         isConfirmStep = true
@@ -105,7 +105,7 @@ fun PinSetupSheet(
                 }
             } else {
                 confirmPin = updated
-                if (updated.length == 4) {
+                if (updated.length == 6) {
                     if (updated == firstPin) {
                         if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                         onPinCreated(updated)
@@ -172,7 +172,7 @@ fun PinSetupSheet(
                     )
                 }
                 Text(
-                    text = if (!isConfirmStep) "Create 4-Digit PIN" else "Confirm Your PIN",
+                    text = if (!isConfirmStep) "Create 6-Digit PIN" else "Confirm Your PIN",
                     fontFamily = PlusJakartaSansFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
@@ -192,9 +192,9 @@ fun PinSetupSheet(
 
         Text(
             text = if (!isConfirmStep)
-                "Set a 4-digit security PIN to guard your journal on this device."
+                "Set a 6-digit security PIN to guard your journal on this device."
             else
-                "Re-enter the 4-digit PIN to confirm setup.",
+                "Re-enter the 6-digit PIN to confirm setup.",
             fontFamily = PlusJakartaSansFamily,
             fontSize = 13.sp,
             color = Slate600,
@@ -203,13 +203,13 @@ fun PinSetupSheet(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // 4 PIN Dots with shake
+        // 6 PIN Dots with shake
         Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.offset { IntOffset(shakeOffset.value.roundToInt(), 0) }
         ) {
-            for (i in 0 until 4) {
+            for (i in 0 until 6) {
                 val isFilled = i < currentInput.length
                 val dotScale by androidx.compose.animation.core.animateFloatAsState(
                     targetValue = if (isFilled) 1.25f else 1.0f,
@@ -281,12 +281,17 @@ fun PinVerifyOrRemoveSheet(
     }
 
     fun handleDigit(d: String) {
-        if (enteredPin.length < 4) {
+        if (enteredPin.length < 6) {
             if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             errorMessage = null
             val updated = enteredPin + d
             enteredPin = updated
-            if (updated.length == 4) {
+            if (updated.length == 4 && UserPreferencesRepository.verifyPin(updated, storedHash)) {
+                if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                onSuccess()
+                return
+            }
+            if (updated.length == 6) {
                 if (UserPreferencesRepository.verifyPin(updated, storedHash)) {
                     if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                     onSuccess()
@@ -370,11 +375,11 @@ fun PinVerifyOrRemoveSheet(
         Spacer(modifier = Modifier.height(6.dp))
 
         Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.offset { IntOffset(shakeOffset.value.roundToInt(), 0) }
         ) {
-            for (i in 0 until 4) {
+            for (i in 0 until 6) {
                 val isFilled = i < enteredPin.length
                 val dotScale by androidx.compose.animation.core.animateFloatAsState(
                     targetValue = if (isFilled) 1.25f else 1.0f,

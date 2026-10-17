@@ -62,4 +62,33 @@ class PinSecurityTest {
         assertFalse("Non-hex salt must return false safely", UserPreferencesRepository.verifyPin("1234", "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz:0000000000000000000000000000000000000000000000000000000000000000"))
         assertFalse("Non-hex hash must return false safely", UserPreferencesRepository.verifyPin("1234", "00000000000000000000000000000000:zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"))
     }
+
+    @Test
+    fun testSixDigitPinHashingAndVerification() {
+        val pin6 = "829143"
+        val hash6 = UserPreferencesRepository.createSaltedPinHash(pin6)
+
+        assertTrue("Correct 6-digit PIN must verify successfully", UserPreferencesRepository.verifyPin(pin6, hash6))
+        assertFalse("Wrong 6-digit PIN must fail verification", UserPreferencesRepository.verifyPin("829144", hash6))
+        assertFalse("Truncated 4-digit prefix must fail verification", UserPreferencesRepository.verifyPin("8291", hash6))
+        assertFalse("Different 6-digit PIN must fail verification", UserPreferencesRepository.verifyPin("000000", hash6))
+    }
+
+    @Test
+    fun testBackwardCompatibilityLegacyFourDigitAndSixDigitPin() {
+        val pin4 = "1357"
+        val pin6 = "246810"
+
+        val hash4 = UserPreferencesRepository.createSaltedPinHash(pin4)
+        val hash6 = UserPreferencesRepository.createSaltedPinHash(pin6)
+
+        // 4-digit PIN verifies against 4-digit hash
+        assertTrue(UserPreferencesRepository.verifyPin("1357", hash4))
+        assertFalse(UserPreferencesRepository.verifyPin("1358", hash4))
+
+        // 6-digit PIN verifies against 6-digit hash
+        assertTrue(UserPreferencesRepository.verifyPin("246810", hash6))
+        assertFalse(UserPreferencesRepository.verifyPin("246811", hash6))
+        assertFalse(UserPreferencesRepository.verifyPin("2468", hash6))
+    }
 }

@@ -23,11 +23,14 @@ object ChimeGenerator {
     private const val NOTE_DURATION_MS = 120
     private const val FREQ_1 = 1140.0 // Hz
     private const val FREQ_2 = 820.0  // Hz
-    private const val PEAK_AMPLITUDE = 0.65 * 32767 // Warm, audible volume responding to Media volume
+    private const val PEAK_AMPLITUDE = 0.85 * 32767 // Crisp, audible sonification volume
 
     private val pcmData: ShortArray by lazy {
         generateChimeBuffer()
     }
+
+    private val lock = Any()
+    private var staticTrack: AudioTrack? = null
 
     private fun generateChimeBuffer(): ShortArray {
         val samplesPerNote = (SAMPLE_RATE * NOTE_DURATION_MS) / 1000
@@ -58,49 +61,68 @@ object ChimeGenerator {
         return buffer
     }
 
+    private fun createStaticAudioTrack(): AudioTrack? {
+        return try {
+            val data = pcmData
+            val track = AudioTrack.Builder()
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED)
+                        .build()
+                )
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(SAMPLE_RATE)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build()
+                )
+                .setBufferSizeInBytes(data.size * 2)
+                .setTransferMode(AudioTrack.MODE_STATIC)
+                .build()
+
+            if (track.state == AudioTrack.STATE_INITIALIZED) {
+                track.write(data, 0, data.size)
+                track
+            } else {
+                track.release()
+                null
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("ChimeGenerator", "Failed to initialize AudioTrack: ${e.message}")
+            null
+        }
+    }
+
     /**
-     * Plays the dual-tone chime asynchronously on Dispatchers.Default.
+     * Plays the dual-tone chime asynchronously on Dispatchers.Default with zero initialization lag.
      */
     fun playChime(enabled: Boolean, scope: CoroutineScope = CoroutineScope(Dispatchers.Default)) {
         if (!enabled) return
 
         scope.launch(Dispatchers.Default) {
-            var track: AudioTrack? = null
-            try {
-                val data = pcmData
-                track = AudioTrack.Builder()
-                    .setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_MEDIA)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                            .build()
-                    )
-                    .setAudioFormat(
-                        AudioFormat.Builder()
-                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                            .setSampleRate(SAMPLE_RATE)
-                            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                            .build()
-                    )
-                    .setBufferSizeInBytes(data.size * 2)
-                    .setTransferMode(AudioTrack.MODE_STATIC)
-                    .build()
-
-                if (track.state == AudioTrack.STATE_INITIALIZED) {
-                    track.write(data, 0, data.size)
-                    track.play()
-
-                    // Wait for playback to finish before release
-                    val durationMs = (totalDurationMs() + 50).toLong()
-                    kotlinx.coroutines.delay(durationMs)
-                    track.stop()
-                }
-            } catch (e: Exception) {
-                android.util.Log.w("ChimeGenerator", "AudioTrack playback error: ${e.message}")
-            } finally {
+            synchronized(lock) {
                 try {
-                    track?.release()
-                } catch (_: Exception) {
+                    val track = staticTrack ?: createStaticAudioTrack().also { staticTrack = it }
+                    if (track != null && track.state == AudioTrack.STATE_INITIALIZED) {
+                        track.stop()
+                        track.reloadStaticData()
+                        track.play()
+                    } else {
+                        // Recreate if invalidated by audio server
+                        staticTrack?.release()
+                        val newTrack = createStaticAudioTrack()
+                        staticTrack = newTrack
+                        newTrack?.play()
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("ChimeGenerator", "AudioTrack playback error: ${e.message}")
+                    try {
+                        staticTrack?.release()
+                    } catch (_: Exception) {}
+                    staticTrack = null
                 }
             }
         }

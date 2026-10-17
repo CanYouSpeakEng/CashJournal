@@ -497,7 +497,31 @@ Based on the comprehensive audit (Rev 3.0) and external review notes ([`docs/cas
 - [x] **Item 127 (OBS-NEW-3: CSV Import Category Key Normalization)**:
   - Updated `confirmCsvImport()` in `MainViewModel.kt` to save `category = item.category.key` rather than `item.category.name`, enforcing consistent domain key casing across all database records.
 - [x] **Item 128 (Automated Integrity Test Suite)**:
-  - Added `testCurrencyConversionConvertsRecurringBillsAndCommittedRunwayConsistently` and `testFullResetClearsAllTablesCompletely` in `LedgerIntegrityTest.kt`.
-  - Updated `ReleaseNotesSheet.kt` bilingual highlights for `v1.0.36-dev`.
-  - Verified 100% test pass on both debug and release variants.
+- [x] **Release v1.0.36-dev (Phase 30: Data Integrity Hardening & Multi-Currency Recurring Bills)**
+  - Tag: `v1.0.36-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.36-dev
+  - Artifacts: `app-debug.apk` (17.7 MB), `app-release.apk` (7.8 MB).
 
+---
+
+### [x] **Phase 31: Hardened Security, 6-Digit PIN, Audible Chimes & Liquid Runway (COMPLETED)**
+- [x] **Item 129 (Absolute Non-Destructive Storage)**:
+  - Removed `.fallbackToDestructiveMigrationOnDowngrade()` from `AppDatabase.kt:144`.
+  - Room is now completely non-destructive on all upgrade, downgrade, and rollback paths. Incompatible schemas refuse to open with `IllegalStateException` rather than dropping and recreating user tables.
+- [x] **Item 130 (Liquid Runway & Spendable Capital Isolation)**:
+  - Separated Net Worth from Spendable Liquid Capital in `MainViewModel.kt`.
+  - Filtered out `AccountType.CREDIT_CARD` when computing `liquidFunds`, preventing revolving credit card debt from distorting survival runway and safe-to-spend allowances. Added unit test in `SafeToSpendTest.kt`.
+- [x] **Item 131 (6-Digit PIN & Escalating Rate-Limiting Lockout)**:
+  - Upgraded PIN setup and lock screen from 4 digits to 6 digits, expanding key search space from 10,000 to 1,000,000 combinations.
+  - Implemented in-app escalating rate-limiting lockout in `AppLockScreen.kt`: 5 failed attempts locks keypad for 30 seconds with an active countdown timer; 10 failed attempts locks for 5 minutes.
+  - Preserved backward-compatible unlocking for legacy 4-digit PIN hashes in `AppLockScreen.kt` and `PinSetupSheet.kt`. Added unit tests in `PinSecurityTest.kt`.
+- [x] **Item 132 (Zero-Latency Audible Sonification Audio Engine)**:
+  - Overhauled `ChimeGenerator.kt` to route through `USAGE_ASSISTANCE_SONIFICATION` with `FLAG_AUDIBILITY_ENFORCED`.
+  - Replaced short-lived AudioTrack creation with a reusable static track utilizing zero-latency hardware `reloadStaticData() + play()`, completely eliminating DAC initialization race conditions and making sound effects crisp and audible.
+- [x] **Item 133 (Automated Test Suite & Verification)**:
+  - Added unit test cases across `PinSecurityTest.kt` and `SafeToSpendTest.kt`.
+  - Updated `ReleaseNotesSheet.kt` bilingual highlights for `v1.0.37-dev`.
+- [x] **Release v1.0.37-dev (Phase 31: Hardened Security, 6-Digit PIN, Audible Chimes & Liquid Runway)**:
+  - Tag: `v1.0.37-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.37-dev
+  - Artifacts: `app-debug.apk` (16.9 MB), `app-release.apk` (7.47 MB).

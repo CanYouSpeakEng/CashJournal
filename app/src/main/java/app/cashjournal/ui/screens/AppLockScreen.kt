@@ -51,6 +51,7 @@ import app.cashjournal.ui.theme.Cobalt
 import app.cashjournal.ui.theme.PlusJakartaSansFamily
 import app.cashjournal.ui.theme.Slate100
 import app.cashjournal.ui.theme.Slate200
+import app.cashjournal.ui.theme.Slate400
 import app.cashjournal.ui.theme.Slate500
 import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
@@ -77,6 +78,24 @@ fun AppLockScreen(
     val strings = AppStrings.get(languageCode)
     var enteredPin by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var failedAttempts by remember { mutableStateOf(0) }
+    var lockoutUntilMillis by remember { mutableStateOf(0L) }
+    var secondsRemaining by remember { mutableStateOf(0) }
+    val isLockedOut = secondsRemaining > 0
+
+    LaunchedEffect(lockoutUntilMillis) {
+        while (true) {
+            val now = System.currentTimeMillis()
+            val remaining = ((lockoutUntilMillis - now + 999L) / 1000).toInt()
+            if (remaining > 0) {
+                secondsRemaining = remaining
+                delay(500)
+            } else {
+                secondsRemaining = 0
+                break
+            }
+        }
+    }
 
     val view = LocalView.current
     val coroutineScope = rememberCoroutineScope()
@@ -94,17 +113,34 @@ fun AppLockScreen(
     }
 
     fun handleDigit(d: String) {
-        if (enteredPin.length < 4) {
+        if (isLockedOut) return
+        if (enteredPin.length < 6) {
             if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             errorMessage = null
             val updated = enteredPin + d
             enteredPin = updated
-            if (updated.length == 4) {
+
+            // Backward compatibility: If matching a legacy 4-digit PIN, unlock immediately
+            if (updated.length == 4 && UserPreferencesRepository.verifyPin(updated, pinHash)) {
+                failedAttempts = 0
+                if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                onUnlock()
+                return
+            }
+
+            if (updated.length == 6) {
                 if (UserPreferencesRepository.verifyPin(updated, pinHash)) {
+                    failedAttempts = 0
                     if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
                     onUnlock()
                 } else {
-                    errorMessage = strings.lockScreenError
+                    failedAttempts++
+                    if (failedAttempts >= 5) {
+                        val duration = if (failedAttempts >= 10) 300_000L else 30_000L
+                        lockoutUntilMillis = System.currentTimeMillis() + duration
+                    } else {
+                        errorMessage = strings.lockScreenError
+                    }
                     triggerShake()
                     coroutineScope.launch {
                         delay(400)
@@ -116,6 +152,7 @@ fun AppLockScreen(
     }
 
     fun handleBackspace() {
+        if (isLockedOut) return
         if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
         errorMessage = null
         if (enteredPin.isNotEmpty()) enteredPin = enteredPin.dropLast(1)
@@ -123,7 +160,7 @@ fun AppLockScreen(
 
     // Auto-prompt biometrics on launch if enabled and permitted in the foreground
     LaunchedEffect(biometricsEnabled, autoPromptBiometrics) {
-        if (biometricsEnabled && autoPromptBiometrics && onBiometricRequest != null) {
+        if (biometricsEnabled && autoPromptBiometrics && onBiometricRequest != null && !isLockedOut) {
             delay(300)
             onBiometricRequest()
         }
@@ -180,13 +217,13 @@ fun AppLockScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 4 PIN Dots
+            // 6 PIN Dots
             Row(
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.offset { IntOffset(shakeOffset.value.roundToInt(), 0) }
             ) {
-                for (i in 0 until 4) {
+                for (i in 0 until 6) {
                     val isFilled = i < enteredPin.length
                     val dotScale by animateFloatAsState(
                         targetValue = if (isFilled) 1.25f else 1.0f,
@@ -195,7 +232,7 @@ fun AppLockScreen(
                     )
                     Box(
                         modifier = Modifier
-                            .size(18.dp)
+                            .size(16.dp)
                             .scale(dotScale)
                             .clip(CircleShape)
                             .background(if (isFilled) Cobalt else Slate200)
@@ -203,17 +240,22 @@ fun AppLockScreen(
                 }
             }
 
-            // Error notice
-            AnimatedVisibility(visible = errorMessage != null) {
-                errorMessage?.let {
-                    Text(
-                        text = it,
-                        fontFamily = PlusJakartaSansFamily,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Berry
-                    )
+            // Error / Lockout notice
+            AnimatedVisibility(visible = isLockedOut || errorMessage != null) {
+                val displayMsg = if (isLockedOut) {
+                    strings.lockScreenLockedFormat.format(secondsRemaining)
+                } else {
+                    errorMessage ?: ""
                 }
+                Text(
+                    text = displayMsg,
+                    fontFamily = PlusJakartaSansFamily,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Berry,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
             }
 
             Spacer(modifier = Modifier.weight(0.5f))
@@ -223,7 +265,8 @@ fun AppLockScreen(
                 onDigit = { handleDigit(it) },
                 onBackspace = { handleBackspace() },
                 showBiometric = biometricsEnabled && onBiometricRequest != null,
-                onBiometric = { onBiometricRequest?.invoke() }
+                onBiometric = { onBiometricRequest?.invoke() },
+                enabled = !isLockedOut
             )
 
             Spacer(modifier = Modifier.weight(0.4f))
@@ -237,7 +280,8 @@ private fun LockKeypad(
     onBackspace: () -> Unit,
     showBiometric: Boolean,
     onBiometric: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -258,7 +302,8 @@ private fun LockKeypad(
                     LockKeypadButton(
                         text = digit,
                         modifier = Modifier.weight(1f),
-                        onClick = { onDigit(digit) }
+                        onClick = { onDigit(digit) },
+                        enabled = enabled
                     )
                 }
             }
@@ -275,15 +320,15 @@ private fun LockKeypad(
                         .weight(1f)
                         .height(60.dp)
                         .clip(RoundedCornerShape(18.dp))
-                        .clickable { onBiometric() },
+                        .clickable(enabled = enabled) { onBiometric() },
                     shape = RoundedCornerShape(18.dp),
-                    color = Color.White
+                    color = Color.White.copy(alpha = if (enabled) 1f else 0.45f)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = PhosphorIcons.Regular.Fingerprint,
                             contentDescription = "Biometric Unlock",
-                            tint = Cobalt,
+                            tint = if (enabled) Cobalt else Slate400,
                             modifier = Modifier.size(26.dp)
                         )
                     }
@@ -295,7 +340,8 @@ private fun LockKeypad(
             LockKeypadButton(
                 text = "0",
                 modifier = Modifier.weight(1f),
-                onClick = { onDigit("0") }
+                onClick = { onDigit("0") },
+                enabled = enabled
             )
 
             Surface(
@@ -303,15 +349,15 @@ private fun LockKeypad(
                     .weight(1f)
                     .height(60.dp)
                     .clip(RoundedCornerShape(18.dp))
-                    .clickable { onBackspace() },
+                    .clickable(enabled = enabled) { onBackspace() },
                 shape = RoundedCornerShape(18.dp),
-                color = Color.White
+                color = Color.White.copy(alpha = if (enabled) 1f else 0.45f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = PhosphorIcons.Regular.Backspace,
                         contentDescription = "Backspace",
-                        tint = Charcoal,
+                        tint = if (enabled) Charcoal else Slate400,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -324,15 +370,16 @@ private fun LockKeypad(
 private fun LockKeypadButton(
     text: String,
     modifier: Modifier = Modifier,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    enabled: Boolean = true
 ) {
     Surface(
         modifier = modifier
             .height(60.dp)
             .clip(RoundedCornerShape(18.dp))
-            .clickable { onClick() },
+            .clickable(enabled = enabled) { onClick() },
         shape = RoundedCornerShape(18.dp),
-        color = Color.White
+        color = Color.White.copy(alpha = if (enabled) 1f else 0.45f)
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
@@ -340,7 +387,7 @@ private fun LockKeypadButton(
                 fontFamily = SpaceGroteskFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 22.sp,
-                color = Charcoal
+                color = if (enabled) Charcoal else Slate400
             )
         }
     }

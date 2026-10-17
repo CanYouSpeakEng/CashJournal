@@ -245,13 +245,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val isUpdateReady = currentUpdateState is UpdateState.ReadyToInstall
 
         val totalWorth = rawAccounts.sumOf { it.balance }
+        val liquidFunds = rawAccounts
+            .filter { it.accountType != AccountType.CREDIT_CARD }
+            .sumOf { it.balance }
+            .coerceAtLeast(0L)
         val recentTx = rawTransactions.take(5)
 
-        // Calculate Safe to Spend (factoring in committed upcoming recurring bills in the active cycle)
+        // Calculate Safe to Spend (using spendable liquid capital, excluding credit card debt)
         val safeState = calculateSafeToSpend(
             plan = plan,
             transactions = rawTransactions,
-            totalNetWorth = totalWorth,
+            totalNetWorth = liquidFunds,
             hasAccounts = rawAccounts.isNotEmpty(),
             cycleStartDay = prefs.cycleStartDay,
             recurringTransactions = rawRecurring

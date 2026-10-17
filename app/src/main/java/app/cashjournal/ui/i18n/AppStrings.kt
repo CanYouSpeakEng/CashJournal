@@ -180,6 +180,7 @@ interface ScreenStrings {
     val defaultAdjustmentTitle: String
     val lockScreenPrompt: String
     val lockScreenError: String
+    val lockScreenLockedFormat: String
     val accountDetailPctOfTotal: String
     val accountDetailBalance: String
     val accountDetailInflow: String
@@ -413,7 +414,7 @@ private class EnglishScreenStrings : ScreenStrings {
     override val sectionMainCurrency: String = "MAIN CURRENCY"
     override val sectionSecurity: String = "SECURITY & ACCESS"
     override val pinLockTitle: String = "PIN Lock"
-    override val pinLockSubtitle: String = "Require 4-digit PIN on app launch"
+    override val pinLockSubtitle: String = "Require 6-digit PIN on app launch"
     override val biometricsTitle: String = "Biometric Unlock"
     override val biometricsSubtitle: String = "Fingerprint or face authentication"
     override val screenPrivacyTitle: String = "Screen Privacy"
@@ -505,8 +506,9 @@ private class EnglishScreenStrings : ScreenStrings {
     override val confirmReconciliationAction: String = "Update Balance"
     override val balanceReconciledToast: String = "Balance updated"
     override val defaultAdjustmentTitle: String = "Balance Adjustment"
-    override val lockScreenPrompt: String = "Enter your 4-digit PIN to unlock"
+    override val lockScreenPrompt: String = "Enter your 6-digit PIN to unlock"
     override val lockScreenError: String = "Incorrect PIN. Try again."
+    override val lockScreenLockedFormat: String = "Too many failed attempts. Try again in %d seconds."
     override val accountDetailPctOfTotal: String = "%d%% of total"
     override val accountDetailBalance: String = "BALANCE"
     override val accountDetailInflow: String = "INFLOW"
@@ -740,7 +742,7 @@ private class IndonesianScreenStrings : ScreenStrings {
     override val sectionMainCurrency: String = "MATA UANG UTAMA"
     override val sectionSecurity: String = "KEAMANAN & AKSES"
     override val pinLockTitle: String = "Kunci PIN"
-    override val pinLockSubtitle: String = "Wajibkan PIN 4 angka saat buka aplikasi"
+    override val pinLockSubtitle: String = "Wajibkan PIN 6 angka saat buka aplikasi"
     override val biometricsTitle: String = "Buka Kunci Biometrik"
     override val biometricsSubtitle: String = "Autentikasi sidik jari atau wajah"
     override val screenPrivacyTitle: String = "Privasi Layar"
@@ -832,8 +834,9 @@ private class IndonesianScreenStrings : ScreenStrings {
     override val confirmReconciliationAction: String = "Simpan Saldo"
     override val balanceReconciledToast: String = "Saldo berhasil diubah"
     override val defaultAdjustmentTitle: String = "Penyesuaian Saldo"
-    override val lockScreenPrompt: String = "Masukkan 4 digit PIN untuk membuka"
+    override val lockScreenPrompt: String = "Masukkan 6 digit PIN untuk membuka"
     override val lockScreenError: String = "PIN salah. Coba lagi."
+    override val lockScreenLockedFormat: String = "Terlalu banyak percobaan gagal. Coba lagi dalam %d detik."
     override val accountDetailPctOfTotal: String = "%d%% dari total"
     override val accountDetailBalance: String = "SALDO"
     override val accountDetailInflow: String = "PEMASUKAN"

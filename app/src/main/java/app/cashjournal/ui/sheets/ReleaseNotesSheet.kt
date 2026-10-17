@@ -48,10 +48,10 @@ import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
-import com.adamglin.phosphoricons.regular.ArrowsLeftRight
 import com.adamglin.phosphoricons.regular.LockKey
 import com.adamglin.phosphoricons.regular.ShieldCheck
-import com.adamglin.phosphoricons.regular.Sparkle
+import com.adamglin.phosphoricons.regular.SpeakerHigh
+import com.adamglin.phosphoricons.regular.Wallet
 import com.adamglin.phosphoricons.regular.X
 
 data class ReleaseHighlight(
@@ -78,35 +78,35 @@ fun ReleaseNotesSheet(
 
     val highlights = listOf(
         ReleaseHighlight(
-            titleEn = "Data Protection & Zero-Loss Engine",
-            titleIn = "Perlindungan Data & Tanpa Risiko Terhapus",
-            descEn = "Database upgrades are hardened with zero-data-loss protection. Your records and transaction history are safeguarded at all times.",
-            descIn = "Pembaruan database ditingkatkan dengan perlindungan anti-hapus. Riwayat transaksi dan catatan kas Anda selalu terlindungi sepenuhnya.",
-            icon = PhosphorIcons.Regular.ShieldCheck,
-            iconTint = Emerald
-        ),
-        ReleaseHighlight(
-            titleEn = "Multi-Currency Recurring Bills",
-            titleIn = "Konversi Mata Uang Tagihan Rutin",
-            descEn = "Switching currencies now automatically converts your recurring subscriptions and bills, keeping your safe-to-spend allowance accurate.",
-            descIn = "Mengganti mata uang kini otomatis mengonversi nominal langganan rutin Anda, menjaga perhitungan saldo aman tetap presisi.",
-            icon = PhosphorIcons.Regular.ArrowsLeftRight,
+            titleEn = "6-Digit PIN & Throttled Lockout",
+            titleIn = "PIN 6 Digit & Penguncian Bertingkat",
+            descEn = "PIN security is upgraded to 6 digits (1,000,000 combinations). Consecutive failed attempts trigger an escalating lockout timer to prevent brute-force attacks.",
+            descIn = "Keamanan PIN ditingkatkan menjadi 6 digit (1.000.000 kombinasi). Percobaan gagal berulang memicu penguncian waktu bertingkat untuk mencegah pembobolan.",
+            icon = PhosphorIcons.Regular.LockKey,
             iconTint = Cobalt
         ),
         ReleaseHighlight(
-            titleEn = "Password-Protected Encrypted Backups",
-            titleIn = "Cadangan Terenkripsi dengan Kata Sandi",
-            descEn = "Export your financial records into secure AES-256-GCM encrypted backup files (.cashjournal.enc) protected with your personal password.",
-            descIn = "Ekspor catatan keuangan Anda ke dalam berkas cadangan terenkripsi AES-256-GCM (.cashjournal.enc) yang dilindungi kata sandi pribadi Anda.",
-            icon = PhosphorIcons.Regular.LockKey,
+            titleEn = "Audible Zero-Latency Chimes",
+            titleIn = "Nada Umpan Balik Instan & Jernih",
+            descEn = "The audio engine has been overhauled with direct system sonification, ensuring transaction and budget feedback chimes play crisply and reliably.",
+            descIn = "Mesin audio diperbarui dengan sonifikasi sistem langsung, memastikan nada umpan balik transaksi dan anggaran terdengar jernih dan andal.",
+            icon = PhosphorIcons.Regular.SpeakerHigh,
+            iconTint = Emerald
+        ),
+        ReleaseHighlight(
+            titleEn = "Liquid Capital Runway Isolation",
+            titleIn = "Pemisahan Saldo Likuid & Landasan Kas",
+            descEn = "Daily safe-to-spend and survival runway calculations now isolate spendable liquid cash from revolving credit card debt for pure accuracy.",
+            descIn = "Perhitungan saldo aman harian dan landasan bertahan hidup kini memisahkan dana tunai likuid dari utang kartu kredit demi ketepatan mutlak.",
+            icon = PhosphorIcons.Regular.Wallet,
             iconTint = Persimmon
         ),
         ReleaseHighlight(
-            titleEn = "Clean Reset & Import Consistency",
-            titleIn = "Reset Bersih & Konsistensi Impor",
-            descEn = "Full ledger resets thoroughly wipe scheduled bills, and CSV statement imports adhere to normalized category standards.",
-            descIn = "Penghapusan menyeluruh membersihkan jadwal tagihan secara tuntas, dan impor mutasi rekening CSV selaras dengan standar kategori.",
-            icon = PhosphorIcons.Regular.Sparkle,
+            titleEn = "Absolute Non-Destructive Storage",
+            titleIn = "Penyimpanan Mutlak Tanpa Risiko Hapus",
+            descEn = "Database downgrade fallbacks have been removed so app rollbacks or older versions will never silently delete your financial records.",
+            descIn = "Pembalikan versi database telah dihilangkan sehingga penurunan versi aplikasi tidak akan pernah menghapus catatan keuangan Anda.",
+            icon = PhosphorIcons.Regular.ShieldCheck,
             iconTint = Cobalt
         )
     )
