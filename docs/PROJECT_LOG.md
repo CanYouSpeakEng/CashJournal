@@ -449,6 +449,15 @@ Based on the comprehensive audit (Rev 3.0) and external review notes ([`docs/cas
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.32-dev
   - Artifacts: `app-debug.apk` (16.8 MB), `app-release.apk` (11.8 MB).
 
+- [x] **Release v1.0.33-dev (Fix: Account Activity Ledger Isolation & Stray Destination Sanitization)**
+  - Tag: `v1.0.33-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.33-dev
+  - Artifacts: `app-debug.apk` (16.8 MB), `app-release.apk` (11.8 MB).
+  - Changes:
+    1. Enforced `destinationAccountId = if (type == TransactionType.TRANSFER) destAccountId else null` in `MainViewModel.kt` (`logTransaction` and `editTransaction`), `LogTransactionSheet.kt`, and `TransactionEditSheet.kt`.
+    2. Added `sanitizeNonTransferDestinations()` in `TransactionDao.kt` to clear any stray `destinationAccountId` values on existing non-transfer records during app startup.
+    3. Confirmed all 101 unit tests passing.
+
 ---
 
 ### [ ] **Phase 28: CSV / Bank Statement Import & Duplicate Detection**
