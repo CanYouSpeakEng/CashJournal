@@ -364,21 +364,54 @@ This log is kept up to date after every step. Any AI assistant or developer read
   - Tag: `v1.0.26-dev`
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.26-dev
   - Artifacts: `app-debug.apk` (17.6 MB), `app-release.apk` (12.3 MB).
+- [x] **Phase 24: Liquid Status Island, One-Handed Ergonomics & Audio Engine**
+  - [x] **Item 97: Dashboard Safe to Spend Text Wrap & Stacked Badges Fix**: Separated badges and remaining metrics into two stacked rows in `DashboardScreen.kt`, eliminating vertical character bunching when expenses exist.
+  - [x] **Item 98: Procedural Chime Audio Engine Route & Volume Boost**: Routed `AudioTrack` to `USAGE_MEDIA` (`STREAM_MUSIC`) and boosted peak amplitude to `0.65` in `ChimeGenerator.kt` so sound effects respond to device media volume rockers.
+  - [x] **Item 99: Settings Card Categorization & Glass Card Modularization**: Re-architected settings into 5 clean frosted glass cards (`BACKUP & EXPORT`, `APP UPDATES`, `ABOUT CASHJOURNAL`, `DEVELOPER & DIAGNOSTICS`, and `DANGER ZONE`).
+  - [x] **Item 100: Upward-Morphing Liquid Status Ring Island**: Animated the Status Ring upward above the `SideRail` into its own detached floating circle island when entering `AccountDetailScreen`, revealing the Back Caret button in the vacated rail top slot while keeping balance privacy 100% accessible.
+  - [x] **Item 101: One-Handed Thumb-Zone Action Dock in Accounts**: Moved "Add Account" and "Reorder" from the unreachable top-right corner to an ergonomic lower thumb-reachable dock in `AccountsScreen.kt`.
+  - [x] **Item 102: Unified Manage Account Sheet**: Unified account metadata editing and balance reconciliation into `EditAccountSheet.kt` with real-time delta difference badges and audit-trail logging.
+  - [x] **Item 103: Physics Card-Shuffle Reorder Animation**: Wrapped account cards with `key(account.id)` and `Modifier.animateItemPlacement()` in `LazyColumn` for physical gliding during reordering.
+- [x] **Release v1.0.27-dev (Phase 24: Liquid Status Island, One-Handed Ergonomics & Audio Engine)**
+  - Tag: `v1.0.27-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.27-dev
+  - Artifacts: `app-debug.apk` (17.6 MB), `app-release.apk` (12.3 MB).
+- [x] **Phase 25: 54dp Island Width, Breath/Pulse Update Glow & Friendly Release Notes**
+  - [x] **Item 104: 54dp Status Ring Island Width**: Dynamically animated floating island dimensions from 42dp to 54dp (matching full sidebar width) and X-offset from 6dp inset to 0dp flush.
+  - [x] **Item 105: Settings Blue Update Glow**: Removed 7dp blue dot and implemented a two-layer Cobalt breathing halo (1600ms reverse cycle) and soft outer ripple pulse (2400ms restart cycle).
+  - [x] **Item 106: Package Installer Hand-off & Visibility Permission Fix**: Added `<queries>` for package archive in `AndroidManifest.xml`, granted explicit URI permissions to system package installers, and finished `MainActivity` on install launch to prevent installation loops.
+  - [x] **Item 107: Casual User-Friendly Release Notes & What's New Refresh**: Replaced developer jargon in `ReleaseNotesSheet.kt` and GitHub release notes with conversational bilingual highlights (EN/ID).
+- [x] **Release v1.0.28-dev (Phase 25: 54dp Island Width, Breath/Pulse Update Glow & Friendly Release Notes)**
+  - Tag: `v1.0.28-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.28-dev
+  - Artifacts: `app-debug.apk` (17.6 MB), `app-release.apk` (12.3 MB).
 
+---
 
+## 5. Architectural Review & Strategic Phasing Plan (Post-v1.0.28-dev)
 
+Based on the comprehensive audit (Rev 3.0) and external review notes ([`docs/cashjournal_review_notes_from_Claude.md`](file:///c:/Users/Yahya/Projects/CashJournal/docs/cashjournal_review_notes_from_Claude.md)), upcoming work is partitioned into **4 focused, modular phases**:
 
+### [ ] **Phase 26: Audit Cleanups & Early-Cycle Runway Math Stability**
+- [ ] **Item 108 (OBS-1)**: Apply `ThousandsSeparatorVisualTransformation` to balance input field in `EditAccountSheet.kt`.
+- [ ] **Item 109 (OBS-2)**: Delete obsolete `ReconcileBalanceSheet.kt` and prune `ActiveSheet.RECONCILE_BALANCE`.
+- [ ] **Item 110 (OBS-3)**: Restrict `DailyReminderReceiver` manifest intent filters to prevent unauthorized external triggers while preserving `BOOT_COMPLETED`.
+- [ ] **Item 111 (OBS-4)**: Localize currency switch toast in `MainAppScaffold.kt` (line 515) and currency change confirmation dialog in `MainCurrencySheet.kt`.
+- [ ] **Item 112 (OBS-6)**: Remove `FoundationPreviewScreen.kt` from `app/src/main` to keep release sources clean.
+- [ ] **Item 113 (Runway Math)**: Re-engineer `dailyBurnRate` in `SafeToSpendCalculator.kt` to use a **trailing 30-day rolling window** across cycles instead of raw cycle-elapsed days, and gate the survival metric behind a 5-day calibration threshold when total history is under 5 days.
+- [ ] **Item 114 (Copy Precision)**: Update onboarding and settings copy: replace "Nothing uploaded" with exact copy ("Zero financial data leaves your phone. Only approximate coordinates are sent to fetch weather."), and accurately label JSON backups as plaintext ledger files.
 
+### [ ] **Phase 27: Recurring Transactions & Scheduled Bills Engine**
+- [ ] **Item 115**: Room v5 schema migration (`MIGRATION_4_5`) adding `recurring_transactions` table (`id`, `title`, `amount`, `category`, `sourceAccountId`, `frequency`, `dueDay`, `isActive`, `autoLog`).
+- [ ] **Item 116**: Enhance `SafeToSpendCalculator` to deduct committed upcoming recurring bills in the current cycle from `effectiveBudget` before computing `safeToSpendToday`.
+- [ ] **Item 117**: "Upcoming Bills" card on Dashboard and dedicated Recurring Bills management sheet.
 
+### [ ] **Phase 28: CSV / Bank Statement Import & Duplicate Detection**
+- [ ] **Item 118**: Statement parser supporting standard Indonesian bank CSV formats (BCA, Mandiri, BNI, BRI) and generic CSVs.
+- [ ] **Item 119**: Column mapping preview modal and hash-based duplicate transaction detector (`date + amount + accountId + title`) to avoid double-counting.
+- [ ] **Item 120**: Dedicated CSV spreadsheet ledger export (separate from JSON backup).
 
-
-
-
-
-
-
-
-
-
-
-
+### [ ] **Phase 29: Encrypted Backups & Release Hardening**
+- [ ] **Item 121**: Password-based AES-256-GCM backup encryption (`.cashjournal.enc`) with PBKDF2/Argon2 key derivation.
+- [ ] **Item 122**: Automated Room migration test suite using `androidx.room:room-testing` (`MigrationTestHelper`) asserting `MIGRATION_1_2`, `2_3`, `3_4`, and `4_5`.
+- [ ] **Item 123**: Production release signing configuration (external keystore via environment variables/local properties) and R8 minification verification.
