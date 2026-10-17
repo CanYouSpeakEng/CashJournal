@@ -13,7 +13,8 @@ import app.cashjournal.domain.model.TransactionType
     indices = [
         Index(value = ["sourceAccountId"]),
         Index(value = ["destinationAccountId"]),
-        Index(value = ["date"])
+        Index(value = ["date"]),
+        Index(value = ["splitGroupId"])
     ]
 )
 data class TransactionEntity(
@@ -29,7 +30,8 @@ data class TransactionEntity(
     val accentKey: String,
     val sourceAccountId: String?,
     val destinationAccountId: String?,
-    val updatedAt: Long
+    val updatedAt: Long,
+    val splitGroupId: String? = null
 ) {
     fun toDomain(): Transaction = Transaction(
         id = id,
@@ -43,7 +45,8 @@ data class TransactionEntity(
         accentKey = AccentKey.fromKey(accentKey),
         sourceAccountId = sourceAccountId,
         destinationAccountId = destinationAccountId,
-        updatedAt = updatedAt
+        updatedAt = updatedAt,
+        splitGroupId = splitGroupId
     )
 
     companion object {
@@ -59,7 +62,8 @@ data class TransactionEntity(
             accentKey = tx.accentKey.name,
             sourceAccountId = tx.sourceAccountId,
             destinationAccountId = tx.destinationAccountId,
-            updatedAt = tx.updatedAt
+            updatedAt = tx.updatedAt,
+            splitGroupId = tx.splitGroupId
         )
     }
 }

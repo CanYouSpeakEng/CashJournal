@@ -132,6 +132,7 @@ fun SettingsScreen(
     onCheckForUpdates: () -> Unit = {},
     onOpenUpdateSheet: () -> Unit = onCheckForUpdates,
     onOpenRecurringBills: () -> Unit = {},
+    onOpenChangeHistory: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -1334,6 +1335,40 @@ fun SettingsScreen(
                     Icon(
                         imageVector = PhosphorIcons.Regular.CaretRight,
                         contentDescription = "Export Ledger CSV",
+                        tint = Slate400,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                // 6. Change History (50 items local undo)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenChangeHistory() },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = strings.changeHistoryTitle,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp,
+                            color = Charcoal
+                        )
+                        Text(
+                            text = strings.changeHistorySubtitle,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontSize = 11.sp,
+                            color = Slate500
+                        )
+                    }
+                    Icon(
+                        imageVector = PhosphorIcons.Regular.CaretRight,
+                        contentDescription = "Change History",
                         tint = Slate400,
                         modifier = Modifier.size(16.dp)
                     )

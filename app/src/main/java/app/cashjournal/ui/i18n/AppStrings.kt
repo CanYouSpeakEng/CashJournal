@@ -370,6 +370,31 @@ interface ScreenStrings {
     val priceUpdatedDaysAgoFormat: String
     val priceUpdatedToday: String
     val investmentDisclaimer: String
+
+    // Phase 35: Split Transactions & Undo Change History Strings
+    val undoActionLabel: String
+    val undoSuccessToast: String
+    val changeHistoryTitle: String
+    val changeHistorySubtitle: String
+    val changeHistoryEmpty: String
+    val clearHistoryAction: String
+    val clearHistoryConfirmTitle: String
+    val clearHistoryConfirmMessage: String
+    val splitTransactionAction: String
+    val splitTransactionTitle: String
+    val splitTransactionSubtitle: String
+    val addSplitItemAction: String
+    val removeSplitItemAction: String
+    val splitAllocatedLabel: String
+    val splitRemainingLabel: String
+    val splitBadge: String
+    val deleteEntireSplitPrompt: String
+    val deleteSplitSingleAction: String
+    val deleteSplitAllAction: String
+    val revertAction: String
+    val splitTotalMismatchError: String
+    val splitMinItemsError: String
+    val splitItemAmountError: String
 }
 
 
@@ -735,6 +760,31 @@ private class EnglishScreenStrings : ScreenStrings {
     override val priceUpdatedDaysAgoFormat: String = "Updated %d days ago"
     override val priceUpdatedToday: String = "Updated today"
     override val investmentDisclaimer: String = "CashJournal does not scrape live asset prices. Update the unit price manually whenever you check your portfolio."
+
+    // Phase 35: Split Transactions & Undo Change History Strings
+    override val undoActionLabel: String = "Undo"
+    override val undoSuccessToast: String = "Action undone"
+    override val changeHistoryTitle: String = "Change History"
+    override val changeHistorySubtitle: String = "Last 50 actions · tap to revert changes"
+    override val changeHistoryEmpty: String = "No changes logged yet"
+    override val clearHistoryAction: String = "Clear History"
+    override val clearHistoryConfirmTitle: String = "Clear Change History?"
+    override val clearHistoryConfirmMessage: String = "This will permanently remove the device-local history of recent revisions and undo points."
+    override val splitTransactionAction: String = "Split Receipt"
+    override val splitTransactionTitle: String = "Split Transaction"
+    override val splitTransactionSubtitle: String = "Divide receipt across multiple categories"
+    override val addSplitItemAction: String = "+ Add Category Split"
+    override val removeSplitItemAction: String = "Remove"
+    override val splitAllocatedLabel: String = "Allocated"
+    override val splitRemainingLabel: String = "Remaining"
+    override val splitBadge: String = "Split"
+    override val deleteEntireSplitPrompt: String = "This transaction is part of a split receipt."
+    override val deleteSplitSingleAction: String = "Delete This Item Only"
+    override val deleteSplitAllAction: String = "Delete All in Split"
+    override val revertAction: String = "Revert"
+    override val splitTotalMismatchError: String = "Allocated amounts must match total receipt"
+    override val splitMinItemsError: String = "Split transaction requires at least 2 items"
+    override val splitItemAmountError: String = "Each split item must have an amount greater than zero"
 }
 
 
@@ -1100,6 +1150,31 @@ private class IndonesianScreenStrings : ScreenStrings {
     override val priceUpdatedDaysAgoFormat: String = "Diperbarui %d hari lalu"
     override val priceUpdatedToday: String = "Diperbarui hari ini"
     override val investmentDisclaimer: String = "CashJournal tidak melacak harga pasar secara otomatis. Perbarui harga per unit secara manual saat memeriksa portofolio Anda."
+
+    // Phase 35: Split Transactions & Undo Change History Strings
+    override val undoActionLabel: String = "Urungkan"
+    override val undoSuccessToast: String = "Tindakan berhasil dibatalkan"
+    override val changeHistoryTitle: String = "Riwayat Perubahan"
+    override val changeHistorySubtitle: String = "50 tindakan terakhir · ketuk untuk membatalkan"
+    override val changeHistoryEmpty: String = "Belum ada riwayat perubahan tercatat"
+    override val clearHistoryAction: String = "Hapus Riwayat"
+    override val clearHistoryConfirmTitle: String = "Hapus Riwayat Perubahan?"
+    override val clearHistoryConfirmMessage: String = "Tindakan ini akan menghapus log riwayat revisi dan titik urungkan lokal di perangkat Anda."
+    override val splitTransactionAction: String = "Bagi Kategori"
+    override val splitTransactionTitle: String = "Bagi Transaksi"
+    override val splitTransactionSubtitle: String = "Bagi nota ke beberapa pos kategori"
+    override val addSplitItemAction: String = "+ Tambah Kategori"
+    override val removeSplitItemAction: String = "Hapus"
+    override val splitAllocatedLabel: String = "Dialokasikan"
+    override val splitRemainingLabel: String = "Sisa"
+    override val splitBadge: String = "Bagi"
+    override val deleteEntireSplitPrompt: String = "Transaksi ini adalah bagian dari nota terbagi."
+    override val deleteSplitSingleAction: String = "Hapus Bagian Ini Saja"
+    override val deleteSplitAllAction: String = "Hapus Seluruh Transaksi Terbagi"
+    override val revertAction: String = "Kembalikan"
+    override val splitTotalMismatchError: String = "Jumlah alokasi harus sesuai dengan total nota"
+    override val splitMinItemsError: String = "Transaksi terbagi membutuhkan minimal 2 pos kategori"
+    override val splitItemAmountError: String = "Setiap pos bagi harus memiliki nominal lebih dari nol"
 }
 
 object AppStrings {

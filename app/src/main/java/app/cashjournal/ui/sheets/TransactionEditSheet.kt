@@ -64,6 +64,7 @@ import app.cashjournal.ui.theme.Persimmon
 import app.cashjournal.ui.theme.PlusJakartaSansFamily
 import app.cashjournal.ui.theme.SaffronDark
 import app.cashjournal.ui.theme.SaffronLight
+import app.cashjournal.ui.theme.Slate100
 import app.cashjournal.ui.theme.Slate200
 import app.cashjournal.ui.theme.Slate400
 import app.cashjournal.ui.theme.Slate500
@@ -72,6 +73,7 @@ import app.cashjournal.ui.theme.SpaceGroteskFamily
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Check
+import com.adamglin.phosphoricons.regular.Receipt
 import com.adamglin.phosphoricons.regular.WarningCircle
 import com.adamglin.phosphoricons.regular.X
 import java.text.SimpleDateFormat
@@ -98,6 +100,7 @@ fun TransactionEditSheet(
         date: Long
     ) -> Unit,
     onDeleteTransaction: (id: String) -> Unit,
+    onDeleteSplitGroup: ((splitGroupId: String) -> Unit)? = null,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     soundEffectsEnabled: Boolean = true,
@@ -209,53 +212,137 @@ fun TransactionEditSheet(
     }
 
     if (showDeleteConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirmDialog = false },
-            title = {
-                Text(
-                    text = strings.deleteTransactionDialogTitle,
-                    fontFamily = PlusJakartaSansFamily,
-                    fontWeight = FontWeight.Bold,
-                    color = Charcoal
-                )
-            },
-            text = {
-                Text(
-                    text = strings.deleteTransactionDialogDesc,
-                    fontFamily = PlusJakartaSansFamily,
-                    color = Slate500,
-                    fontSize = 13.sp
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showDeleteConfirmDialog = false
-                        onDeleteTransaction(transaction.id)
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Persimmon),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
+        if (transaction.splitGroupId != null && onDeleteSplitGroup != null) {
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirmDialog = false },
+                title = {
                     Text(
-                        text = strings.confirmDeleteAction,
+                        text = strings.deleteTransactionDialogTitle,
                         fontFamily = PlusJakartaSansFamily,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = Charcoal
                     )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = strings.deleteEntireSplitPrompt,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Charcoal,
+                            fontSize = 13.sp
+                        )
+                        Text(
+                            text = strings.deleteTransactionDialogDesc,
+                            fontFamily = PlusJakartaSansFamily,
+                            color = Slate500,
+                            fontSize = 12.sp
+                        )
+                    }
+                },
+                confirmButton = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                showDeleteConfirmDialog = false
+                                onDeleteSplitGroup(transaction.splitGroupId)
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Persimmon),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = strings.deleteSplitAllAction,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                showDeleteConfirmDialog = false
+                                onDeleteTransaction(transaction.id)
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Slate100),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = strings.deleteSplitSingleAction,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = FontWeight.Bold,
+                                color = Charcoal
+                            )
+                        }
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showDeleteConfirmDialog = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = strings.cancelAction,
+                            fontFamily = PlusJakartaSansFamily,
+                            color = Slate500
+                        )
+                    }
+                },
+                containerColor = Color.White,
+                shape = RoundedCornerShape(18.dp)
+            )
+        } else {
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirmDialog = false },
+                title = {
                     Text(
-                        text = strings.cancelAction,
+                        text = strings.deleteTransactionDialogTitle,
                         fontFamily = PlusJakartaSansFamily,
-                        color = Slate500
+                        fontWeight = FontWeight.Bold,
+                        color = Charcoal
                     )
-                }
-            },
-            containerColor = Color.White,
-            shape = RoundedCornerShape(18.dp)
-        )
+                },
+                text = {
+                    Text(
+                        text = strings.deleteTransactionDialogDesc,
+                        fontFamily = PlusJakartaSansFamily,
+                        color = Slate500,
+                        fontSize = 13.sp
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showDeleteConfirmDialog = false
+                            onDeleteTransaction(transaction.id)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Persimmon),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(
+                            text = strings.confirmDeleteAction,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                        Text(
+                            text = strings.cancelAction,
+                            fontFamily = PlusJakartaSansFamily,
+                            color = Slate500
+                        )
+                    }
+                },
+                containerColor = Color.White,
+                shape = RoundedCornerShape(18.dp)
+            )
+        }
     }
 
     if (showCategoryPicker) {
@@ -855,6 +942,32 @@ fun TransactionEditSheet(
                 letterSpacing = 0.5.sp,
                 color = Color.White
             )
+        }
+
+        // Split Receipt Notice
+        if (transaction.splitGroupId != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Slate100)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = PhosphorIcons.Regular.Receipt,
+                    contentDescription = null,
+                    tint = Slate500,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = strings.deleteEntireSplitPrompt,
+                    fontFamily = PlusJakartaSansFamily,
+                    fontSize = 12.sp,
+                    color = Slate600
+                )
+            }
         }
 
         // Delete Transaction Button

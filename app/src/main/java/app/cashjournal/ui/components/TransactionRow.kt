@@ -33,7 +33,10 @@ import app.cashjournal.domain.model.TransactionType
 import app.cashjournal.ui.theme.Charcoal
 import app.cashjournal.ui.theme.Emerald
 import app.cashjournal.ui.theme.PlusJakartaSansFamily
+import app.cashjournal.ui.theme.Slate100
 import app.cashjournal.ui.theme.Slate500
+import app.cashjournal.ui.theme.Slate600
+import app.cashjournal.ui.theme.SpaceGroteskFamily
 import app.cashjournal.domain.model.Transaction
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
@@ -47,6 +50,7 @@ fun TransactionRow(
     dateText: String = "",
     accounts: List<Account> = emptyList(),
     onClick: (() -> Unit)? = null,
+    splitBadgeText: String = "Split",
     modifier: Modifier = Modifier
 ) {
     val icon = when (transaction.type) {
@@ -100,6 +104,8 @@ fun TransactionRow(
         accountLabel = accountLabel,
         accountColor = accountColor,
         balancesVisible = !isMasked,
+        isSplit = transaction.splitGroupId != null,
+        splitBadgeText = splitBadgeText,
         onClick = onClick,
         modifier = modifier
     )
@@ -118,6 +124,8 @@ fun TransactionRow(
     accountLabel: String? = null,
     accountColor: Color? = null,
     balancesVisible: Boolean = true,
+    isSplit: Boolean = false,
+    splitBadgeText: String = "Split",
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -155,15 +163,38 @@ fun TransactionRow(
 
         // Title and Category/Account/Date
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                fontFamily = PlusJakartaSansFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
-                color = Charcoal,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = title,
+                    fontFamily = PlusJakartaSansFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    color = Charcoal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+
+                if (isSplit) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Slate100)
+                            .padding(horizontal = 4.dp, vertical = 1.dp)
+                    ) {
+                        Text(
+                            text = splitBadgeText,
+                            fontFamily = SpaceGroteskFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 9.sp,
+                            color = Slate600
+                        )
+                    }
+                }
+            }
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,

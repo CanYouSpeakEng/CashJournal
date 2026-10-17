@@ -618,20 +618,60 @@ Based on the comprehensive audit (Rev 3.0) and external review notes ([`docs/cas
   - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.40-dev
   - Artifacts: `app-debug.apk` (16.9 MB), `app-release.apk` (7.47 MB).
 
+### [x] **Phase 35: Ledger Power Tools — Split Transactions & 50-Item Local Undo History (COMPLETED)**
+- [x] **Item 147 (Split Transactions & Multi-Category Receipts — Room Schema v8)**:
+  - Added `splitGroupId: String? = null` column with index on `transactions` table via Room `MIGRATION_7_8`. Database version bumped to 8 in `AppDatabase.kt`.
+  - Added `SplitItem` data class and updated `Transaction.kt` and `TransactionEntity.kt`.
+  - Included `splitGroupId` in JSON backup and restore schemas in `BackupManager.kt`.
+  - Added Split Receipt toggle in `LogTransactionSheet.kt`:
+    - Dynamic add/remove items (minimum 2 items).
+    - Live allocation bar showing allocated percentage and remaining balance to allocate.
+    - Keypad Quick Fill button to auto-fill the active split item with the unallocated balance.
+    - Multi-transaction atomic commit: creates individual `Transaction` entries sharing a single `splitGroupId` UUID.
+  - Subtle `Split` pill badge added to `TransactionRow.kt` for any item with a non-null `splitGroupId`.
+  - In `TransactionEditSheet.kt`, added split indicator banner and dual deletion options: "Delete This Split Only" vs "Delete All Splits in Receipt" (`splitGroupId`).
+- [x] **Item 148 (Device-Local Undo & 50-Item Change History Table)**:
+  - Added `change_history` Room table (`ChangeHistoryEntity`) with indexed `timestamp` and LRU 50-item pruning in `ChangeHistoryDao.kt`.
+  - Added action pill button support to `ToastPill.kt` (3800ms dismiss duration) for immediate single-tap revert ("Undo" / "Urungkan").
+  - Wire actions across `MainViewModel.kt` to record mutations (`CREATE`, `UPDATE`, `DELETE`) for transactions and accounts, with full reverse payloads (`TransactionBackupDto`, `AccountBackupDto`).
+  - Added `ChangeHistorySheet.kt` accessible from `SettingsScreen.kt` under Section 7 (Backup & Data):
+    - Displays up to 50 device-local actions with color-coded type badges and relative timestamps ("Just now", "2m ago", "1h ago", "Yesterday").
+    - Actionable Cobalt "Revert" ("Batalkan") button to undo any past mutation with instant feedback.
+    - Clear history button with confirmation dialog.
+    - Empty state when no history is present.
+  - Strictly excluded `change_history` table from offline backup payloads per Sections 11.3 & 12.2 to preserve strict privacy.
+  - Comprehensive bilingual strings (EN/IN) added in `AppStrings.kt`.
+- [x] **Item 149 (Verification & Release Deployment)**:
+  - Unit tests updated and passing in `MigrationTest.kt` (`testMIGRATION_7_8`).
+  - Full `./gradlew testDebugUnitTest` passing 100%.
+  - Verified live on Android emulator:
+    - Split Receipt entry, dynamic item rows, allocation bar, keypad auto-fill, and multi-entry persistence.
+    - Split badge display in Ledger.
+    - Split group deletion options in `TransactionEditSheet`.
+    - Real-time logging of mutations into SQLite `change_history` table.
+    - Change History sheet open from Settings, displaying recorded actions with relative timestamps and Revert buttons.
+    - Successful Revert action reverting logged transaction with instant UI updates.
+  - Updated `ReleaseNotesSheet.kt` with Phase 35 bilingual highlights.
+  - Bumped `versionName` to `1.0.41-dev` in `app/build.gradle.kts`.
+
+- [x] **Release v1.0.41-dev (Phase 35: Ledger Power Tools — Split Transactions & 50-Item Local Undo History)**:
+  - Tag: `v1.0.41-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.41-dev
+  - Artifacts: `app-debug.apk` (16.9 MB), `app-release.apk` (7.47 MB).
+
 ---
 
-### [ ] **Upcoming Phases Status: Core Money Rules, Forecast & Simulation Studio (Phases 35–38)**
-- **Design & Formula Source of Truth**: [`docs/cashjournal_projection_simulation_spec.md`](file:///c:/Users/Yahya/Projects/CashJournal/docs/cashjournal_projection_simulation_spec.md) (Sections 10–12).
-- **Execution Task List**: [`master_tasks_roadmap.md`](file:///C:/Users/Yahya/.gemini/antigravity/brain/0a2612ed-736b-482e-9005-143d315d1357/master_tasks_roadmap.md) (Items 146–153).
+### [ ] **Upcoming Phases Status: Forecast & Simulation Studio (Phases 36–38)**
+- **Design & Formula Source of Truth**: [`docs/cashjournal_projection_simulation_spec.md`](file:///c:/Users/Yahya/Projects/CashJournal/docs/cashjournal_projection_simulation_spec.md) (Sections 4–9, 12.3).
+- **Execution Task List**: [`master_tasks_roadmap.md`](file:///C:/Users/Yahya/.gemini/antigravity/brain/0a2612ed-736b-482e-9005-143d315d1357/master_tasks_roadmap.md) (Items 149–155).
 
 #### Phase Status Summary:
-- **Phase 35 (Ledger Power Tools — Room Schema v8)**: [Status: Ready to Build | Items 146–147 | Spec: 10.4, 12.2]
-  - Split transactions (`splitGroupId`) and 50-action local undo/change history (excluded from backups per Section 11.3).
-- **Phase 36 (Forecast & Simulation Studio Part 1 — F1, F2, F3, F8)**: [Status: Planned | Items 148–150 | Spec: F1–F3, F8, 12.3]
-  - Portrait summary widget on `AnalyticsScreen`, dedicated landscape `SimulationStudioActivity` cockpit, current-pace projection, known-events forecast, and purchase simulator.
-- **Phase 37 (Forecast & Simulation Studio Part 2 — F4, F5, F6, F7)**: [Status: Planned | Items 151–153 | Spec: F4–F7, 12.3]
+- **Phase 36 (Forecast & Simulation Studio Part 1 — F1, F2, F3, F8)**: [Status: Ready to Build | Items 149–151 | Spec: F1–F3, F8, 12.3]
+  - Portrait summary widget on `AnalyticsScreen`, dedicated landscape `SimulationStudioActivity` cockpit (`android:screenOrientation="sensorLandscape"`), current-pace projection, known-events forecast, and purchase simulator.
+- **Phase 37 (Forecast & Simulation Studio Part 2 — F4, F5, F6, F7)**: [Status: Planned | Items 152–154 | Spec: F4–F7, 12.3]
   - Goal reachability, scenario sliders, pause-bill toggles, irregular-income mode, and saved scenario comparisons.
-- **Phase 38 (Calm Habit Guidance & Milestones — Section 9)**: [Status: Planned | Item 154 | Spec: 9.1–9.6, 12.2]
+- **Phase 38 (Calm Habit Guidance & Milestones — Section 9)**: [Status: Planned | Item 155 | Spec: 9.1–9.6, 12.2]
   - Master Settings toggle, logging streaks with 2 grace days/week, monthly review card, and concept cards.
+
 
 

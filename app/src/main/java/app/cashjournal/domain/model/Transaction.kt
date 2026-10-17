@@ -14,5 +14,12 @@ data class Transaction(
     val accentKey: AccentKey = AccentKey.COBALT,
     val sourceAccountId: String? = null,
     val destinationAccountId: String? = null,
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val splitGroupId: String? = null
+)
+
+data class SplitItem(
+    val category: Category,
+    val amount: Long,
+    val note: String = ""
 )

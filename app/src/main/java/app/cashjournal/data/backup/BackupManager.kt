@@ -105,7 +105,8 @@ data class TransactionBackupDto(
     val accentKey: String = "SLATE",
     val sourceAccountId: String? = null,
     val destinationAccountId: String? = null,
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val splitGroupId: String? = null
 ) {
     fun toEntity(): TransactionEntity = TransactionEntity(
         id = id,
@@ -119,7 +120,8 @@ data class TransactionBackupDto(
         accentKey = accentKey,
         sourceAccountId = sourceAccountId,
         destinationAccountId = destinationAccountId,
-        updatedAt = updatedAt
+        updatedAt = updatedAt,
+        splitGroupId = splitGroupId
     )
 
     companion object {
@@ -135,7 +137,8 @@ data class TransactionBackupDto(
             accentKey = entity.accentKey,
             sourceAccountId = entity.sourceAccountId,
             destinationAccountId = entity.destinationAccountId,
-            updatedAt = entity.updatedAt
+            updatedAt = entity.updatedAt,
+            splitGroupId = entity.splitGroupId
         )
     }
 }

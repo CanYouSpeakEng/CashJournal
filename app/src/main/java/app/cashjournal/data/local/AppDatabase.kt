@@ -5,10 +5,12 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import app.cashjournal.data.local.dao.AccountDao
+import app.cashjournal.data.local.dao.ChangeHistoryDao
 import app.cashjournal.data.local.dao.MonthlyPlanDao
 import app.cashjournal.data.local.dao.RecurringTransactionDao
 import app.cashjournal.data.local.dao.TransactionDao
 import app.cashjournal.data.local.entity.AccountEntity
+import app.cashjournal.data.local.entity.ChangeHistoryEntity
 import app.cashjournal.data.local.entity.MonthlyPlanEntity
 import app.cashjournal.data.local.entity.RecurringTransactionEntity
 import app.cashjournal.data.local.entity.TransactionEntity
@@ -21,9 +23,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AccountEntity::class,
         TransactionEntity::class,
         MonthlyPlanEntity::class,
-        RecurringTransactionEntity::class
+        RecurringTransactionEntity::class,
+        ChangeHistoryEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -31,6 +34,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
     abstract fun monthlyPlanDao(): MonthlyPlanDao
     abstract fun recurringTransactionDao(): RecurringTransactionDao
+    abstract fun changeHistoryDao(): ChangeHistoryDao
 
     companion object {
         @Volatile
@@ -153,6 +157,29 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. Add splitGroupId column and index to transactions table
+                db.execSQL("ALTER TABLE transactions ADD COLUMN splitGroupId TEXT DEFAULT NULL")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_transactions_splitGroupId ON transactions(splitGroupId)")
+
+                // 2. Create change_history table
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `change_history` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `actionType` TEXT NOT NULL,
+                        `entityType` TEXT NOT NULL,
+                        `entityId` TEXT NOT NULL,
+                        `summary` TEXT NOT NULL,
+                        `previousStateJson` TEXT,
+                        `newStateJson` TEXT,
+                        `timestamp` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_change_history_timestamp ON change_history(timestamp)")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -160,7 +187,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "cashjournal_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .build()
                 INSTANCE = instance
                 instance

@@ -22,11 +22,15 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import app.cashjournal.domain.model.SplitItem
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
 import com.adamglin.phosphoricons.regular.Check
+import com.adamglin.phosphoricons.regular.Receipt
+import com.adamglin.phosphoricons.regular.Trash
 import com.adamglin.phosphoricons.regular.WarningCircle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -98,6 +102,12 @@ fun LogTransactionSheet(
         date: Long,
         category: Category?
     ) -> Unit,
+    onSaveSplitTransaction: ((
+        sourceAccountId: String,
+        note: String,
+        date: Long,
+        items: List<SplitItem>
+    ) -> Unit)? = null,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     soundEffectsEnabled: Boolean = true,
@@ -130,6 +140,18 @@ fun LogTransactionSheet(
     var customCategory by remember { mutableStateOf<Category?>(null) }
     val detectedCategory = remember(note) { Category.detectFromNote(note) }
     val activeCategory = customCategory ?: detectedCategory
+
+    var isSplitMode by remember { mutableStateOf(false) }
+    var splitItems by remember {
+        mutableStateOf(
+            listOf(
+                SplitItem(Category.GROCERIES, 0L),
+                SplitItem(Category.OTHER, 0L)
+            )
+        )
+    }
+    var focusedSplitIndex by remember { mutableStateOf<Int?>(null) }
+    var splitCategoryPickerIndex by remember { mutableStateOf<Int?>(null) }
 
     val (isToday, isYesterday) = remember(selectedDateMillis) {
         val nowCal = Calendar.getInstance()
@@ -296,6 +318,94 @@ fun LogTransactionSheet(
         )
     }
 
+    if (splitCategoryPickerIndex != null) {
+        val availableCategories = Category.entries.filter { it != Category.SALARY }
+
+        AlertDialog(
+            onDismissRequest = { splitCategoryPickerIndex = null },
+            title = {
+                Text(
+                    text = strings.selectCategoryTitle,
+                    fontFamily = SpaceGroteskFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Charcoal
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    availableCategories.forEach { cat ->
+                        val targetItem = splitItems.getOrNull(splitCategoryPickerIndex!!)
+                        val isSelected = targetItem?.category == cat
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isSelected) cat.defaultAccent.color.copy(alpha = 0.15f) else Color.Transparent)
+                                .clickable {
+                                    val idx = splitCategoryPickerIndex!!
+                                    splitItems = splitItems.toMutableList().apply {
+                                        this[idx] = this[idx].copy(category = cat)
+                                    }
+                                    splitCategoryPickerIndex = null
+                                }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(cat.defaultAccent.tint),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = cat.icon,
+                                    contentDescription = cat.defaultName,
+                                    tint = cat.defaultAccent.color,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                            Text(
+                                text = cat.localizedName(languageCode),
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                fontSize = 14.sp,
+                                color = if (isSelected) cat.defaultAccent.color else Charcoal,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = PhosphorIcons.Regular.Check,
+                                    contentDescription = "Selected",
+                                    tint = cat.defaultAccent.color,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { splitCategoryPickerIndex = null }) {
+                    Text(
+                        text = strings.cancelAction,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Slate600
+                    )
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -342,6 +452,66 @@ fun LogTransactionSheet(
                 }
             }
         )
+
+        // Split Receipt Toggle (Expense only)
+        if (selectedType == TransactionType.EXPENSE) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (isSplitMode) Cobalt.copy(alpha = 0.1f) else Slate100)
+                    .clickable {
+                        isSplitMode = !isSplitMode
+                        if (isSplitMode) {
+                            if (splitItems.isEmpty() || splitItems.all { it.amount == 0L }) {
+                                splitItems = listOf(
+                                    SplitItem(activeCategory, parsedAmount),
+                                    SplitItem(Category.OTHER, 0L)
+                                )
+                                focusedSplitIndex = if (parsedAmount > 0L) 1 else 0
+                            }
+                        } else {
+                            focusedSplitIndex = null
+                        }
+                    }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = PhosphorIcons.Regular.Receipt,
+                        contentDescription = null,
+                        tint = if (isSplitMode) Cobalt else Slate600,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = strings.splitTransactionAction,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
+                        color = if (isSplitMode) Cobalt else Charcoal
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isSplitMode) Cobalt else Slate200)
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = if (isSplitMode) "ON" else "OFF",
+                        fontFamily = SpaceGroteskFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.sp,
+                        color = if (isSplitMode) Color.White else Slate600
+                    )
+                }
+            }
+        }
 
         // Date Selector Chips Row (Backdating Support)
         Row(
@@ -572,7 +742,7 @@ fun LogTransactionSheet(
         }
     }
 
-        // Note Field with Category Pill (Hidden for Transfer)
+        // Note Field (Hidden for Transfer)
         if (selectedType != TransactionType.TRANSFER) {
             SubtleGlassCard(modifier = Modifier.fillMaxWidth()) {
                 Row(
@@ -594,7 +764,7 @@ fun LogTransactionSheet(
                         decorationBox = { innerTextField ->
                             if (note.isEmpty()) {
                                 Text(
-                                    text = strings.transactionNotePlaceholder,
+                                    text = if (isSplitMode) strings.splitTransactionSubtitle else strings.transactionNotePlaceholder,
                                     fontFamily = PlusJakartaSansFamily,
                                     fontSize = 14.sp,
                                     color = Slate400
@@ -605,46 +775,253 @@ fun LogTransactionSheet(
                         modifier = Modifier.weight(1f)
                     )
 
-                    // Category Selection Pill
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(activeCategory.defaultAccent.color.copy(alpha = 0.12f))
-                            .clickable { showCategoryPicker = true }
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = activeCategory.icon,
-                            contentDescription = activeCategory.defaultName,
-                            tint = activeCategory.defaultAccent.color,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = activeCategory.localizedName(languageCode),
-                            fontFamily = PlusJakartaSansFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            color = activeCategory.defaultAccent.color
-                        )
+                    if (!isSplitMode) {
+                        // Category Selection Pill
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(activeCategory.defaultAccent.color.copy(alpha = 0.12f))
+                                .clickable { showCategoryPicker = true }
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = activeCategory.icon,
+                                contentDescription = activeCategory.defaultName,
+                                tint = activeCategory.defaultAccent.color,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = activeCategory.localizedName(languageCode),
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                color = activeCategory.defaultAccent.color
+                            )
+                        }
+                    } else {
+                        // Split Mode Indicator Badge
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Cobalt.copy(alpha = 0.12f))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = strings.splitBadge,
+                                fontFamily = SpaceGroteskFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                color = Cobalt
+                            )
+                        }
                     }
                 }
             }
         }
 
+        // Split Mode: Category Allocation Items Breakdown
+        if (isSplitMode && selectedType == TransactionType.EXPENSE) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                splitItems.forEachIndexed { index, item ->
+                    val isFocused = focusedSplitIndex == index
+                    SubtleGlassCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { focusedSplitIndex = index }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Category Picker Chip for this Split Item
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(item.category.defaultAccent.color.copy(alpha = 0.12f))
+                                    .clickable { splitCategoryPickerIndex = index }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = item.category.icon,
+                                    contentDescription = null,
+                                    tint = item.category.defaultAccent.color,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    text = item.category.localizedName(languageCode),
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = item.category.defaultAccent.color
+                                )
+                            }
+
+                            // Note for Split Item
+                            BasicTextField(
+                                value = item.note,
+                                onValueChange = { newNote ->
+                                    splitItems = splitItems.toMutableList().apply {
+                                        this[index] = item.copy(note = newNote)
+                                    }
+                                },
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontSize = 12.sp,
+                                    color = Charcoal
+                                ),
+                                cursorBrush = SolidColor(Cobalt),
+                                decorationBox = { inner ->
+                                    if (item.note.isEmpty()) {
+                                        Text(
+                                            text = strings.transactionNotePlaceholder,
+                                            fontFamily = PlusJakartaSansFamily,
+                                            fontSize = 12.sp,
+                                            color = Slate400
+                                        )
+                                    }
+                                    inner()
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            // Item Amount Pill (Keypad Focus Target)
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isFocused) Cobalt.copy(alpha = 0.15f) else Slate100)
+                                    .clickable { focusedSplitIndex = index }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = Currency.formatMinor(item.amount, currencyCode),
+                                    fontFamily = SpaceGroteskFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = if (isFocused) Cobalt else Charcoal
+                                )
+                            }
+
+                            // Delete Split Item Button (only if > 2 items)
+                            if (splitItems.size > 2) {
+                                IconButton(
+                                    onClick = {
+                                        splitItems = splitItems.toMutableList().apply { removeAt(index) }
+                                        if (focusedSplitIndex == index) {
+                                            focusedSplitIndex = 0
+                                        }
+                                    },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = PhosphorIcons.Regular.Trash,
+                                        contentDescription = strings.removeSplitItemAction,
+                                        tint = Persimmon,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Split Allocation Summary Pill & Auto-Fill
+                val allocated = splitItems.sumOf { it.amount }
+                val remaining = parsedAmount - allocated
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = {
+                            splitItems = splitItems + SplitItem(Category.OTHER, 0L)
+                            focusedSplitIndex = splitItems.size - 1
+                        }
+                    ) {
+                        Text(
+                            text = strings.addSplitItemAction,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = Cobalt
+                        )
+                    }
+
+                    if (remaining > 0L && focusedSplitIndex != null && focusedSplitIndex!! in splitItems.indices) {
+                        TextButton(
+                            onClick = {
+                                val idx = focusedSplitIndex!!
+                                splitItems = splitItems.toMutableList().apply {
+                                    this[idx] = this[idx].copy(amount = this[idx].amount + remaining)
+                                }
+                            }
+                        ) {
+                            Text(
+                                text = "+ Auto-fill (${Currency.formatMinor(remaining, currencyCode)})",
+                                fontFamily = SpaceGroteskFamily,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 11.sp,
+                                color = Emerald
+                            )
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (remaining == 0L && allocated > 0L) Emerald.copy(alpha = 0.1f) else Slate100)
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "${strings.splitAllocatedLabel}: ${Currency.formatMinor(allocated, currencyCode)}",
+                        fontFamily = SpaceGroteskFamily,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (remaining == 0L && allocated > 0L) Emerald else Charcoal
+                    )
+                    Text(
+                        text = "${strings.splitRemainingLabel}: ${Currency.formatMinor(remaining, currencyCode)}",
+                        fontFamily = SpaceGroteskFamily,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (remaining == 0L) Emerald else Persimmon
+                    )
+                }
+            }
+        }
+
         // Amount Display (Centered, Space Grotesk 36sp extra-bold)
+        val isTotalFocused = !isSplitMode || focusedSplitIndex == null
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(vertical = 4.dp)
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .clickable { focusedSplitIndex = null }
+                .padding(horizontal = 12.dp, vertical = 4.dp)
         ) {
             Text(
                 text = currency.symbol,
                 fontFamily = SpaceGroteskFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 24.sp,
-                color = Cobalt,
+                color = if (isTotalFocused) Cobalt else Slate400,
                 modifier = Modifier.padding(end = 6.dp)
             )
 
@@ -653,7 +1030,7 @@ fun LogTransactionSheet(
                 fontFamily = SpaceGroteskFamily,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 36.sp,
-                color = Charcoal
+                color = if (isTotalFocused) Charcoal else Slate500
             )
         }
 
@@ -661,18 +1038,35 @@ fun LogTransactionSheet(
         CustomNumericKeypad(
             currencyCode = currencyCode,
             onKeyPressed = { key ->
-                if (key == "BACKSPACE") {
-                    rawDigits = if (rawDigits.length > 1) {
-                        rawDigits.dropLast(1)
+                if (isSplitMode && focusedSplitIndex != null && focusedSplitIndex!! in splitItems.indices) {
+                    val idx = focusedSplitIndex!!
+                    val currentItem = splitItems[idx]
+                    val currentRaw = currentItem.amount.toString()
+                    val nextAmount = if (key == "BACKSPACE") {
+                        if (currentRaw.length > 1) currentRaw.dropLast(1).toLongOrNull() ?: 0L else 0L
                     } else {
-                        "0"
+                        if (currentRaw.length < 10) {
+                            if (currentRaw == "0") key.toLongOrNull() ?: 0L
+                            else (currentRaw + key).toLongOrNull() ?: currentItem.amount
+                        } else currentItem.amount
+                    }
+                    splitItems = splitItems.toMutableList().apply {
+                        this[idx] = currentItem.copy(amount = nextAmount)
                     }
                 } else {
-                    if (rawDigits.length < 10) {
-                        rawDigits = if (rawDigits == "0") {
-                            key
+                    if (key == "BACKSPACE") {
+                        rawDigits = if (rawDigits.length > 1) {
+                            rawDigits.dropLast(1)
                         } else {
-                            rawDigits + key
+                            "0"
+                        }
+                    } else {
+                        if (rawDigits.length < 10) {
+                            rawDigits = if (rawDigits == "0") {
+                                key
+                            } else {
+                                rawDigits + key
+                            }
                         }
                     }
                 }
@@ -685,9 +1079,9 @@ fun LogTransactionSheet(
         val sourceAccount = remember(selectedSourceAccountId, accounts) {
             accounts.find { it.id == selectedSourceAccountId }
         }
-        val outflowAmount = remember(selectedType, parsedAmount, feeAmount, feeDirectionTaken) {
+        val outflowAmount = remember(selectedType, parsedAmount, feeAmount, feeDirectionTaken, isSplitMode, splitItems) {
             when (selectedType) {
-                TransactionType.EXPENSE -> parsedAmount
+                TransactionType.EXPENSE -> if (isSplitMode) splitItems.sumOf { it.amount } else parsedAmount
                 TransactionType.TRANSFER -> if (feeDirectionTaken) parsedAmount else (parsedAmount + feeAmount)
                 else -> 0L
             }
@@ -742,25 +1136,43 @@ fun LogTransactionSheet(
         ) {
             Button(
                 onClick = {
-                    triggerSplash = true
-                    scope.launch {
-                        delay(900L)
-                        val amountToSave = if (selectedType == TransactionType.TRANSFER) {
-                            if (feeDirectionTaken) (parsedAmount - feeAmount).coerceAtLeast(0L) else parsedAmount
-                        } else {
-                            parsedAmount
+                    val srcId = selectedSourceAccountId ?: ""
+                    if (isSplitMode && selectedType == TransactionType.EXPENSE) {
+                        val allocated = splitItems.sumOf { it.amount }
+                        if (parsedAmount == 0L && allocated > 0L) {
+                            rawDigits = allocated.toString()
                         }
-                        val feeToSave = if (selectedType == TransactionType.TRANSFER) feeAmount else 0L
-                        onSaveTransaction(
-                            selectedType,
-                            selectedSourceAccountId,
-                            if (selectedType == TransactionType.TRANSFER) selectedDestAccountId else null,
-                            note,
-                            amountToSave,
-                            feeToSave,
-                            selectedDateMillis,
-                            activeCategory
-                        )
+                        triggerSplash = true
+                        scope.launch {
+                            delay(900L)
+                            onSaveSplitTransaction?.invoke(
+                                srcId,
+                                note,
+                                selectedDateMillis,
+                                splitItems
+                            )
+                        }
+                    } else {
+                        triggerSplash = true
+                        scope.launch {
+                            delay(900L)
+                            val amountToSave = if (selectedType == TransactionType.TRANSFER) {
+                                if (feeDirectionTaken) (parsedAmount - feeAmount).coerceAtLeast(0L) else parsedAmount
+                            } else {
+                                parsedAmount
+                            }
+                            val feeToSave = if (selectedType == TransactionType.TRANSFER) feeAmount else 0L
+                            onSaveTransaction(
+                                selectedType,
+                                selectedSourceAccountId,
+                                if (selectedType == TransactionType.TRANSFER) selectedDestAccountId else null,
+                                note,
+                                amountToSave,
+                                feeToSave,
+                                selectedDateMillis,
+                                activeCategory
+                            )
+                        }
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Cobalt),

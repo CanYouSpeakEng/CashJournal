@@ -61,6 +61,7 @@ import app.cashjournal.ui.screens.LedgerScreen
 import app.cashjournal.ui.screens.SettingsScreen
 import app.cashjournal.ui.sensory.KnockSensitivity
 import app.cashjournal.ui.sensory.ShakeDetector
+import app.cashjournal.ui.sheets.ChangeHistorySheet
 import app.cashjournal.ui.sheets.CsvImportSheet
 import app.cashjournal.ui.sheets.EditAccountSheet
 import app.cashjournal.ui.sheets.LogTransactionSheet
@@ -373,7 +374,8 @@ fun MainAppScaffold(
                         onOpenReleaseNotes = { viewModel.openSheet(ActiveSheet.RELEASE_NOTES) },
                         onCheckForUpdates = { viewModel.checkForUpdates(manual = true) },
                         onOpenUpdateSheet = { viewModel.openUpdateSheet() },
-                        onOpenRecurringBills = { viewModel.openRecurringBillsSheet() }
+                        onOpenRecurringBills = { viewModel.openRecurringBillsSheet() },
+                        onOpenChangeHistory = { viewModel.openChangeHistorySheet() }
                     )
                 }
             }
@@ -415,10 +417,12 @@ fun MainAppScaffold(
             )
         }
 
-        // Toast Pill (6% from top, auto-dismisses in 2.2s)
+        // Toast Pill (6% from top, auto-dismisses in 2.2s / 3.8s if actionable)
         ToastPill(
             message = state.toastMessage ?: "",
             visible = state.toastMessage != null,
+            actionLabel = state.toastActionLabel,
+            onAction = state.toastAction,
             onDismiss = { viewModel.clearToast() },
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -442,6 +446,9 @@ fun MainAppScaffold(
                         onSaveTransaction = { type, src, dst, note, amount, feeAmount, date, cat ->
                             viewModel.logTransaction(type, src, dst, note, amount, feeAmount, date, cat)
                         },
+                        onSaveSplitTransaction = { src, note, date, items ->
+                            viewModel.logSplitTransaction(src, note, date, items)
+                        },
                         onDismiss = { viewModel.dismissSheet() },
                         soundEffectsEnabled = state.userPreferences.soundEffectsEnabled,
                         languageCode = state.userPreferences.language,
@@ -459,6 +466,9 @@ fun MainAppScaffold(
                                 },
                                 onDeleteTransaction = { id ->
                                     viewModel.deleteTransaction(id)
+                                },
+                                onDeleteSplitGroup = { splitGroupId ->
+                                    viewModel.deleteSplitGroup(splitGroupId)
                                 },
                                 onDismiss = { viewModel.dismissSheet() },
                                 soundEffectsEnabled = state.userPreferences.soundEffectsEnabled,
@@ -617,6 +627,15 @@ fun MainAppScaffold(
                             onDismiss = { viewModel.dismissSheet() }
                         )
                     }
+
+                    ActiveSheet.CHANGE_HISTORY -> ChangeHistorySheet(
+                        history = state.changeHistory,
+                        onRevert = { viewModel.undoAction(it) },
+                        onClearHistory = { viewModel.clearChangeHistory() },
+                        onDismiss = { viewModel.dismissSheet() },
+                        languageCode = state.userPreferences.language,
+                        hapticsEnabled = state.userPreferences.tactileHapticsEnabled
+                    )
                 }
             }
         }

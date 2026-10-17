@@ -422,6 +422,82 @@ class MigrationTest {
         conn.close()
     }
 
+    @Test
+    fun testMIGRATION_7_8() {
+        val conn = DriverManager.getConnection("jdbc:sqlite::memory:")
+        val stmt = conn.createStatement()
+
+        // Create v7 transactions table
+        stmt.execute("""
+            CREATE TABLE transactions (
+                id TEXT PRIMARY KEY NOT NULL,
+                title TEXT NOT NULL,
+                category TEXT NOT NULL,
+                type TEXT NOT NULL,
+                amount INTEGER NOT NULL,
+                date INTEGER NOT NULL,
+                iconKey TEXT NOT NULL,
+                accentKey TEXT NOT NULL,
+                sourceAccountId TEXT,
+                destinationAccountId TEXT,
+                feeAmount INTEGER NOT NULL DEFAULT 0,
+                updatedAt INTEGER NOT NULL
+            )
+        """.trimIndent())
+        stmt.execute("CREATE INDEX index_transactions_sourceAccountId ON transactions(sourceAccountId)")
+        stmt.execute("CREATE INDEX index_transactions_destinationAccountId ON transactions(destinationAccountId)")
+        stmt.execute("CREATE INDEX index_transactions_date ON transactions(date)")
+
+        stmt.execute("INSERT INTO transactions VALUES ('tx-1', 'Groceries', 'FOOD_AND_DINING', 'EXPENSE', 150000, 1710000000000, 'SHOPPING_BAG', 'COBALT', 'acc-1', NULL, 0, 1710000000000)")
+
+        // Apply MIGRATION_7_8
+        stmt.execute("ALTER TABLE transactions ADD COLUMN splitGroupId TEXT DEFAULT NULL")
+        stmt.execute("CREATE INDEX IF NOT EXISTS index_transactions_splitGroupId ON transactions(splitGroupId)")
+        stmt.execute("""
+            CREATE TABLE IF NOT EXISTS change_history (
+                id TEXT PRIMARY KEY NOT NULL,
+                timestamp INTEGER NOT NULL,
+                entityType TEXT NOT NULL,
+                actionType TEXT NOT NULL,
+                entityId TEXT NOT NULL,
+                payloadJson TEXT NOT NULL,
+                description TEXT NOT NULL
+            )
+        """.trimIndent())
+        stmt.execute("CREATE INDEX IF NOT EXISTS index_change_history_timestamp ON change_history(timestamp)")
+
+        // Check defaults on existing transaction row
+        val rs = stmt.executeQuery("SELECT * FROM transactions WHERE id = 'tx-1'")
+        assertTrue(rs.next())
+        assertEquals(150000L, rs.getLong("amount"))
+        assertEquals(null, rs.getString("splitGroupId"))
+
+        // Insert split group transactions
+        stmt.execute("INSERT INTO transactions VALUES ('tx-split-1', 'Groceries - Fruit', 'FOOD_AND_DINING', 'EXPENSE', 80000, 1710000000000, 'SHOPPING_BAG', 'COBALT', 'acc-1', NULL, 0, 1710000000000, 'split-group-101')")
+        stmt.execute("INSERT INTO transactions VALUES ('tx-split-2', 'Groceries - Shampoo', 'PERSONAL_CARE', 'EXPENSE', 70000, 1710000000000, 'SHOPPING_BAG', 'COBALT', 'acc-1', NULL, 0, 1710000000000, 'split-group-101')")
+
+        val rsSplit = stmt.executeQuery("SELECT COUNT(*) AS cnt, SUM(amount) AS total FROM transactions WHERE splitGroupId = 'split-group-101'")
+        assertTrue(rsSplit.next())
+        assertEquals(2, rsSplit.getInt("cnt"))
+        assertEquals(150000L, rsSplit.getLong("total"))
+
+        // Check change_history table
+        stmt.execute("INSERT INTO change_history VALUES ('ch-1', 1710000005000, 'TRANSACTION', 'CREATE', 'tx-1', '{\"id\":\"tx-1\"}', 'Logged Groceries')")
+        val rsHistory = stmt.executeQuery("SELECT * FROM change_history WHERE entityId = 'tx-1'")
+        assertTrue(rsHistory.next())
+        assertEquals("ch-1", rsHistory.getString("id"))
+        assertEquals("CREATE", rsHistory.getString("actionType"))
+        assertEquals("Logged Groceries", rsHistory.getString("description"))
+
+        // Check indices
+        val txIndices = getIndexListFor(conn, "transactions")
+        assertTrue(txIndices.any { it.startsWith("index_transactions_splitGroupId") })
+        val chIndices = getIndexListFor(conn, "change_history")
+        assertTrue(chIndices.any { it.startsWith("index_change_history_timestamp") })
+
+        conn.close()
+    }
+
 
     private fun getTableInfoFor(conn: java.sql.Connection, table: String): Map<String, String> {
         val map = mutableMapOf<String, String>()

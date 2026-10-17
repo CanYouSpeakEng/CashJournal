@@ -48,10 +48,10 @@ import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
-import com.adamglin.phosphoricons.regular.ChartLineUp
-import com.adamglin.phosphoricons.regular.CreditCard
+import com.adamglin.phosphoricons.regular.ArrowCounterClockwise
+import com.adamglin.phosphoricons.regular.Receipt
 import com.adamglin.phosphoricons.regular.ShieldCheck
-import com.adamglin.phosphoricons.regular.Vault
+import com.adamglin.phosphoricons.regular.Trash
 import com.adamglin.phosphoricons.regular.X
 
 data class ReleaseHighlight(
@@ -78,35 +78,35 @@ fun ReleaseNotesSheet(
 
     val highlights = listOf(
         ReleaseHighlight(
-            titleEn = "Credit Limits & Available Credit",
-            titleIn = "Batas Kredit & Sisa Limit Tersedia",
-            descEn = "Track card limits and live available credit dynamically. Stored debt is safely accounted for without inflating your spendable liquid funds.",
-            descIn = "Pantau batas kredit dan sisa limit kartu secara dinamis. Hutang kartu tercatat akurat tanpa menggelembungkan dana cair siap pakai.",
-            icon = PhosphorIcons.Regular.CreditCard,
+            titleEn = "Split Transactions & Item Allocation",
+            titleIn = "Pecah Transaksi & Alokasi Kategori",
+            descEn = "Divide a single receipt across multiple expense categories with live allocation breakdown, remaining balance tracking, and keypad auto-fill.",
+            descIn = "Bagi satu struk belanja ke dalam beberapa kategori pengeluaran dengan ringkasan alokasi langsung, sisa saldo struk, dan tombol alokasi sisa otomatis.",
+            icon = PhosphorIcons.Regular.Receipt,
             iconTint = Cobalt
         ),
         ReleaseHighlight(
-            titleEn = "Statement Payment Modes & Safeguards",
-            titleIn = "Mode Pembayaran Tagihan & Proteksi Dobel",
-            descEn = "Choose between Target Nominal and Full Balance for credit cards. Automated reserves intelligently step aside if an active recurring bill already pays the card.",
-            descIn = "Pilih antara Target Nominal atau Lunas Penuh. Cadangan dana otomatis akan menyesuaikan diri jika tagihan berulang sudah dijadwalkan.",
-            icon = PhosphorIcons.Regular.ShieldCheck,
+            titleEn = "50-Item Local Undo & Change History",
+            titleIn = "Riwayat Perubahan & Urungkan 50 Tindakan",
+            descEn = "Easily revert accidental additions, updates, or deletions with an actionable 3.8s Undo snackbar or the new Change History sheet under Settings.",
+            descIn = "Batalkan penambahan, perubahan, atau penghapusan yang tidak sengaja melalui tombol Urungkan cepat atau lembar Riwayat Perubahan di Pengaturan.",
+            icon = PhosphorIcons.Regular.ArrowCounterClockwise,
             iconTint = Emerald
         ),
         ReleaseHighlight(
-            titleEn = "Manual Investment Holdings",
-            titleIn = "Portofolio Aset & Investasi Manual",
-            descEn = "Track Gold, Mutual Funds, Stocks, or custom holdings with unit-based tracking and price change history. Zero remote scrapers, 100% offline.",
-            descIn = "Catat Emas, Reksadana, Saham, atau portofolio lainnya dengan perhitungan unit dan riwayat perubahan harga. 100% offline tanpa scraper eksternal.",
-            icon = PhosphorIcons.Regular.ChartLineUp,
+            titleEn = "Split Group Management",
+            titleIn = "Manajemen Struk Terpecah",
+            descEn = "Edit or delete individual split items independently, or cleanly remove an entire split receipt at once with zero accounting drift.",
+            descIn = "Ubah atau hapus transaksi terpecah secara individual, atau hapus seluruh struk sekaligus tanpa membuat selisih saldo akuntansi.",
+            icon = PhosphorIcons.Regular.Trash,
             iconTint = Persimmon
         ),
         ReleaseHighlight(
-            titleEn = "Liquid Funds vs Net Worth Integrity",
-            titleIn = "Integritas Dana Cair vs Total Kekayaan",
-            descEn = "Spendable liquid funds strictly excludes illiquid investments and card liabilities, keeping Safe-to-Spend and runway metrics authentic.",
-            descIn = "Dana cair siap pakai dipisahkan dari aset investasi dan kewajiban kartu kredit, menjaga perhitungan Aman Dibelanjakan tetap murni dan aman.",
-            icon = PhosphorIcons.Regular.Vault,
+            titleEn = "Device-Local Security & Privacy",
+            titleIn = "Keamanan & Privasi Lokal Perangkat",
+            descEn = "Change history is strictly local to your device and never uploaded or included in backup archives, ensuring complete privacy.",
+            descIn = "Riwayat perubahan murni tersimpan di perangkat dan tidak pernah diekspor ke arsip cadangan, menjaga privasi finansial Anda.",
+            icon = PhosphorIcons.Regular.ShieldCheck,
             iconTint = Cobalt
         )
     )

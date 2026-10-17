@@ -27,6 +27,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cashjournal.ui.theme.Charcoal
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.draw.clip
 import app.cashjournal.ui.theme.Emerald
 import app.cashjournal.ui.theme.SpaceGroteskFamily
 import kotlinx.coroutines.delay
@@ -37,9 +40,11 @@ fun ToastPill(
     visible: Boolean,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
-    durationMs: Long = 2200L // 2.2 seconds per brief
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+    durationMs: Long = if (actionLabel != null) 3800L else 2200L
 ) {
-    LaunchedEffect(visible, message) {
+    LaunchedEffect(visible, message, actionLabel) {
         if (visible) {
             delay(durationMs)
             onDismiss()
@@ -85,6 +90,35 @@ fun ToastPill(
                     fontSize = 12.sp,
                     color = Color.White
                 )
+
+                if (actionLabel != null && onAction != null) {
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(14.dp)
+                            .background(Color.White.copy(alpha = 0.2f))
+                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Text(
+                        text = actionLabel.uppercase(),
+                        fontFamily = SpaceGroteskFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        letterSpacing = 0.5.sp,
+                        color = Color(0xFFFBBF24), // Calm warm Amber
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable {
+                                onAction()
+                                onDismiss()
+                            }
+                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                    )
+                }
             }
         }
     }

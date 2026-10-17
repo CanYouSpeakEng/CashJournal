@@ -43,4 +43,10 @@ interface TransactionDao {
 
     @Query("UPDATE transactions SET destinationAccountId = NULL WHERE type != 'TRANSFER' AND destinationAccountId IS NOT NULL")
     suspend fun sanitizeNonTransferDestinations()
+
+    @Query("SELECT * FROM transactions WHERE splitGroupId = :splitGroupId ORDER BY date DESC, updatedAt DESC")
+    suspend fun getTransactionsBySplitGroupId(splitGroupId: String): List<TransactionEntity>
+
+    @Query("DELETE FROM transactions WHERE splitGroupId = :splitGroupId")
+    suspend fun deleteBySplitGroupId(splitGroupId: String)
 }

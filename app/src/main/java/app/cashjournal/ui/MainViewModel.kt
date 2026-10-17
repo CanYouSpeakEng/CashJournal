@@ -22,11 +22,17 @@ import java.util.TimeZone
 import app.cashjournal.data.ExampleDataSeeder
 import app.cashjournal.data.currency.CachedExchangeRates
 import app.cashjournal.data.currency.CurrencyConverter
+import app.cashjournal.data.backup.AccountBackupDto
+import app.cashjournal.data.backup.TransactionBackupDto
 import app.cashjournal.data.currency.ExchangeRateService
 import app.cashjournal.data.local.AppDatabase
 import app.cashjournal.data.local.entity.AccountEntity
+import app.cashjournal.data.local.entity.ChangeHistoryEntity
 import app.cashjournal.data.local.entity.MonthlyPlanEntity
+import app.cashjournal.data.local.entity.SplitGroupPayload
 import app.cashjournal.data.local.entity.TransactionEntity
+import app.cashjournal.domain.model.SplitItem
+import kotlinx.serialization.json.Json
 import app.cashjournal.data.location.LocationProvider
 import app.cashjournal.data.preferences.UserPreferences
 import app.cashjournal.data.preferences.UserPreferencesRepository
@@ -97,7 +103,8 @@ enum class ActiveSheet {
     EDIT_ACCOUNT,
     UPDATE_INFO,
     RECURRING_BILLS,
-    CSV_IMPORT
+    CSV_IMPORT,
+    CHANGE_HISTORY
 }
 
 typealias SafeToSpendStatus = app.cashjournal.domain.model.SafeToSpendStatus
@@ -130,6 +137,9 @@ data class MainUiState(
     val userPreferences: UserPreferences = UserPreferences(),
     val isReorderMode: Boolean = false,
     val toastMessage: String? = null,
+    val toastActionLabel: String? = null,
+    val toastAction: (() -> Unit)? = null,
+    val changeHistory: List<ChangeHistoryEntity> = emptyList(),
     val weatherData: WeatherData? = null,
     val cachedRates: CachedExchangeRates? = null,
     val isRatesOffline: Boolean = false,
@@ -161,6 +171,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isRatesOffline = MutableStateFlow(false)
     private val _citySearchResults = MutableStateFlow<List<GeocodingCity>>(emptyList())
     private val _isSearchingCity = MutableStateFlow(false)
+    private val _toastActionLabel = MutableStateFlow<String?>(null)
+    private val _toastAction = MutableStateFlow<(() -> Unit)?>(null)
 
     // OTA Update State
     private val appUpdateService = AppUpdateService()
@@ -188,6 +200,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val weatherFlow = preferencesRepository.cachedWeatherFlow
     private val ratesFlow = preferencesRepository.cachedRatesFlow
     private val recurringFlow = database.recurringTransactionDao().getAllRecurringFlow()
+    private val changeHistoryFlow = database.changeHistoryDao().getRecentHistoryFlow()
 
     val uiState: StateFlow<MainUiState> = combine(
         combine(
@@ -222,7 +235,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _isReorderMode,
             _toastMessage,
             _updateState,
-            _csvImportState
+            _csvImportState,
+            _toastActionLabel,
+            _toastAction,
+            changeHistoryFlow.catch { emit(emptyList()) }
         ) { args ->
             args
         }
@@ -242,6 +258,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val toast = group3[7] as? String
         val currentUpdateState = group3[8] as UpdateState
         val csvState = group3[9] as? CsvImportState
+        val toastActionLbl = group3[10] as? String
+        @Suppress("UNCHECKED_CAST")
+        val toastAct = group3[11] as? (() -> Unit)
+        @Suppress("UNCHECKED_CAST")
+        val historyList = (group3[12] as? List<ChangeHistoryEntity>) ?: emptyList()
         val isUpdateReady = currentUpdateState is UpdateState.ReadyToInstall
 
         val totalWorth = rawAccounts.sumOf { it.balance }
@@ -279,6 +300,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             userPreferences = prefs,
             isReorderMode = reorder,
             toastMessage = toast,
+            toastActionLabel = toastActionLbl,
+            toastAction = toastAct,
+            changeHistory = historyList,
             weatherData = weather,
             cachedRates = rates,
             isRatesOffline = isOffline,
@@ -609,12 +633,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _isReorderMode.value = enabled
     }
 
-    fun showToast(message: String) {
+    fun showToast(message: String, actionLabel: String? = null, onAction: (() -> Unit)? = null) {
         _toastMessage.value = message
+        _toastActionLabel.value = actionLabel
+        _toastAction.value = onAction
     }
 
     fun clearToast() {
         _toastMessage.value = null
+        _toastActionLabel.value = null
+        _toastAction.value = null
+    }
+
+    private suspend fun recordChange(
+        actionType: String,
+        entityType: String,
+        entityId: String,
+        summary: String,
+        previousStateJson: String? = null,
+        newStateJson: String? = null
+    ) {
+        val entry = ChangeHistoryEntity(
+            actionType = actionType,
+            entityType = entityType,
+            entityId = entityId,
+            summary = summary,
+            previousStateJson = previousStateJson,
+            newStateJson = newStateJson,
+            timestamp = System.currentTimeMillis()
+        )
+        database.changeHistoryDao().insert(entry)
+        database.changeHistoryDao().pruneOldHistory()
     }
 
     fun logTransaction(
@@ -694,9 +743,99 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 finalDestAccountId?.let { database.accountDao().recalculateAccountBalance(it) }
             }
 
+            val txDto = TransactionBackupDto.fromEntity(tx)
+            val newStateJson = Json.encodeToString(TransactionBackupDto.serializer(), txDto)
+            val summary = "Logged ${type.name.lowercase().replaceFirstChar { it.uppercase() }}: $title (${Currency.formatMinor(amount, uiState.value.userPreferences.currencyCode)})"
+            recordChange(
+                actionType = "CREATE",
+                entityType = "TRANSACTION",
+                entityId = tx.id,
+                summary = summary,
+                previousStateJson = null,
+                newStateJson = newStateJson
+            )
+
             ChimeGenerator.playChime(uiState.value.userPreferences.soundEffectsEnabled, viewModelScope)
             dismissSheet()
-            showToast(strings.toastTransactionLogged)
+            showToast(
+                message = strings.toastTransactionLogged,
+                actionLabel = strings.undoActionLabel,
+                onAction = { undoLastAction() }
+            )
+        }
+    }
+
+    fun logSplitTransaction(
+        sourceAccountId: String,
+        note: String,
+        date: Long,
+        items: List<SplitItem>
+    ) {
+        val strings = currentStrings()
+        if (items.size < 2) {
+            showToast(strings.splitMinItemsError)
+            return
+        }
+        if (items.any { it.amount <= 0L }) {
+            showToast(strings.splitItemAmountError)
+            return
+        }
+        if (sourceAccountId.isBlank()) {
+            showToast(strings.toastSelectAccount)
+            return
+        }
+
+        val totalAmount = items.sumOf { it.amount }
+        val splitGroupId = UUID.randomUUID().toString()
+
+        viewModelScope.launch {
+            val entities = items.map { item ->
+                val title = item.note.ifBlank {
+                    if (note.isNotBlank()) "$note (${item.category.localizedName(uiState.value.userPreferences.language)})"
+                    else item.category.defaultName
+                }
+                TransactionEntity(
+                    id = UUID.randomUUID().toString(),
+                    sourceAccountId = sourceAccountId,
+                    destinationAccountId = null,
+                    type = TransactionType.EXPENSE.name,
+                    amount = item.amount,
+                    feeAmount = 0L,
+                    title = title,
+                    category = item.category.key,
+                    date = date,
+                    iconKey = item.category.key,
+                    accentKey = item.category.defaultAccent.name,
+                    updatedAt = System.currentTimeMillis(),
+                    splitGroupId = splitGroupId
+                )
+            }
+
+            database.withTransaction {
+                database.transactionDao().insertAll(entities)
+                database.accountDao().recalculateAccountBalance(sourceAccountId)
+            }
+
+            val payload = SplitGroupPayload(transactions = entities.map { TransactionBackupDto.fromEntity(it) })
+            val newStateJson = Json.encodeToString(SplitGroupPayload.serializer(), payload)
+            val summary = "Split Expense: ${note.ifBlank { "Receipt" }} (${Currency.formatMinor(totalAmount, uiState.value.userPreferences.currencyCode)})"
+
+            recordChange(
+                actionType = "CREATE",
+                entityType = "SPLIT_TRANSACTION",
+                entityId = splitGroupId,
+                summary = summary,
+                previousStateJson = null,
+                newStateJson = newStateJson
+            )
+
+            ChimeGenerator.playChime(uiState.value.userPreferences.soundEffectsEnabled, viewModelScope)
+            dismissSheet()
+            showToast(
+                message = strings.toastTransactionLogged,
+                actionLabel = strings.undoActionLabel,
+                onAction = { undoLastAction() }
+            )
         }
     }
 
@@ -769,6 +908,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 finalDestAccountId
             )
 
+            val prevDto = TransactionBackupDto.fromEntity(existing)
+            val prevJson = Json.encodeToString(TransactionBackupDto.serializer(), prevDto)
+
             database.withTransaction {
                 database.transactionDao().update(updatedTx)
                 affectedAccounts.forEach { accId ->
@@ -776,16 +918,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
+            val newDto = TransactionBackupDto.fromEntity(updatedTx)
+            val newJson = Json.encodeToString(TransactionBackupDto.serializer(), newDto)
+            val summary = "Updated: $title (${Currency.formatMinor(amount, uiState.value.userPreferences.currencyCode)})"
+
+            recordChange(
+                actionType = "UPDATE",
+                entityType = "TRANSACTION",
+                entityId = id,
+                summary = summary,
+                previousStateJson = prevJson,
+                newStateJson = newJson
+            )
+
             ChimeGenerator.playChime(uiState.value.userPreferences.soundEffectsEnabled, viewModelScope)
             dismissSheet()
-            val strings = AppStrings.get(uiState.value.userPreferences.language)
-            showToast(strings.transactionUpdatedToast)
+            val appStrings = AppStrings.get(uiState.value.userPreferences.language)
+            showToast(
+                message = appStrings.transactionUpdatedToast,
+                actionLabel = strings.undoActionLabel,
+                onAction = { undoLastAction() }
+            )
         }
     }
 
     fun deleteTransaction(id: String) {
         viewModelScope.launch {
             val existing = database.transactionDao().getTransactionById(id) ?: return@launch
+            val prevDto = TransactionBackupDto.fromEntity(existing)
+            val prevJson = Json.encodeToString(TransactionBackupDto.serializer(), prevDto)
             val affectedAccounts = setOfNotNull(existing.sourceAccountId, existing.destinationAccountId)
 
             database.withTransaction {
@@ -795,10 +956,186 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
+            val summary = "Deleted: ${existing.title} (${Currency.formatMinor(existing.amount, uiState.value.userPreferences.currencyCode)})"
+            recordChange(
+                actionType = "DELETE",
+                entityType = "TRANSACTION",
+                entityId = id,
+                summary = summary,
+                previousStateJson = prevJson,
+                newStateJson = null
+            )
+
             dismissSheet()
             val strings = AppStrings.get(uiState.value.userPreferences.language)
-            showToast(strings.transactionDeletedToast)
+            showToast(
+                message = strings.transactionDeletedToast,
+                actionLabel = strings.undoActionLabel,
+                onAction = { undoLastAction() }
+            )
         }
+    }
+
+    fun deleteSplitGroup(splitGroupId: String) {
+        viewModelScope.launch {
+            val splitTxs = database.transactionDao().getTransactionsBySplitGroupId(splitGroupId)
+            if (splitTxs.isEmpty()) return@launch
+
+            val affectedAccounts = splitTxs.mapNotNull { it.sourceAccountId }.toSet()
+
+            database.withTransaction {
+                database.transactionDao().deleteBySplitGroupId(splitGroupId)
+                affectedAccounts.forEach { accId ->
+                    database.accountDao().recalculateAccountBalance(accId)
+                }
+            }
+
+            val payload = SplitGroupPayload(transactions = splitTxs.map { TransactionBackupDto.fromEntity(it) })
+            val previousStateJson = Json.encodeToString(SplitGroupPayload.serializer(), payload)
+            val totalAmount = splitTxs.sumOf { it.amount }
+            val summary = "Deleted Split Group (${splitTxs.size} items, ${Currency.formatMinor(totalAmount, uiState.value.userPreferences.currencyCode)})"
+
+            recordChange(
+                actionType = "DELETE",
+                entityType = "SPLIT_TRANSACTION",
+                entityId = splitGroupId,
+                summary = summary,
+                previousStateJson = previousStateJson,
+                newStateJson = null
+            )
+
+            dismissSheet()
+            val strings = currentStrings()
+            showToast(
+                message = strings.transactionDeletedToast,
+                actionLabel = strings.undoActionLabel,
+                onAction = { undoLastAction() }
+            )
+        }
+    }
+
+    fun undoAction(historyItem: ChangeHistoryEntity) {
+        viewModelScope.launch {
+            try {
+                when (historyItem.actionType) {
+                    "CREATE" -> {
+                        when (historyItem.entityType) {
+                            "TRANSACTION" -> {
+                                val tx = database.transactionDao().getTransactionById(historyItem.entityId)
+                                if (tx != null) {
+                                    val affected = setOfNotNull(tx.sourceAccountId, tx.destinationAccountId)
+                                    database.withTransaction {
+                                        database.transactionDao().delete(tx)
+                                        affected.forEach { database.accountDao().recalculateAccountBalance(it) }
+                                    }
+                                }
+                            }
+                            "SPLIT_TRANSACTION" -> {
+                                val splitTxs = database.transactionDao().getTransactionsBySplitGroupId(historyItem.entityId)
+                                val affected = splitTxs.mapNotNull { it.sourceAccountId }.toSet()
+                                database.withTransaction {
+                                    database.transactionDao().deleteBySplitGroupId(historyItem.entityId)
+                                    affected.forEach { database.accountDao().recalculateAccountBalance(it) }
+                                }
+                            }
+                            "ACCOUNT" -> {
+                                val acc = database.accountDao().getAccountById(historyItem.entityId)
+                                if (acc != null) {
+                                    database.withTransaction {
+                                        database.accountDao().delete(acc)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    "DELETE" -> {
+                        when (historyItem.entityType) {
+                            "TRANSACTION" -> {
+                                val json = historyItem.previousStateJson ?: return@launch
+                                val dto = Json.decodeFromString(TransactionBackupDto.serializer(), json)
+                                val entity = dto.toEntity()
+                                val affected = setOfNotNull(entity.sourceAccountId, entity.destinationAccountId)
+                                database.withTransaction {
+                                    database.transactionDao().insert(entity)
+                                    affected.forEach { database.accountDao().recalculateAccountBalance(it) }
+                                }
+                            }
+                            "SPLIT_TRANSACTION" -> {
+                                val json = historyItem.previousStateJson ?: return@launch
+                                val payload = Json.decodeFromString(SplitGroupPayload.serializer(), json)
+                                val entities = payload.transactions.map { it.toEntity() }
+                                val affected = entities.mapNotNull { it.sourceAccountId }.toSet()
+                                database.withTransaction {
+                                    database.transactionDao().insertAll(entities)
+                                    affected.forEach { database.accountDao().recalculateAccountBalance(it) }
+                                }
+                            }
+                            "ACCOUNT" -> {
+                                val json = historyItem.previousStateJson ?: return@launch
+                                val dto = Json.decodeFromString(AccountBackupDto.serializer(), json)
+                                val entity = dto.toEntity()
+                                database.withTransaction {
+                                    database.accountDao().insert(entity)
+                                }
+                            }
+                        }
+                    }
+                    "UPDATE" -> {
+                        when (historyItem.entityType) {
+                            "TRANSACTION" -> {
+                                val json = historyItem.previousStateJson ?: return@launch
+                                val dto = Json.decodeFromString(TransactionBackupDto.serializer(), json)
+                                val entity = dto.toEntity()
+                                val current = database.transactionDao().getTransactionById(entity.id)
+                                val affected = setOfNotNull(
+                                    current?.sourceAccountId,
+                                    current?.destinationAccountId,
+                                    entity.sourceAccountId,
+                                    entity.destinationAccountId
+                                )
+                                database.withTransaction {
+                                    database.transactionDao().update(entity)
+                                    affected.forEach { database.accountDao().recalculateAccountBalance(it) }
+                                }
+                            }
+                            "ACCOUNT" -> {
+                                val json = historyItem.previousStateJson ?: return@launch
+                                val dto = Json.decodeFromString(AccountBackupDto.serializer(), json)
+                                val entity = dto.toEntity()
+                                database.withTransaction {
+                                    database.accountDao().update(entity)
+                                    database.accountDao().recalculateAccountBalance(entity.id)
+                                }
+                            }
+                        }
+                    }
+                }
+                database.changeHistoryDao().deleteById(historyItem.id)
+                val strings = currentStrings()
+                showToast(strings.undoSuccessToast)
+            } catch (e: Exception) {
+                showToast("Failed to revert: ${e.message}")
+            }
+        }
+    }
+
+    fun undoLastAction() {
+        viewModelScope.launch {
+            val last = database.changeHistoryDao().getLastAction() ?: return@launch
+            undoAction(last)
+        }
+    }
+
+    fun clearChangeHistory() {
+        viewModelScope.launch {
+            database.changeHistoryDao().deleteAll()
+            dismissSheet()
+            showToast(currentStrings().undoSuccessToast)
+        }
+    }
+
+    fun openChangeHistorySheet() {
+        openSheet(ActiveSheet.CHANGE_HISTORY)
     }
 
     fun openRecurringBillsSheet() {
@@ -987,8 +1324,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 priceUpdatedAt = if (pricePerUnit > 0L) System.currentTimeMillis() else 0L
             )
             database.accountDao().insert(account)
+            val dto = AccountBackupDto.fromEntity(account)
+            val json = Json.encodeToString(AccountBackupDto.serializer(), dto)
+            recordChange(
+                actionType = "CREATE",
+                entityType = "ACCOUNT",
+                entityId = account.id,
+                summary = "Created Account: ${account.name}",
+                previousStateJson = null,
+                newStateJson = json
+            )
             dismissSheet()
-            showToast(strings.toastAccountCreatedFormat.format(name.take(28)))
+            showToast(
+                message = strings.toastAccountCreatedFormat.format(name.take(28)),
+                actionLabel = strings.undoActionLabel,
+                onAction = { undoLastAction() }
+            )
         }
     }
 
@@ -1015,6 +1366,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             val existing = database.accountDao().getAccountById(accountId) ?: return@launch
+            val prevDto = AccountBackupDto.fromEntity(existing)
+            val prevJson = Json.encodeToString(AccountBackupDto.serializer(), prevDto)
 
             val previousPrice = if (pricePerUnit != existing.pricePerUnit && existing.pricePerUnit > 0L) {
                 existing.pricePerUnit
@@ -1084,6 +1437,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
+            val newDto = AccountBackupDto.fromEntity(updated)
+            val newJson = Json.encodeToString(AccountBackupDto.serializer(), newDto)
+            recordChange(
+                actionType = "UPDATE",
+                entityType = "ACCOUNT",
+                entityId = accountId,
+                summary = "Updated Account: ${updated.name}",
+                previousStateJson = prevJson,
+                newStateJson = newJson
+            )
+
             if (_selectedAccount.value?.id == accountId) {
                 val refreshed = database.accountDao().getAccountById(accountId)?.toDomain()
                 if (refreshed != null) {
@@ -1093,9 +1457,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             if (balanceChanged) {
                 ChimeGenerator.playChime(uiState.value.userPreferences.soundEffectsEnabled, viewModelScope)
-                showToast(strings.accountUpdatedAndReconciledToast)
+                showToast(
+                    message = strings.accountUpdatedAndReconciledToast,
+                    actionLabel = strings.undoActionLabel,
+                    onAction = { undoLastAction() }
+                )
             } else {
-                showToast(strings.accountUpdatedToast)
+                showToast(
+                    message = strings.accountUpdatedToast,
+                    actionLabel = strings.undoActionLabel,
+                    onAction = { undoLastAction() }
+                )
             }
             dismissSheet()
         }
@@ -1110,15 +1482,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             val existing = database.accountDao().getAccountById(accountId) ?: return@launch
+            val prevDto = AccountBackupDto.fromEntity(existing)
+            val prevJson = Json.encodeToString(AccountBackupDto.serializer(), prevDto)
+
             database.withTransaction {
                 database.accountDao().delete(existing)
             }
+
+            recordChange(
+                actionType = "DELETE",
+                entityType = "ACCOUNT",
+                entityId = accountId,
+                summary = "Deleted Account: ${existing.name}",
+                previousStateJson = prevJson,
+                newStateJson = null
+            )
+
             dismissSheet()
             if (_selectedAccount.value?.id == accountId) {
                 _selectedAccount.value = null
                 _currentScreen.value = AppScreen.ACCOUNTS
             }
-            showToast(strings.accountDeletedToast)
+            showToast(
+                message = strings.accountDeletedToast,
+                actionLabel = strings.undoActionLabel,
+                onAction = { undoLastAction() }
+            )
         }
     }
 
