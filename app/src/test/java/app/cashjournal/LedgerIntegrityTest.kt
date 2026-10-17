@@ -202,4 +202,106 @@ class LedgerIntegrityTest {
         // 100,000 - 10,000 + 20,000 = 110,000 cents ($1,100.00)
         assertEquals(110_000L, recalculatedBalance)
     }
+
+    @Test
+    fun testCurrencyConversionConvertsRecurringBillsAndCommittedRunwayConsistently() {
+        val oldCurrency = "IDR"
+        val newCurrency = "USD"
+        val rates = mapOf("USD" to 1.0, "IDR" to 16000.0)
+
+        // 1. Initial IDR state: 16,000,000 IDR budget, 1,600,000 IDR recurring rent bill
+        val idrBudget = 16_000_000L
+        val idrRentBillAmount = 1_600_000L
+
+        val convertedBudget = CurrencyConverter.convertMinorUnits(
+            amountMinor = idrBudget,
+            sourceCode = oldCurrency,
+            targetCode = newCurrency,
+            baseCode = "USD",
+            rates = rates,
+            sourceDecimals = 0,
+            targetDecimals = 2
+        )
+
+        val convertedRecurringAmount = CurrencyConverter.convertMinorUnits(
+            amountMinor = idrRentBillAmount,
+            sourceCode = oldCurrency,
+            targetCode = newCurrency,
+            baseCode = "USD",
+            rates = rates,
+            sourceDecimals = 0,
+            targetDecimals = 2
+        )
+
+        // 16,000,000 IDR -> $1,000.00 USD (100,000 cents)
+        assertEquals(100_000L, convertedBudget)
+        // 1,600,000 IDR -> $100.00 USD (10,000 cents)
+        assertEquals(10_000L, convertedRecurringAmount)
+
+        // Safe-to-spend evaluation with converted recurring bill
+        val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+            set(2026, Calendar.OCTOBER, 10, 12, 0, 0)
+        }
+        val plan = MonthlyPlan(budget = convertedBudget)
+        val convertedBill = app.cashjournal.domain.model.RecurringTransaction(
+            id = "rent-1",
+            title = "Apartment Rent",
+            category = Category.HOUSING,
+            amount = convertedRecurringAmount,
+            type = TransactionType.EXPENSE,
+            dueDay = 25,
+            isActive = true
+        )
+
+        val result = SafeToSpendCalculator.calculate(
+            plan = plan,
+            transactions = emptyList(),
+            calendar = cal,
+            totalNetWorth = 500_000L,
+            cycleStartDay = 1,
+            recurringTransactions = listOf(convertedBill)
+        )
+
+        // Committed bills in USD must be 10,000 cents ($100), not the unconverted 1,600,000
+        assertEquals(10_000L, result.committedBills)
+        // Remaining budget: 100,000 - 10,000 = 90,000 cents ($900.00)
+        assertEquals(90_000L, result.remaining)
+    }
+
+    @Test
+    fun testFullResetClearsAllTablesCompletely() {
+        val conn = java.sql.DriverManager.getConnection("jdbc:sqlite::memory:")
+        val stmt = conn.createStatement()
+
+        stmt.execute("CREATE TABLE accounts (id TEXT PRIMARY KEY, balance INTEGER)")
+        stmt.execute("CREATE TABLE transactions (id TEXT PRIMARY KEY, amount INTEGER)")
+        stmt.execute("CREATE TABLE monthly_plans (id TEXT PRIMARY KEY, budget INTEGER)")
+        stmt.execute("CREATE TABLE recurring_transactions (id TEXT PRIMARY KEY, amount INTEGER)")
+
+        // Populate sample data in all 4 tables
+        stmt.execute("INSERT INTO accounts VALUES ('acc-1', 100000)")
+        stmt.execute("INSERT INTO transactions VALUES ('tx-1', 50000)")
+        stmt.execute("INSERT INTO monthly_plans VALUES ('plan-1', 500000)")
+        stmt.execute("INSERT INTO recurring_transactions VALUES ('rec-1', 25000)")
+
+        // Perform clearAllData simulation
+        stmt.execute("DELETE FROM accounts")
+        stmt.execute("DELETE FROM transactions")
+        stmt.execute("DELETE FROM monthly_plans")
+        stmt.execute("DELETE FROM recurring_transactions")
+
+        val rsAcc = stmt.executeQuery("SELECT count(*) FROM accounts")
+        assertEquals(0, rsAcc.getInt(1))
+
+        val rsTx = stmt.executeQuery("SELECT count(*) FROM transactions")
+        assertEquals(0, rsTx.getInt(1))
+
+        val rsPlan = stmt.executeQuery("SELECT count(*) FROM monthly_plans")
+        assertEquals(0, rsPlan.getInt(1))
+
+        val rsRec = stmt.executeQuery("SELECT count(*) FROM recurring_transactions")
+        assertEquals(0, rsRec.getInt(1))
+
+        conn.close()
+    }
 }

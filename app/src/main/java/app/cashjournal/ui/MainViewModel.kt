@@ -1296,10 +1296,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 p.copy(budget = newBudget, startingSpent = newStartingSpent)
             }
 
+            val currentRecurring = database.recurringTransactionDao().getAllRecurring()
+            val convertedRecurring = currentRecurring.map { rec ->
+                val newAmt = CurrencyConverter.convertMinorUnits(
+                    amountMinor = rec.amount,
+                    sourceCode = currentCode,
+                    targetCode = targetCode,
+                    baseCode = cached.baseCode,
+                    rates = cached.rates,
+                    sourceDecimals = sourceDecimals,
+                    targetDecimals = targetDecimals
+                )
+                rec.copy(amount = newAmt, updatedAt = System.currentTimeMillis())
+            }
+
             database.withTransaction {
                 database.accountDao().insertAll(convertedAccounts)
                 database.transactionDao().insertAll(convertedTx)
                 convertedPlan?.let { database.monthlyPlanDao().upsert(it) }
+                database.recurringTransactionDao().insertAll(convertedRecurring)
                 database.accountDao().recalculateAllAccountBalances()
             }
 
@@ -1318,6 +1333,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 database.accountDao().deleteAll()
                 database.transactionDao().deleteAll()
                 database.monthlyPlanDao().deleteAll()
+                database.recurringTransactionDao().deleteAll()
             }
             setScreen(AppScreen.DASHBOARD)
             showToast(currentStrings().allDataDeletedToast)
@@ -1532,7 +1548,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     title = item.title,
                     amount = item.amount,
                     type = item.type.name,
-                    category = item.category.name,
+                    category = item.category.key,
                     sourceAccountId = current.targetAccountId,
                     destinationAccountId = null,
                     date = item.parsedDateMillis,

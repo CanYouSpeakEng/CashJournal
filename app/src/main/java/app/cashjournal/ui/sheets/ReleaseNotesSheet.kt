@@ -48,10 +48,10 @@ import app.cashjournal.ui.theme.Slate600
 import app.cashjournal.ui.theme.SpaceGroteskFamily
 import com.adamglin.PhosphorIcons
 import com.adamglin.phosphoricons.Regular
-import com.adamglin.phosphoricons.regular.CalendarCheck
-import com.adamglin.phosphoricons.regular.Receipt
+import com.adamglin.phosphoricons.regular.ArrowsLeftRight
+import com.adamglin.phosphoricons.regular.LockKey
+import com.adamglin.phosphoricons.regular.ShieldCheck
 import com.adamglin.phosphoricons.regular.Sparkle
-import com.adamglin.phosphoricons.regular.Wallet
 import com.adamglin.phosphoricons.regular.X
 
 data class ReleaseHighlight(
@@ -78,34 +78,34 @@ fun ReleaseNotesSheet(
 
     val highlights = listOf(
         ReleaseHighlight(
-            titleEn = "Recurring Bills & Subscriptions",
-            titleIn = "Tagihan & Langganan Rutin",
-            descEn = "Easily track monthly subscriptions and recurring bills. CashJournal reminds you of upcoming dues so nothing slips through.",
-            descIn = "Pantau langganan bulanan dan tagihan rutin dengan mudah. CashJournal mencatat jadwalnya agar keuangan Anda tetap aman terkendali.",
-            icon = PhosphorIcons.Regular.CalendarCheck,
-            iconTint = Cobalt
-        ),
-        ReleaseHighlight(
-            titleEn = "Safe-to-Spend Protection",
-            titleIn = "Perlindungan Saldo Aman",
-            descEn = "Your dashboard automatically reserves funds for upcoming bills, so you always know exactly how much you can spend worry-free.",
-            descIn = "Dashboard otomatis menyisihkan dana untuk tagihan mendatang, sehingga Anda tahu pasti nominal yang bebas dibelanjakan.",
-            icon = PhosphorIcons.Regular.Wallet,
+            titleEn = "Data Protection & Zero-Loss Engine",
+            titleIn = "Perlindungan Data & Tanpa Risiko Terhapus",
+            descEn = "Database upgrades are hardened with zero-data-loss protection. Your records and transaction history are safeguarded at all times.",
+            descIn = "Pembaruan database ditingkatkan dengan perlindungan anti-hapus. Riwayat transaksi dan catatan kas Anda selalu terlindungi sepenuhnya.",
+            icon = PhosphorIcons.Regular.ShieldCheck,
             iconTint = Emerald
         ),
         ReleaseHighlight(
-            titleEn = "One-Tap Bill Logging",
-            titleIn = "Catat Tagihan Sekali Ketuk",
-            descEn = "Pay or mark bills as done in a single tap without retyping amounts. Balances update immediately across your accounts.",
-            descIn = "Bayar atau tandai tagihan lunas hanya dengan sekali ketuk tanpa repot mengetik nominal. Saldo langsung terpotong rapi.",
-            icon = PhosphorIcons.Regular.Receipt,
+            titleEn = "Multi-Currency Recurring Bills",
+            titleIn = "Konversi Mata Uang Tagihan Rutin",
+            descEn = "Switching currencies now automatically converts your recurring subscriptions and bills, keeping your safe-to-spend allowance accurate.",
+            descIn = "Mengganti mata uang kini otomatis mengonversi nominal langganan rutin Anda, menjaga perhitungan saldo aman tetap presisi.",
+            icon = PhosphorIcons.Regular.ArrowsLeftRight,
+            iconTint = Cobalt
+        ),
+        ReleaseHighlight(
+            titleEn = "Password-Protected Encrypted Backups",
+            titleIn = "Cadangan Terenkripsi dengan Kata Sandi",
+            descEn = "Export your financial records into secure AES-256-GCM encrypted backup files (.cashjournal.enc) protected with your personal password.",
+            descIn = "Ekspor catatan keuangan Anda ke dalam berkas cadangan terenkripsi AES-256-GCM (.cashjournal.enc) yang dilindungi kata sandi pribadi Anda.",
+            icon = PhosphorIcons.Regular.LockKey,
             iconTint = Persimmon
         ),
         ReleaseHighlight(
-            titleEn = "Rock-Solid Stability",
-            titleIn = "Aplikasi Lebih Tangguh & Cepat",
-            descEn = "Under-the-hood engine improvements ensure lightning-fast startup, smoother animations, and bulletproof data security.",
-            descIn = "Penyempurnaan mesin di balik layar memastikan aplikasi terbuka secepat kilat, animasi semakin mulus, dan data Anda selalu aman.",
+            titleEn = "Clean Reset & Import Consistency",
+            titleIn = "Reset Bersih & Konsistensi Impor",
+            descEn = "Full ledger resets thoroughly wipe scheduled bills, and CSV statement imports adhere to normalized category standards.",
+            descIn = "Penghapusan menyeluruh membersihkan jadwal tagihan secara tuntas, dan impor mutasi rekening CSV selaras dengan standar kategori.",
             icon = PhosphorIcons.Regular.Sparkle,
             iconTint = Cobalt
         )

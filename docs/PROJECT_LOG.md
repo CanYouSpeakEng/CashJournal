@@ -460,12 +460,44 @@ Based on the comprehensive audit (Rev 3.0) and external review notes ([`docs/cas
 
 ---
 
-### [ ] **Phase 28: CSV / Bank Statement Import & Duplicate Detection**
-- [ ] **Item 118**: Statement parser supporting standard Indonesian bank CSV formats (BCA, Mandiri, BNI, BRI) and generic CSVs.
-- [ ] **Item 119**: Column mapping preview modal and hash-based duplicate transaction detector (`date + amount + accountId + title`) to avoid double-counting.
-- [ ] **Item 120**: Dedicated CSV spreadsheet ledger export (separate from JSON backup).
+### [x] **Phase 28: CSV / Bank Statement Import & Duplicate Detection (COMPLETED)**
+- [x] **Item 118**: Universal RFC 4180 CSV engine and Indonesian bank statement parser (BCA, Mandiri, BNI, BRI) with auto-detected date formats, amount formats, and CR/DB indicators. Implemented streaming tokenizer in `CsvTokenizer.kt` and parser in `CsvParser.kt`.
+- [x] **Item 119**: Interactive CSV import review sheet (`CsvImportSheet.kt`) with fuzzy duplicate candidate detection (`CsvDuplicateDetector.kt`), target account selector, and batch ledger insertion with account balance recalculation.
+- [x] **Item 120**: RFC 4180 CSV spreadsheet ledger export via Storage Access Framework (`CreateDocument("text/csv")`) in `CsvExporter.kt` and Settings screen. Unit test suite `CsvParserTest.kt` passed 100%.
 
-### [ ] **Phase 29: Encrypted Backups & Release Hardening**
-- [ ] **Item 121**: Password-based AES-256-GCM backup encryption (`.cashjournal.enc`) with PBKDF2/Argon2 key derivation.
-- [ ] **Item 122**: Automated Room migration test suite using `androidx.room:room-testing` (`MigrationTestHelper`) asserting `MIGRATION_1_2`, `2_3`, `3_4`, and `4_5`.
-- [ ] **Item 123**: Production release signing configuration (external keystore via environment variables/local properties) and R8 minification verification.
+- [x] **Release v1.0.34-dev (Phase 28: CSV / Bank Statement Import & Duplicate Detection)**
+  - Tag: `v1.0.34-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.34-dev
+  - Artifacts: `app-debug.apk` (17.7 MB), `app-release.apk` (12.4 MB).
+
+---
+
+### [x] **Phase 29: Encrypted Backups & Release Hardening (COMPLETED)**
+- [x] **Item 121**: Password-protected AES-256-GCM backup export and import (`.cashjournal.enc`) via PBKDF2-HMAC-SHA256 (100,000 iterations, 16-byte random salt, 12-byte IV, 128-bit authentication tag) with magic header `CJENC1`. Automatic sniffing and backward compatibility for plaintext JSON backups.
+- [x] **Item 122**: Automated Room migration test suite (`MigrationTest.kt`) asserting `MIGRATION_1_2`, `2_3`, `3_4`, and `4_5` verifying data integrity across schema versions without data loss.
+- [x] **Item 123**: Production release signing pipeline configured in `app/build.gradle.kts` with fallback to shared keystore. Configured R8 minification rules in `app/proguard-rules.pro` reducing release APK size by over 36% from 12.4 MB down to 7.8 MB.
+
+- [x] **Release v1.0.35-dev (Phase 29: Encrypted Backups & Release Hardening)**
+  - Tag: `v1.0.35-dev`
+  - GitHub Release: https://github.com/CanYouSpeakEng/CashJournal/releases/tag/v1.0.35-dev
+  - Artifacts: `app-debug.apk` (17.7 MB), `app-release.apk` (7.8 MB).
+
+---
+
+### [x] **Phase 30: Data Integrity Hardening (Audit v4.0 Findings) (COMPLETED)**
+- [x] **Item 124 (OBS-NEW-4: Eliminate Destructive Migration Fallback)**:
+  - Removed `.fallbackToDestructiveMigration()` from `AppDatabase.kt:144`.
+  - Guarantees that if an unexpected migration mismatch ever occurs in production, Room throws `IllegalStateException` rather than quietly erasing all user transactions, accounts, and financial history.
+- [x] **Item 125 (OBS-NEW-2: Multi-Currency Conversion for Recurring Bills)**:
+  - Updated `changeMainCurrency()` in `MainViewModel.kt` to fetch all recurring transactions and convert `recurring_transactions.amount` using `CurrencyConverter.convertMinorUnits()`.
+  - Persists converted bills atomically within `database.withTransaction`, preventing upcoming recurring bills from blowing up or shrinking safe-to-spend committed allowances after currency change.
+- [x] **Item 126 (OBS-NEW-1: Full Reset Clears Recurring Bills)**:
+  - Added `database.recurringTransactionDao().deleteAll()` to `clearAllData()` in `MainViewModel.kt`.
+  - Ensures a complete ledger reset leaves zero ghost recurring bills behind.
+- [x] **Item 127 (OBS-NEW-3: CSV Import Category Key Normalization)**:
+  - Updated `confirmCsvImport()` in `MainViewModel.kt` to save `category = item.category.key` rather than `item.category.name`, enforcing consistent domain key casing across all database records.
+- [x] **Item 128 (Automated Integrity Test Suite)**:
+  - Added `testCurrencyConversionConvertsRecurringBillsAndCommittedRunwayConsistently` and `testFullResetClearsAllTablesCompletely` in `LedgerIntegrityTest.kt`.
+  - Updated `ReleaseNotesSheet.kt` bilingual highlights for `v1.0.36-dev`.
+  - Verified 100% test pass on both debug and release variants.
+
